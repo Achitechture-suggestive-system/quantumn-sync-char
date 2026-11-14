@@ -1,8 +1,8 @@
 # Báo cáo P1 — kiểm tra semantics, provenance và oracle
 
-Ngày chạy: 14/11/2026  
-Nhánh: `feat/p1-semantic-validation`  
-Commit gốc: P0 documentation baseline `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; thay đổi P1 tại thời điểm báo cáo chưa commit.
+- Ngày chạy: 14/11/2026
+- Nhánh: `feat/p1-semantic-validation`
+- Commit P1: `f14b534`; push status được ghi trong GitHub publish log.
 
 ## Phạm vi
 
@@ -43,8 +43,8 @@ Human approval test cập nhật review-state/graph nhưng status tổng thể c
 
 ## LLM-assisted run quan sát
 
-Model: `qwen3:4b`  
-Prompt: `petclinic-context-responsibility-evidence-boundary-v5`  
+- Model: `qwen3:4b`
+- Prompt: `petclinic-context-responsibility-evidence-boundary-v5`
 Kết quả: `bundle_status=REVIEW_REQUIRED`, `citations_resolve_to_exact_input_spans=True`, `all_semantics_remain_review_required=True`, `can_apply_to_fixture=True`.
 
 `can_apply_to_fixture=True` chỉ nói bundle vượt điều kiện kỹ thuật để ghép vào fixture. Nó không phải semantic acceptance. Không có expert annotations, adjudication, precision/recall, boundary correctness score hay measurement kiến trúc trong run này.

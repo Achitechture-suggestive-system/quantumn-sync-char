@@ -1,3 +1,4 @@
+> **Trạng thái thực thi ngày 14/11/2026:** kế hoạch P0/P1 gốc bên dưới được giữ lại làm bối cảnh, không phải bằng chứng rằng mọi hạng mục đã hoàn tất. P0 hiện được bảo toàn tại commit 3d517b1a39158e539239dc73d594bc0938649feb trên nhánh main và tag p0-demo-2026-11-14. Kết quả chạy có phạm vi ở docs/verification/P0_BASELINE_VERIFICATION.md; mô tả implementation hiện hành bắt đầu tại docs/00_START_HERE.md. Các mục P1 vẫn là backlog cho tới khi có commit/test tương ứng.
 # EQCR + QAME — Checklist MVP demo trước thứ Năm 19/11/2026
 
 **Ngày lập kế hoạch:** 14/11/2026. **Freeze demo:** hết thứ Tư 18/11/2026.

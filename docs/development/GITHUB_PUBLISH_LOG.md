@@ -33,3 +33,6 @@
 - Runner cố định commit: `cd583c7939e07bf6d098ab2c252ec57d4aa47702` (Ubuntu 24.04).
 - GitHub Actions [run 43609850489](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609850489) trên commit pin runner: success; 44 tests pass in 0.65s; compileall pass.
 - `git ls-remote` và GitHub Branch API xác nhận SHA nhánh sau push là `cd583c7939e07bf6d098ab2c252ec57d4aa47702`; repository vẫn private.
+- UI status correction commit `06234bd00ee176e4ec3f48afc78ff19131b9f322`: confirmation now states that the full pipeline is recomputed; browser walkthrough verified the H4 conflict, H3 correction, graph refresh, and JSON/ZIP downloads.
+- GitHub Actions [run 43610739439](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43610739439) on that commit: success on Ubuntu 24.04; 44 tests pass in 0.76s; compileall pass.
+- GitHub branch API and `git ls-remote` confirm that commit SHA; repo visibility remains private.

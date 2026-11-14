@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Any
 
 from .impact import STEP_BY_ARTIFACT, impact_preview
+from .traceability import refresh_traceability_artifact
 
 
 CONSTRAINT_IMPACT = impact_preview("constraints")
@@ -107,6 +108,7 @@ def apply_artifact_review(
     diff = artifact_diff(artifacts, updated, exclude={"decisions", "revisions"})
     revision["changed_artifacts"] = sorted(set(diff["changed_artifacts"]) | {"decisions", "revisions"})
     revision["artifact_diff"] = diff["changes"]
+    refresh_traceability_artifact(updated)
     return updated
 
 
@@ -140,6 +142,7 @@ def replay_artifact_review_decisions(artifacts: dict[str, Any]) -> dict[str, Any
         if value in counts:
             counts[value] += 1
     updated["validation_report"]["review_decision_counts"] = counts
+    refresh_traceability_artifact(updated)
     return updated
 
 

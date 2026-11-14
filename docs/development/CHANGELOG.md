@@ -1,5 +1,12 @@
 # Changelog
 
+## P1 semantic-validation branch — 2026-11-14
+
+- Added an independent six-item partition oracle and negative validation tests for citation spans, evidence support, unknown references, and malformed project JSON.
+- Added a provenance graph across inputs, model proposals, evidence, constraints, partitions, quality allocations, and human decisions; graph PASS is limited to structural checks.
+- Added a labeled synthetic workshop fixture and an empty annotation worksheet; no expert labels or semantic metric claims were added.
+- P1 verification: 44 automated tests pass, compileall passes, Streamlit AppTest has zero exceptions; one local qwen3:4b proposal run resolves exact spans and remains REVIEW_REQUIRED. See [P1 evaluation](../verification/P1_SEMANTIC_EVALUATION.md).
+
 Các mục dưới đây ghi nhận thay đổi đã được kiểm tra, không phải kế hoạch.
 
 ## 14/11/2026 — Baseline P0

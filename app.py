@@ -16,6 +16,7 @@ from eqcr.ollama import (
     propose_responsibilities,
 )
 from eqcr.pipeline import run_pipeline, validate_project_package
+from eqcr.project_io import load_project_json
 from eqcr.review import (
     apply_artifact_review,
     apply_constraint_edit,
@@ -23,6 +24,7 @@ from eqcr.review import (
     artifact_diff,
     replay_artifact_review_decisions,
 )
+from eqcr.traceability import refresh_traceability_artifact
 from eqcr.storage import (
     list_snapshots,
     load_snapshot,
@@ -175,6 +177,7 @@ def _attach_ollama_proposals(artifacts: dict, proposal_data: dict) -> None:
         "verification_scope": "Structured output, IDs, citation resolution, and exact source spans only; model semantics remain unverified.",
     }
     artifacts["ollama_proposals"] = proposal_artifact
+    refresh_traceability_artifact(artifacts)
     _refresh_artifact_metadata_assertion(artifacts)
 
 
@@ -242,9 +245,7 @@ with input_tab:
     structured_upload = st.file_uploader("Optional: load a structured project package (JSON)", type=["json"])
     if st.button("Load structured project JSON", disabled=structured_upload is None):
         try:
-            candidate_fixture = json.loads(structured_upload.getvalue().decode("utf-8"))
-            if not isinstance(candidate_fixture, dict):
-                raise ValueError("The JSON document must contain a project object.")
+            candidate_fixture = load_project_json(structured_upload.getvalue())
             candidate_fixture.setdefault("fixture_label", "USER_SUPPLIED")
             candidate_fixture.setdefault("fixture_note", "User-supplied structured project package; semantics remain reviewable.")
             candidate_fixture.setdefault("responsibility_provenance", "USER_SUPPLIED_REVIEW_REQUIRED")
@@ -505,6 +506,14 @@ with quantum_tab:
 with review_tab:
     artifacts = st.session_state.artifacts
     if artifacts:
+        with st.expander("Traceability graph — structural links and unresolved decisions"):
+            st.write(
+                f"{artifacts['traceability']['summary']['node_count']} nodes · "
+                f"{artifacts['traceability']['summary']['edge_count']} links · "
+                f"graph checks {artifacts['traceability']['status']}"
+            )
+            st.caption(artifacts["traceability"]["note"])
+            st.json(artifacts["traceability"], expanded=False)
         st.subheader("Revise a responsibility proposal")
         responsibility_by_id = {item["id"]: item for item in artifacts["responsibilities"]["items"]}
         with st.expander("Edit name, activity, or operation and preview downstream impact"):

@@ -1,0 +1,1 @@
+case_id,item_id,item_type,source_ids,source_spans,proposal_text,citation_exact,semantic_support,decomposition_label,boundary_label,evidence_label,interaction_label,quality_allocation_label,reviewer_id,review_date,rationale,adjudication_status

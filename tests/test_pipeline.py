@@ -321,7 +321,7 @@ def test_human_revision_audit_and_impact():
     assert decision["actor"] == "reviewer-1"
     assert revision["affected_steps"] == ["04", "05", "06", "07", "08", "10"]
     assert revision["stale_artifacts_before_revalidation"] == [
-        "interactions", "partitions", "quality_profiles", "quanta", "validation_report"
+        "interactions", "partitions", "quality_profiles", "quanta", "traceability", "validation_report"
     ]
     assert revision["recomputed_artifacts"] == []
     assert after["validation_report"]["status"] == "INFEASIBLE"
@@ -330,11 +330,11 @@ def test_human_revision_audit_and_impact():
 def test_dependency_graph_computes_transitive_impact_preview():
     impact = impact_preview("constraints")
     assert impact["stale_artifacts"] == [
-        "interactions", "partitions", "quality_profiles", "quanta", "validation_report"
+        "interactions", "partitions", "quality_profiles", "quanta", "traceability", "validation_report"
     ]
     assert impact["affected_steps"] == ["04", "05", "06", "07", "08", "10"]
     assert "evidence" in impact["unaffected_artifacts"]
-    assert downstream_artifacts("interactions") == ["quality_profiles", "validation_report"]
+    assert downstream_artifacts("interactions") == ["quality_profiles", "traceability", "validation_report"]
 
 
 def test_human_correction_resolves_conflict_and_captures_actual_before_value():

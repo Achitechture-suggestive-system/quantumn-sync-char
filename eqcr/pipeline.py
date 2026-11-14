@@ -9,6 +9,7 @@ from typing import Any, Iterable, Iterator
 import networkx as nx
 
 from .models import Constraint, EvidenceRecord, RawRequirements, Responsibility
+from .traceability import refresh_traceability_artifact
 
 
 def _partitions(items: list[str]) -> Iterator[tuple[tuple[str, ...], ...]]:
@@ -444,6 +445,7 @@ def run_pipeline(
     constraints = [Constraint.model_validate(item) for item in selected_constraints]
     known_responsibility_ids = set(responsibility_ids)
     known_scenario_ids = {item.id for item in raw.scenarios}
+    known_evidence_ids = {item.id for item in evidence}
     for constraint in constraints:
         unknown_responsibilities = {constraint.left, constraint.right} - known_responsibility_ids
         if unknown_responsibilities:
@@ -453,6 +455,9 @@ def run_pipeline(
         unknown_scenarios = set(constraint.quality_scenario_ids) - known_scenario_ids
         if unknown_scenarios:
             raise ValueError(f"{constraint.id} references unknown quality scenarios: {sorted(unknown_scenarios)}.")
+        unknown_evidence = set(constraint.evidence_ids) - known_evidence_ids
+        if unknown_evidence:
+            raise ValueError(f"{constraint.id} references unknown evidence IDs: {sorted(unknown_evidence)}.")
     raw_dict = raw.model_dump(mode="json")
     responsibility_dicts = [item.model_dump(mode="json") for item in responsibilities]
     evidence_dicts = [item.model_dump(mode="json") for item in evidence]
@@ -566,7 +571,7 @@ def run_pipeline(
         _step("07", "Interaction Design — Sync / Async", interactions["status"], "Conditional Sync and Async patterns are listed as hypotheses; protocol selection remains unresolved without consistency and runtime evidence.", ["interactions"]),
         _step("08", "Quality Allocation — QAME", quality["status"], "Each supplied quality scenario is traced to its responsibility and proposed quantum; missing targets and measurements remain explicit.", ["quality_profiles"]),
         _step("09", "Human-in-the-Loop Review", "PASS" if decisions else "REVIEW_REQUIRED", "Every applied change stores actor, reason, source, before/after, and impacts.", ["decisions", "revisions"]),
-        _step("10", "Verification & Iteration", "INFEASIBLE" if has_conflict else "REVIEW_REQUIRED", "Local structural gates ran; no empirical architecture or performance verification is claimed.", ["validation_report"]),
+        _step("10", "Verification & Iteration", "INFEASIBLE" if has_conflict else "REVIEW_REQUIRED", "Local structural and provenance-graph gates ran; no empirical architecture or performance verification is claimed.", ["traceability", "validation_report"]),
     ]
     overall = "INFEASIBLE" if has_conflict else "REVIEW_REQUIRED"
     fixture_optimization_check_applies = (
@@ -651,6 +656,10 @@ def run_pipeline(
             "responsibility_provenance": fixture.get("responsibility_provenance", fixture["fixture_label"]),
         },
     }
+    refresh_traceability_artifact(artifacts)
+    validation_report["assertions"]["traceability_workflow_mappings_explicit"] = artifacts["traceability"][
+        "assertions"
+    ]["workflow_mapping_gaps_are_explicit"]
     provenance_specs = {
         "raw_requirements": (
             fixture["fixture_label"],
@@ -715,9 +724,15 @@ def run_pipeline(
         ),
         "validation_report": (
             "NON_LLM_STRUCTURAL_VALIDATION",
-            ["raw_requirements", "context", "responsibilities", "evidence", "constraints", "partitions", "quanta", "interactions", "quality_profiles", "decisions", "revisions"],
+            ["raw_requirements", "context", "responsibilities", "evidence", "constraints", "partitions", "quanta", "interactions", "quality_profiles", "decisions", "revisions", "traceability"],
             overall,
             "Local schema, traceability, constraint, allocation, and audit checks only.",
+        ),
+        "traceability": (
+            "EXPLICIT_PROVENANCE_AND_DEPENDENCY_GRAPH",
+            ["raw_requirements", "responsibilities", "evidence", "constraints", "partitions", "decisions", "revisions"],
+            artifacts["traceability"]["status"],
+            "Declared IDs, source spans, review states, dependency links, and candidate membership only; semantic support remains unverified.",
         ),
         "metadata": ("LOCAL_RUN_METADATA", [], "PASS", "Execution-mode and input-label record only."),
     }
@@ -752,6 +767,7 @@ def validate_project_package(fixture: dict[str, Any]) -> dict[str, Any]:
         "all_responsibilities_have_fr_and_source_refs",
         "responsibility_sources_well_formed",
         "evidence_sources_well_formed",
+        "traceability_references_resolve",
         "present_evidence_has_source_or_assumption",
     ]
     failures = [name for name in required if not assertions.get(name)]

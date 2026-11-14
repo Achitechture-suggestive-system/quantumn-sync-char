@@ -36,11 +36,11 @@ Luồng offline không cần Ollama. Để dùng model-assisted mode, chạy Oll
 .\.venv\Scripts\python.exe -m compileall -q app.py eqcr
 ```
 
-P0 được kiểm tra ngày 14/11/2026: 30 test pass; compileall, Streamlit AppTest và HTTP smoke cục bộ pass. Xem [báo cáo baseline](docs/verification/P0_BASELINE_VERIFICATION.md). Đây là kiểm tra cấu trúc/chạy cục bộ.
+P0 baseline được kiểm tra ngày 14/11/2026: 30 test pass; compileall, Streamlit AppTest và HTTP smoke cục bộ pass. Nhánh P1 hiện có 44 test pass, compileall và AppTest pass; xem [P1 evaluation](docs/verification/P1_SEMANTIC_EVALUATION.md) để biết oracle, Ollama run và giới hạn. Đây là kiểm tra cấu trúc/chạy cục bộ, không phải xác minh semantic hoặc chất lượng kiến trúc.
 
 ## Tài liệu
 
-[Đọc từ đây](docs/00_START_HERE.md) · [Vấn đề và phạm vi nghiên cứu](docs/01_RESEARCH_PROBLEM_AND_SCOPE.md) · [Pipeline 10 bước](docs/02_PIPELINE_01_TO_10.md) · [Kiến trúc và luồng dữ liệu](docs/03_ARCHITECTURE_AND_DATA_FLOW.md) · [Schema và truy vết](docs/04_DATA_SCHEMAS_AND_TRACEABILITY.md) · [Kiểm tra và giới hạn](docs/05_VALIDATION_AND_RESEARCH_LIMITS.md) · [Human-in-the-loop](docs/06_HUMAN_IN_THE_LOOP.md) · [Giải thích PetClinic](docs/07_CURRENT_SYSTEM_EXPLAINED_VI.md) · [Kịch bản demo offline](docs/08_MVP_DEMO_SCRIPT.md) · [Lộ trình](docs/09_ROADMAP_AND_BACKLOG.md) · [Changelog](docs/development/CHANGELOG.md) · [Nhật ký GitHub](docs/development/GITHUB_PUBLISH_LOG.md).
+[Đọc từ đây](docs/00_START_HERE.md) · [Vấn đề và phạm vi nghiên cứu](docs/01_RESEARCH_PROBLEM_AND_SCOPE.md) · [Pipeline 10 bước](docs/02_PIPELINE_01_TO_10.md) · [Kiến trúc và luồng dữ liệu](docs/03_ARCHITECTURE_AND_DATA_FLOW.md) · [Schema và truy vết](docs/04_DATA_SCHEMAS_AND_TRACEABILITY.md) · [Kiểm tra và giới hạn](docs/05_VALIDATION_AND_RESEARCH_LIMITS.md) · [Human-in-the-loop](docs/06_HUMAN_IN_THE_LOOP.md) · [Giải thích PetClinic](docs/07_CURRENT_SYSTEM_EXPLAINED_VI.md) · [Kịch bản demo offline](docs/08_MVP_DEMO_SCRIPT.md) · [P1 semantic evaluation](docs/verification/P1_SEMANTIC_EVALUATION.md) · [Lộ trình](docs/09_ROADMAP_AND_BACKLOG.md) · [Changelog](docs/development/CHANGELOG.md) · [Nhật ký GitHub](docs/development/GITHUB_PUBLISH_LOG.md).
 
 ## Giới hạn cần trình bày cùng demo
 

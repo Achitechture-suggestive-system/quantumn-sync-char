@@ -12,7 +12,7 @@ Thông tin người sửa, lý do và source là bắt buộc. Hệ thống đ�
 
 eqcr/impact.py định nghĩa dependency graph. Ví dụ: responsibilities → evidence/partitions/quanta/validation; evidence → constraints/quanta/interactions; constraints → partitions/validation; partitions → quanta; quanta → interactions/quality; interactions → quality/validation. Đóng bắc cầu của graph tạo stale list và affected steps.
 
-Preview chỉ dự đoán, không lưu decision/snapshot. Khi người dùng áp dụng, app.py gọi lại toàn bộ run_pipeline với input đã sửa, sau đó phát lại decisions và lưu snapshot. Impact map ghi vùng bị ảnh hưởng nhưng phép tính chưa incremental, không dùng cache chọn lọc. Test/regression so artifacts lẽ ra không đổi; điều này không chứng minh diễn giải semantically đúng.
+Preview chỉ dự đoán, không lưu decision/snapshot. Khi người dùng áp dụng, app.py gọi lại toàn bộ run_pipeline với input đã sửa, sau đó phát lại decisions, dựng traceability graph mới và lưu snapshot. Impact map ghi vùng bị ảnh hưởng, gồm traceability; phép tính chưa incremental, không dùng cache chọn lọc. Test/regression so artifacts lẽ ra không đổi; điều này không chứng minh diễn giải semantically đúng. APPROVE evidence chỉ đổi review status và provenance graph; không làm target quality thành measured.
 
 ## Các snapshot P0 đã chạy
 

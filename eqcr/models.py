@@ -92,7 +92,15 @@ class EvidenceRecord(StrictModel):
     predicate: str
     object_id: str
     status: EvidenceStatus
-    provenance: Literal["SOURCE_BACKED", "ASSUMPTION", "POLICY", "HUMAN_OVERRIDE", "SCOPE_BOUNDARY", "UNKNOWN"] = "UNKNOWN"
+    provenance: Literal[
+        "SOURCE_BACKED",
+        "ASSUMPTION",
+        "POLICY",
+        "HUMAN_OVERRIDE",
+        "MODEL_PROPOSED",
+        "SCOPE_BOUNDARY",
+        "UNKNOWN",
+    ] = "UNKNOWN"
     review_status: Literal["REVIEW_REQUIRED", "APPROVED", "REJECTED", "DEFERRED"] = "REVIEW_REQUIRED"
     source_refs: list[SourceRef] = Field(default_factory=list)
     is_assumption: bool = False
@@ -107,6 +115,7 @@ class Constraint(StrictModel):
     hardness: Literal["HARD", "SOFT"] = "HARD"
     weight: float = Field(default=1.0, ge=0)
     quality_scenario_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
     origin: Literal["SOURCE_BACKED", "WHAT_IF_POLICY", "HUMAN_OVERRIDE"]
     enabled: bool = True
     source_refs: list[SourceRef] = Field(default_factory=list)

@@ -1,0 +1,113 @@
+{
+  "fixture_label": "SYNTHETIC_TEST_FIXTURE",
+  "fixture_note": "SYNTHETIC_TEST_FIXTURE: authored for schema, source-citation, and proposal-interface checks; not independent real-world validation.",
+  "raw_requirements": {
+    "case_id": "SYN-TOOL-CHECKOUT-01",
+    "context_id": "SYN-C0",
+    "context_description": "SYNTHETIC_TEST_FIXTURE. A fictional community workshop lends repair tools to registered members.",
+    "requirements": [
+      {
+        "id": "FR-01",
+        "text": "A staff member can find a registered member by name.",
+        "source_ref": {
+          "source_id": "SYN-REQ-FR-01",
+          "quote": "A staff member can find a registered member by name.",
+          "start": 0,
+          "end": 52
+        }
+      },
+      {
+        "id": "FR-02",
+        "text": "A staff member can register a member with contact details.",
+        "source_ref": {
+          "source_id": "SYN-REQ-FR-02",
+          "quote": "A staff member can register a member with contact details.",
+          "start": 0,
+          "end": 58
+        }
+      },
+      {
+        "id": "FR-03",
+        "text": "A staff member can update a registered member's contact details.",
+        "source_ref": {
+          "source_id": "SYN-REQ-FR-03",
+          "quote": "A staff member can update a registered member's contact details.",
+          "start": 0,
+          "end": 64
+        }
+      },
+      {
+        "id": "FR-04",
+        "text": "A staff member can add a repair tool and record its condition.",
+        "source_ref": {
+          "source_id": "SYN-REQ-FR-04",
+          "quote": "A staff member can add a repair tool and record its condition.",
+          "start": 0,
+          "end": 62
+        }
+      },
+      {
+        "id": "FR-05",
+        "text": "A staff member can mark a tool unavailable while it is being repaired.",
+        "source_ref": {
+          "source_id": "SYN-REQ-FR-05",
+          "quote": "A staff member can mark a tool unavailable while it is being repaired.",
+          "start": 0,
+          "end": 70
+        }
+      },
+      {
+        "id": "FR-06",
+        "text": "A staff member can reserve an available tool for a member and a time window.",
+        "source_ref": {
+          "source_id": "SYN-REQ-FR-06",
+          "quote": "A staff member can reserve an available tool for a member and a time window.",
+          "start": 0,
+          "end": 76
+        }
+      }
+    ],
+    "workflows": [
+      {
+        "id": "WF-01",
+        "text": "Find or register a member, check that a tool is available, reserve it for a time window, then mark it unavailable until it is returned.",
+        "source_ref": {
+          "source_id": "SYN-WF-01",
+          "quote": "Find or register a member, check that a tool is available, reserve it for a time window, then mark it unavailable until it is returned.",
+          "start": 0,
+          "end": 135
+        }
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "SC-MEMBER-LOOKUP",
+        "name": "Member lookup",
+        "stimulus": "A staff member searches for a registered member.",
+        "response_measure": "Lookup response time",
+        "target": "p95 <= 400 ms @ 50 requests/s",
+        "status": "NOT_MEASURED",
+        "source_ref": {
+          "source_id": "SYN-SC-MEMBER-LOOKUP",
+          "quote": "Member lookup scenario: p95 response time target is at most 400 ms at 50 requests per second.",
+          "start": 0,
+          "end": 93
+        }
+      },
+      {
+        "id": "SC-TOOL-RESERVATION",
+        "name": "Tool reservation",
+        "stimulus": "Two members request the same tool for overlapping time windows.",
+        "response_measure": "Conflict handling and reservation consistency",
+        "target": null,
+        "status": "INSUFFICIENT_EVIDENCE",
+        "source_ref": {
+          "source_id": "SYN-SC-TOOL-RESERVATION",
+          "quote": "Tool reservation scenario: overlapping reservations must be considered; no consistency policy or quality target has been specified.",
+          "start": 0,
+          "end": 131
+        }
+      }
+    ]
+  }
+}

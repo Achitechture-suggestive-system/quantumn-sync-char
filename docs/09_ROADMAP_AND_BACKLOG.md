@@ -13,18 +13,18 @@
 
 P0 hoàn tất nghĩa là luồng phần mềm cục bộ có thể chạy lại trong scope đã nêu, không phải kiến trúc được duyệt.
 
-## P1 — semantic validation và truy vết (đang thực hiện)
+## P1 — semantic validation và truy vết (đã hoàn tất trên feature branch; chờ CI)
 
 Làm ở feat/p1-semantic-validation để giữ main ổn định:
 
-1. Thêm oracle phân hoạch độc lập cho n=6, kiểm 203/10/0/5 mà không import private algorithm của pipeline.
-2. Thêm negative tests cho source citation thiếu/sai, evidence không có support, constraint conflict, JSON lỗi, Ollama không chạy và human revision đổi downstream.
-3. Truy vết nguồn chuyển đổi fixture/LLM/rule/human/optimizer từ FR/workflow đến proposal/evidence/constraint/partition.
-4. Tạo fixture requirements/workflow nhỏ, nhãn SYNTHETIC_TEST_FIXTURE; không trình bày như nghiên cứu thực tế độc lập.
-5. Tạo worksheet cho nhãn người đánh giá tương lai; proposal vẫn REVIEW_REQUIRED. Không bịa precision/recall.
-6. Kiểm tra vùng phụ thuộc và snapshots khi có correction; ghi rõ pipeline vẫn tính lại toàn bộ nếu chưa implement incremental.
+1. Oracle phân hoạch độc lập cho n=6 xác nhận 203/10/0/5, không import generator private của pipeline.
+2. Negative tests bắt citation thiếu/sai, evidence PRESENT không support, source không có trong package, unknown responsibility constraint và JSON lỗi/UTF-8/type; regression cover conflict và human correction.
+3. Graph trace các nguồn fixture/LLM, evidence, constraints, partitions, quanta, interactions, QAME, quyết định và revision; structural checks không được gắn nhãn semantic verification.
+4. Fixture requirements/workflow nhỏ mang nhãn SYNTHETIC_TEST_FIXTURE; hiện dùng kiểm schema/source-span/proposal-interface, không phải một demo pipeline end-to-end.
+5. Worksheet hướng dẫn annotation cho nghiên cứu tương lai; chưa có nhãn chuyên gia hay precision/recall.
+6. Human correction làm mới traceability và impact preview; pipeline vẫn tính lại toàn bộ, chưa có incremental execution.
 
-Exit gate: tests pass; docs/verification/P1_SEMANTIC_EVALUATION.md ghi lệnh, ví dụ, kết quả và giới hạn. Push branch, xác minh SHA/CI; không tự merge.
+Exit gate: 44 tests pass; compileall và AppTest pass; Ollama run có exact-span validation nhưng proposals vẫn review-required. Chi tiết trong docs/verification/P1_SEMANTIC_EVALUATION.md. Việc push/CI vẫn là milestone kế tiếp; không tự merge.
 
 ## CI và sau demo
 

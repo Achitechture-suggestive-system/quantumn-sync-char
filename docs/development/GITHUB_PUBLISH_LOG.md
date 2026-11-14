@@ -18,3 +18,13 @@
 - Nội dung: 20 file docs/config, gồm tài liệu pipeline 10 bước và hướng dẫn demo; không đổi code runtime.
 - Kiểm tra trước push: 30 tests pass (1.10s), compileall PASS, AppTest zero exceptions, 21 relative Markdown links hợp lệ, localhost health/root HTTP 200, secret scan staged không có match.
 - Xác minh sau push: git ls-remote và GitHub API main trả SHA 0dbd90675beb193c92d4fd06bd7ccf4bf95c61f3. CI check chưa tồn tại.
+
+## P1 semantic validation — 14/11/2026
+
+- Repository vẫn Private; nhánh `feat/p1-semantic-validation` được tạo từ `main` và không merge.
+- Code/docs/tests commit: `f14b534` (`feat: add semantic validation provenance checks`); P1 evidence formatting commit: `7f41fa955e758f8219b70040346a74bf80be6b18` (`docs: finalize P1 evaluation evidence`).
+- Nội dung: 25 tệp; provenance graph và project JSON boundary, oracle phân hoạch độc lập, negative tests, synthetic test fixture, worksheet trống, tài liệu cập nhật.
+- Kiểm tra trước push: 44 tests pass; compileall PASS; Streamlit AppTest exceptions=0; localhost health/root HTTP 200; 21 Markdown files không broken relative link; staged scan 25 tệp không phát hiện secret patterns hoặc generated/private paths.
+- Live Ollama: `qwen3:4b`, prompt v5, spans ánh xạ chính xác; bundle/proposals REVIEW_REQUIRED. Đây không phải semantic verification.
+- Push nhánh thành công. Đối chiếu `git ls-remote` với GitHub Branch API khớp SHA `7f41fa955e758f8219b70040346a74bf80be6b18`; GitHub API xác nhận `private=true`, `visibility=private`.
+- CI: chưa có workflow; không có check run. PR chưa tạo và thay đổi chưa merge.

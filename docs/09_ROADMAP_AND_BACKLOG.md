@@ -28,7 +28,7 @@ Exit gate: 44 tests pass; compileall và AppTest pass; Ollama run có exact-span
 
 ## CI và sau demo
 
-- Workflow `.github/workflows/python-ci.yml` đã thêm trên feature branch: Ubuntu 24.04 và Python 3.13, pytest và compileall, không cần Ollama/model/secret. Hai lần chạy đầu thành công; lần chạy với runner cố định đang được xác nhận.
+- Workflow `.github/workflows/python-ci.yml` trên feature branch dùng Ubuntu 24.04 và Python 3.13; pytest và compileall chạy không cần Ollama/model/secret. Run `43609850489` thành công trên runner cố định với 44 tests pass và compileall pass.
 - Trước demo 19/11: chạy lại offline, tests và AppTest; nếu Ollama sẵn sàng thì ghi model/prompt/span checks; diễn tập export.
 - Sau demo: thêm nhiều case và labels độc lập, thỏa thuận giữa reviewers và metric semantic; chỉ đo quality ở môi trường đại diện.
 - Style Selection/Evaluation, OCR/PDF/BPMN tổng quát, RAG lớn và deployment nằm ngoài phạm vi.

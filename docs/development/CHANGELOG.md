@@ -7,7 +7,7 @@
 - Added a labeled synthetic workshop fixture and an empty annotation worksheet; no expert labels or semantic metric claims were added.
 - P1 verification: 44 automated tests pass, compileall passes, Streamlit AppTest has zero exceptions; one local qwen3:4b proposal run resolves exact spans and remains REVIEW_REQUIRED. See [P1 evaluation](../verification/P1_SEMANTIC_EVALUATION.md).
 - Implementation commit `f14b534` was pushed to `feat/p1-semantic-validation`; GitHub SHA and private visibility are recorded in [publish log](GITHUB_PUBLISH_LOG.md).
-- Added a read-only Ubuntu 24.04/Python 3.13 GitHub Actions workflow for pytest and compileall. Runs `43609423803` and `43609612692` passed; runner is now pinned to Ubuntu 24.04 for the demo baseline.
+- Added a read-only Ubuntu 24.04/Python 3.13 GitHub Actions workflow for pytest and compileall. Runs `43609423803`, `43609612692`, and pinned-runner run `43609850489` passed; latest run has 44 tests and compileall green.
 
 Các mục dưới đây ghi nhận thay đổi đã được kiểm tra, không phải kế hoạch.
 

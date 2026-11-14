@@ -30,3 +30,6 @@
 - CI workflow commit: `8b9cf21066453f048bc78f29133061cf40281d83`.
 - GitHub Actions [run 43609423803](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609423803) trên commit đó: success; 44 tests pass in 1.19s; compileall pass.
 - PR chưa tạo và thay đổi chưa merge.
+- Runner cố định commit: `cd583c7939e07bf6d098ab2c252ec57d4aa47702` (Ubuntu 24.04).
+- GitHub Actions [run 43609850489](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609850489) trên commit pin runner: success; 44 tests pass in 0.65s; compileall pass.
+- `git ls-remote` và GitHub Branch API xác nhận SHA nhánh sau push là `cd583c7939e07bf6d098ab2c252ec57d4aa47702`; repository vẫn private.

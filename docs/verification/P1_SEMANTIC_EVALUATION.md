@@ -4,6 +4,7 @@
 - Nhánh: `feat/p1-semantic-validation`
 - Commit P1: `f14b534`; push status được ghi trong GitHub publish log.
 - CI workflow commit: `8b9cf21`; first GitHub Actions run `43609423803` passed.
+- Runner pin commit: `cd583c7` uses Ubuntu 24.04.
 
 ## Phạm vi
 
@@ -18,6 +19,7 @@ P1 bổ sung kiểm tra chéo độc lập cho enumerator, negative tests cho d�
 | Streamlit AppTest | `AppTest.from_file('app.py', default_timeout=30).run()` | `exceptions=0`, không có UI warning; trang khởi tạo fixture. |
 | Streamlit localhost | Process từ checkout hiện tại trên `127.0.0.1:8766`; GET `/_stcore/health` và `/` | Cả hai HTTP 200; health body `ok`. |
 | GitHub Actions | [Run 43609423803](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609423803) trên SHA `8b9cf21066453f048bc78f29133061cf40281d83` | PASS; `44 passed in 1.19s`, compileall thành công. |
+| GitHub Actions, runner cố định | [Run 43609850489](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609850489) trên SHA `cd583c7939e07bf6d098ab2c252ec57d4aa47702` | PASS trên Ubuntu 24.04; `44 passed in 0.65s`, compileall thành công. |
 | Live local Ollama proposal | `qwen3:4b`, prompt `petclinic-context-responsibility-evidence-boundary-v5` | Hoàn tất; sáu responsibility proposals, sáu normalized requirement refs, một evidence proposal, một boundary hypothesis; source spans chính xác; bundle và mọi proposal REVIEW_REQUIRED. |
 
 AppTest được chạy trong môi trường Python 3.13.13 với Streamlit 1.67.0 và Pydantic 2.14.3. Live Ollama là quan sát một lần trong môi trường local đã cài model; bộ test tự động không phụ thuộc Ollama.
@@ -61,4 +63,4 @@ Kết quả: `bundle_status=REVIEW_REQUIRED`, `citations_resolve_to_exact_input_
 - Ollama run là một mẫu quan sát, không đo độ chính xác model.
 - UI/Pipeline case study vẫn neo một số quy tắc allocation vào scenario/responsibility ID PetClinic; input tổng hợp không thay thế demo PetClinic.
 - Cần reviewer độc lập gán nhãn và adjudicate để tính semantic metrics; cần runtime/load-test evidence để đánh giá quality target.
-- GitHub CI xác nhận test/compile trên runner Linux; không gọi Ollama. Localhost smoke chỉ xác nhận server local trả trang và health endpoint trong phiên kiểm tra, không phải deployment test.
+- GitHub CI xác nhận test/compile trên Ubuntu 24.04; không gọi Ollama. Localhost smoke chỉ xác nhận server local trả trang và health endpoint trong phiên kiểm tra, không phải deployment test.

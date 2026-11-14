@@ -18,11 +18,15 @@ P1 bổ sung kiểm tra chéo độc lập cho enumerator, negative tests cho d�
 | Biên dịch | `.venv\Scripts\python.exe -m compileall -q app.py eqcr tests` | Exit 0. |
 | Streamlit AppTest | `AppTest.from_file('app.py', default_timeout=30).run()` | `exceptions=0`, không có UI warning; trang khởi tạo fixture. |
 | Streamlit localhost | Process từ checkout hiện tại trên `127.0.0.1:8766`; GET `/_stcore/health` và `/` | Cả hai HTTP 200; health body `ok`. |
+| Browser PetClinic walkthrough | Load fixture → run → add H4 → preview/apply → disable H3 → preview/apply | UI v1: 203/10; v2: `INFEASIBLE`; v3: 5 feasible/optimal và `REVIEW_REQUIRED`. Status text xác nhận full pipeline recompute. Graph UI sau review: 63 nodes, 149 links, structural checks PASS. |
+| Browser exports | Download ZIP và validation JSON trong UI | ZIP mở được, 18 entries, traceability có mặt, 3 snapshots; JSON có 10 steps, 20 assertions, traceability assertion true, status `REVIEW_REQUIRED`. |
 | GitHub Actions | [Run 43609423803](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609423803) trên SHA `8b9cf21066453f048bc78f29133061cf40281d83` | PASS; `44 passed in 1.19s`, compileall thành công. |
 | GitHub Actions, runner cố định | [Run 43609850489](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609850489) trên SHA `cd583c7939e07bf6d098ab2c252ec57d4aa47702` | PASS trên Ubuntu 24.04; `44 passed in 0.65s`, compileall thành công. |
 | Live local Ollama proposal | `qwen3:4b`, prompt `petclinic-context-responsibility-evidence-boundary-v5` | Hoàn tất; sáu responsibility proposals, sáu normalized requirement refs, một evidence proposal, một boundary hypothesis; source spans chính xác; bundle và mọi proposal REVIEW_REQUIRED. |
 
 AppTest được chạy trong môi trường Python 3.13.13 với Streamlit 1.67.0 và Pydantic 2.14.3. Live Ollama là quan sát một lần trong môi trường local đã cài model; bộ test tự động không phụ thuộc Ollama.
+
+Browser walkthrough chạy trên checkout local hiện có. Streamlit/Graphviz ghi 0 browser errors và một cảnh báo web-worker fallback; chart vẫn hiển thị. Run output và ZIP nằm trong các thư mục local bị `.gitignore` loại khỏi commit.
 
 ## Oracle partition độc lập
 

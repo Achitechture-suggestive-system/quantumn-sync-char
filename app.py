@@ -825,7 +825,7 @@ with review_tab:
                 run_dir = save_run(st.session_state.run_id, updated)
                 save_snapshot(st.session_state.run_id, f"v{version}", updated)
                 st.session_state.run_dir = str(run_dir)
-                st.session_state.notice = f"Saved v{version}; reran the affected steps. Status: {updated['validation_report']['status']}."
+                st.session_state.notice = f"Saved v{version}; recomputed the full pipeline after the reviewed change. Status: {updated['validation_report']['status']}."
                 st.rerun()
             except (ValueError, KeyError) as exc:
                 st.error(str(exc))

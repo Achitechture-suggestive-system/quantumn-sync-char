@@ -27,4 +27,6 @@
 - Kiểm tra trước push: 44 tests pass; compileall PASS; Streamlit AppTest exceptions=0; localhost health/root HTTP 200; 21 Markdown files không broken relative link; staged scan 25 tệp không phát hiện secret patterns hoặc generated/private paths.
 - Live Ollama: `qwen3:4b`, prompt v5, spans ánh xạ chính xác; bundle/proposals REVIEW_REQUIRED. Đây không phải semantic verification.
 - Push nhánh thành công. Đối chiếu `git ls-remote` với GitHub Branch API khớp SHA `7f41fa955e758f8219b70040346a74bf80be6b18`; GitHub API xác nhận `private=true`, `visibility=private`.
-- CI: chưa có workflow; không có check run. PR chưa tạo và thay đổi chưa merge.
+- CI workflow commit: `8b9cf21066453f048bc78f29133061cf40281d83`.
+- GitHub Actions [run 43609423803](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43609423803) trên commit đó: success; 44 tests pass in 1.19s; compileall pass.
+- PR chưa tạo và thay đổi chưa merge.

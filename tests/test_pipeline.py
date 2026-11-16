@@ -168,7 +168,16 @@ def test_quantum_graph_exposes_unknown_layers_and_evidence():
     nodes = {item["id"]: item for item in graph["nodes"]}
     assert nodes["ACTOR-USER"]["status"] == "PRESENT"
     assert nodes["PRESENTATION-UNKNOWN"]["status"] == "UNKNOWN"
+    assert nodes["INTEGRATION-UNKNOWN"]["provenance"] == "ARCHITECTURAL_POLICY"
+    assert nodes["INTEGRATION-UNKNOWN"]["status"] == "UNKNOWN"
     assert nodes["INFRASTRUCTURE-UNKNOWN"]["status"] == "UNKNOWN"
+    assert graph["layers"] == [
+        "ACTOR", "PRESENTATION_APPLICATION", "QUANTUM", "INTEGRATION", "INFRASTRUCTURE_STORAGE"
+    ]
+    graph_edges = {(item["from"], item["to"]) for item in graph["edges"]}
+    assert ("INTEGRATION-UNKNOWN", "INFRASTRUCTURE-UNKNOWN") in graph_edges
+    assert all((item["id"], "INTEGRATION-UNKNOWN") in graph_edges for item in artifacts["quanta"]["quanta"])
+    assert all(item["status"] == "UNKNOWN" for item in graph["edges"] if "INTEGRATION" in item["id"])
     assert all(item["relevant_evidence_ids"] for item in artifacts["quanta"]["quanta"])
     assert all(item["ownership_status"] == "UNKNOWN" for item in artifacts["quanta"]["quanta"])
 
@@ -183,6 +192,13 @@ def test_contract_unresolved_without_evidence():
     assert edge["contract"]["retry_policy"] == "UNKNOWN"
     assert edge["contract"]["timeout_policy"] == "UNKNOWN"
     assert edge["contract"]["idempotency_policy"] == "UNKNOWN"
+    assert edge["contract"]["schema_id"] == "EQCR-INTERACTION-CONTRACT"
+    assert edge["contract"]["schema_version"] == "1.0.0"
+    assert edge["contract"]["selected_mode"] == "UNDECIDED"
+    assert edge["contract"]["selection_status"] == "UNDECIDED"
+    assert artifacts["interactions"]["decision_table"]["default"] == "UNDECIDED"
+    assert artifacts["interactions"]["decision_table"]["provenance"] == "ARCHITECTURAL_POLICY"
+    assert "Business ordering" in artifacts["interactions"]["decision_table"]["prohibited_inference"]
 
 
 def test_sync_and_async_options_are_cited_hypotheses_without_selection():
@@ -207,10 +223,22 @@ def test_quality_target_not_measured():
     profile = artifacts["quality_profiles"]["profiles"][0]
     assert profile["target"] == "p95 <= 250 ms @ 300 requests/s"
     assert profile["measurement_status"] == "NOT_MEASURED"
+    assert profile["target_status"] == "UNSUPPORTED"
+    assert profile["target_provenance"] == "PREPARED_FIXTURE"
     assert profile["measurement"] is None
     assert profile["proposed_metric"] == "p95 response latency at 300 requests/s"
-    assert profile["measurement_plan_status"] == "PROPOSED"
-    assert profile["evidence"][0]["kind"] == "TARGET_SOURCE"
+    assert profile["measurement_plan_status"] == "INSUFFICIENT_EVIDENCE"
+    assert profile["evidence"][0]["kind"] == "SCENARIO_SOURCE"
+    assert profile["quality_characteristic_mapping"]["standard"] == "ISO/IEC 25010:2023"
+    assert profile["quality_characteristic_mapping"]["status"] == "UNMAPPED"
+    assert profile["quality_characteristic_mapping"]["characteristic_id"] is None
+    assert profile["quality_characteristic_mapping"]["label_provenance"] == "PREPARED_FIXTURE"
+    assert profile["quality_characteristic_mapping"]["label_source_ref"] is None
+    assert profile["quality_characteristic_mapping"]["mapping_provenance"] == "DETERMINISTIC_TRANSFORMATION"
+    assert profile["scenario_completeness"] == "PARTIAL"
+    assert profile["scenario_parts"]["stimulus_source"]["status"] == "UNKNOWN"
+    assert profile["scenario_parts"]["stimulus"]["status"] == "UNSUPPORTED"
+    assert profile["scenario_parts"]["response_measure"]["status"] == "UNSUPPORTED"
     assert [item["scenario_id"] for item in artifacts["quality_profiles"]["profiles"]] == [
         "SC-OWNER-SEARCH",
         "SC-PET-VISIT",
@@ -220,10 +248,35 @@ def test_quality_target_not_measured():
     assert interaction_profile["iso_characteristic"] == "UNKNOWN"
     assert interaction_profile["measurement_status"] == "INSUFFICIENT_EVIDENCE"
     assert interaction_profile["measurement"] is None
+    assert interaction_profile["quality_characteristic_mapping"]["status"] == "UNSPECIFIED"
+    assert interaction_profile["quality_characteristic_mapping"]["characteristic_id"] is None
+    assert interaction_profile["scenario_schema"]["version"] == "1.0.0"
+    assert interaction_profile["scenario_completeness"] == "PARTIAL"
+    assert interaction_profile["scenario_parts"]["stimulus"]["status"] == "UNSUPPORTED"
+    assert interaction_profile["scenario_parts"]["environment"]["status"] == "UNKNOWN"
+    assert "environment" in interaction_profile["unresolved_scenario_parts"]
     assert interaction_profile["affected_interaction_edges"] == ["EDGE-PET-VISIT"]
     assert interaction_profile["responsibility_ids"] == ["R4", "R6"]
     assert artifacts["validation_report"]["assertions"]["quality_scenarios_allocated_without_fake_pass"] is True
     assert artifacts["validation_report"]["assertions"]["quality_profile_sources_well_formed"] is True
+    assert artifacts["validation_report"]["assertions"]["quality_scenarios_have_six_part_status"] is True
+    assert artifacts["validation_report"]["assertions"]["quality_scenario_part_citations_resolve"] is True
+
+
+def test_qame_does_not_mark_scenario_values_source_backed_when_quote_does_not_contain_them():
+    fixture = get_fixture()
+    scenario = fixture["raw_requirements"]["scenarios"][0]
+    scenario["environment"] = "unlisted production environment"
+    scenario["target"] = "p95 below an unreferenced threshold"
+    artifacts = run_pipeline(fixture)
+    profile = artifacts["quality_profiles"]["profiles"][0]
+    assert profile["scenario_parts"]["environment"]["status"] == "UNSUPPORTED"
+    assert profile["scenario_parts"]["environment"]["provenance"] == "PREPARED_FIXTURE"
+    assert profile["scenario_parts"]["environment"]["source_ref"] is None
+    assert profile["target_status"] == "UNSUPPORTED"
+    assert profile["measurement_status"] == "NOT_MEASURED"
+    assert profile["measurement"] is None
+    assert artifacts["validation_report"]["assertions"]["quality_scenario_part_citations_resolve"] is True
 
 
 @pytest.mark.parametrize(

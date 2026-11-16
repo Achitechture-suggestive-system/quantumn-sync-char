@@ -18,6 +18,7 @@ from .models import (
     Responsibility,
 )
 from .cpsat_optimizer import optimize_with_cpsat
+from .interaction_contracts import INTERACTION_DECISION_TABLE, make_unresolved_contract
 from .traceability import refresh_traceability_artifact
 
 
@@ -404,6 +405,8 @@ def _build_interactions(
             "edges": [],
             "graph_summary": {"node_count": graph.number_of_nodes(), "directed_edge_count": 0},
             "status": "INSUFFICIENT_EVIDENCE",
+            "contract_schema": {"id": "EQCR-INTERACTION-CONTRACT", "version": "1.0.0"},
+            "decision_table": deepcopy(INTERACTION_DECISION_TABLE),
             "note": "No scenario links two responsibilities with a current quantum assignment.",
         }
     edges = []
@@ -448,6 +451,7 @@ def _build_interactions(
         ]
         same_quantum = left_quantum == right_quantum
         graph.add_edge(left_quantum, right_quantum, edge_id=edge_id, status="UNRESOLVED")
+        contract = make_unresolved_contract(edge_id, proposal_sources, unresolved_decisions)
         edges.append(
             {
                 "id": edge_id,
@@ -464,16 +468,7 @@ def _build_interactions(
                 "consistency": "UNKNOWN",
                 "latency_budget": "UNKNOWN",
                 "failure_handling": "UNKNOWN",
-                "contract": {
-                    "operation": "UNKNOWN",
-                    "data_dependency": "UNKNOWN",
-                    "request_fields": "UNKNOWN",
-                    "response_fields": "UNKNOWN",
-                    "versioning": "UNKNOWN",
-                    "retry_policy": "UNKNOWN",
-                    "timeout_policy": "UNKNOWN",
-                    "idempotency_policy": "UNKNOWN",
-                },
+                "contract": contract,
                 "rationale": f"Scenario {scenario.id} links these activities but provides no interaction contract.",
                 "status": "INSUFFICIENT_EVIDENCE",
             }
@@ -485,10 +480,17 @@ def _build_interactions(
             "directed_edge_count": graph.number_of_edges(),
         },
         "status": "INSUFFICIENT_EVIDENCE",
+        "contract_schema": {"id": "EQCR-INTERACTION-CONTRACT", "version": "1.0.0"},
+        "decision_table": deepcopy(INTERACTION_DECISION_TABLE),
     }
 
 
-def _build_quality(raw: RawRequirements, responsibilities: list[Responsibility], quanta: dict[str, Any]) -> dict[str, Any]:
+def _build_quality(
+    raw: RawRequirements,
+    responsibilities: list[Responsibility],
+    quanta: dict[str, Any],
+    interactions: dict[str, Any],
+) -> dict[str, Any]:
     assignment = quanta["primary_assignment"]
     requirement_to_responsibilities: dict[str, list[str]] = defaultdict(list)
     for responsibility in responsibilities:
@@ -507,10 +509,40 @@ def _build_quality(raw: RawRequirements, responsibilities: list[Responsibility],
             for requirement_id in scenario.related_requirement_ids
         ]
         affected_edges = [
-            edge["id"] for edge in _build_interactions(quanta, raw, responsibilities)["edges"]
+            edge["id"] for edge in interactions["edges"]
             if set(edge["responsibility_ids"]) <= set(responsibility_ids)
         ]
-        measured_target = scenario.target is not None and bool(scenario.proposed_metric or scenario.response_measure)
+        scenario_part_values = {
+            "stimulus_source": scenario.stimulus_source,
+            "stimulus": scenario.stimulus,
+            "environment": scenario.environment,
+            "stimulated_artifact": scenario.stimulated_artifact,
+            "response": scenario.response,
+            "response_measure": scenario.response_measure,
+        }
+        scenario_quote = scenario.source_ref.quote
+        scenario_parts = {}
+        for part_id, value in scenario_part_values.items():
+            normalized_value = value.strip() if isinstance(value, str) else ""
+            source_backed = bool(normalized_value and normalized_value in scenario_quote)
+            scenario_parts[part_id] = {
+                "value": value,
+                "status": "SPECIFIED" if source_backed else "UNSUPPORTED" if normalized_value else "UNKNOWN",
+                "provenance": "SOURCE_BACKED" if source_backed else "PREPARED_FIXTURE" if normalized_value else "UNKNOWN",
+                "source_ref": scenario.source_ref.model_dump(mode="json") if source_backed else None,
+            }
+        unresolved_parts = [
+            part_id for part_id, part in scenario_parts.items() if part["status"] != "SPECIFIED"
+        ]
+        target_value = scenario.target.strip() if scenario.target else ""
+        target_source_backed = bool(target_value and target_value in scenario_quote)
+        metric_value = scenario.proposed_metric.strip() if scenario.proposed_metric else ""
+        metric_source_backed = bool(metric_value and metric_value in scenario_quote)
+        method_value = scenario.measurement_method.strip() if scenario.measurement_method else ""
+        method_source_backed = bool(method_value and method_value in scenario_quote)
+        measured_target = target_source_backed and bool(scenario_parts["response_measure"]["status"] == "SPECIFIED")
+        characteristic_value = scenario.quality_characteristic.strip() if scenario.quality_characteristic else ""
+        characteristic_source_backed = bool(characteristic_value and characteristic_value in scenario_quote)
         profiles.append(
             {
                 "scenario_id": scenario.id,
@@ -521,27 +553,53 @@ def _build_quality(raw: RawRequirements, responsibilities: list[Responsibility],
                 "quantum_id": quantum_ids[0] if len(quantum_ids) == 1 else None,
                 "quantum_ids": quantum_ids,
                 "iso_characteristic": scenario.quality_characteristic or "UNKNOWN",
+                "quality_characteristic_mapping": {
+                    "standard": "ISO/IEC 25010:2023",
+                    "status": "UNMAPPED" if scenario.quality_characteristic else "UNSPECIFIED",
+                    "source_label": scenario.quality_characteristic,
+                    "characteristic_id": None,
+                    "label_provenance": (
+                        "SOURCE_BACKED_SCENARIO_TRACE"
+                        if characteristic_source_backed
+                        else "PREPARED_FIXTURE"
+                        if characteristic_value
+                        else "UNKNOWN"
+                    ),
+                    "label_source_ref": scenario.source_ref.model_dump(mode="json") if characteristic_source_backed else None,
+                    "mapping_provenance": "DETERMINISTIC_TRANSFORMATION",
+                    "review_status": "REVIEW_REQUIRED",
+                },
+                "scenario_schema": {"id": "QAME-SIX-PART-SCENARIO", "version": "1.0.0"},
+                "scenario_parts": scenario_parts,
+                "scenario_completeness": "COMPLETE" if not unresolved_parts else "PARTIAL",
+                "unresolved_scenario_parts": unresolved_parts,
                 "target": scenario.target,
                 "proposed_metric": scenario.proposed_metric,
                 "measurement_method": scenario.measurement_method,
                 "measurement_plan_status": "PROPOSED" if measured_target and scenario.measurement_method else "INSUFFICIENT_EVIDENCE",
-                "provenance": "SOURCE_BACKED_SCENARIO_TRACE",
+                "provenance": "DETERMINISTIC_TRANSFORMATION",
+                "target_status": "SPECIFIED" if target_source_backed else "UNSUPPORTED" if target_value else "INSUFFICIENT_EVIDENCE",
+                "target_provenance": "SOURCE_BACKED" if target_source_backed else "PREPARED_FIXTURE" if target_value else "UNKNOWN",
+                "proposed_metric_provenance": "SOURCE_BACKED" if metric_source_backed else "PREPARED_FIXTURE" if metric_value else "UNKNOWN",
+                "measurement_method_provenance": "SOURCE_BACKED" if method_source_backed else "PREPARED_FIXTURE" if method_value else "UNKNOWN",
                 "evidence": [
                     {
-                        "kind": "TARGET_SOURCE" if scenario.target is not None else "SCENARIO_SOURCE",
+                        "kind": "TARGET_SOURCE" if target_source_backed else "SCENARIO_SOURCE",
                         "source_ref": scenario.source_ref.model_dump(mode="json"),
                     },
                     *({"kind": "REQUIREMENT_SOURCE", "source_ref": ref} for ref in requirement_refs),
                 ],
                 "affected_interaction_edges": affected_edges,
-                "measurement_status": "NOT_MEASURED" if measured_target else "INSUFFICIENT_EVIDENCE",
+                "measurement_status": "NOT_MEASURED" if target_value else "INSUFFICIENT_EVIDENCE",
                 "review_status": "REVIEW_REQUIRED",
                 "measurement": None,
                 "trace_status": "PASS" if responsibility_ids and len(quantum_ids) >= 1 else "INSUFFICIENT_EVIDENCE",
                 "note": (
                     "Scenario target is source-backed; no benchmark has been run."
                     if measured_target
-                    else "Scenario provides no measurable target and method; no pass/fail result is inferred."
+                    else "Target text is not backed by its scenario SourceRef; measurement remains insufficient evidence."
+                    if target_value
+                    else "Scenario provides no measurable target; no pass/fail result is inferred."
                 ),
             }
         )
@@ -566,6 +624,7 @@ def _build_architecture_graph(
             "label": "User",
             "status": "PRESENT",
             "source_ref": actor_source.model_dump(mode="json"),
+            "provenance": "SOURCE_BACKED",
         },
         {
             "id": "PRESENTATION-UNKNOWN",
@@ -573,6 +632,7 @@ def _build_architecture_graph(
             "label": "Presentation / application tier not specified",
             "status": "UNKNOWN",
             "evidence_ids": runtime_evidence_ids,
+            "provenance": "ARCHITECTURAL_POLICY",
         },
     ]
     nodes.extend(
@@ -587,11 +647,22 @@ def _build_architecture_graph(
     )
     nodes.append(
         {
+            "id": "INTEGRATION-UNKNOWN",
+            "layer": "INTEGRATION",
+            "label": "Integration / connectivity not specified",
+            "status": "UNKNOWN",
+            "evidence_ids": runtime_evidence_ids,
+            "provenance": "ARCHITECTURAL_POLICY",
+        }
+    )
+    nodes.append(
+        {
             "id": "INFRASTRUCTURE-UNKNOWN",
             "layer": "INFRASTRUCTURE_STORAGE",
             "label": "Infrastructure / storage not specified",
             "status": "UNKNOWN",
             "evidence_ids": runtime_evidence_ids,
+            "provenance": "ARCHITECTURAL_POLICY",
         }
     )
     edges = [
@@ -602,6 +673,7 @@ def _build_architecture_graph(
             "label": "UNKNOWN",
             "status": "UNKNOWN",
             "rationale": "The requirements mention a user but do not describe a presentation or application tier.",
+            "provenance": "ARCHITECTURAL_POLICY",
         }
     ]
     if quanta["quanta"]:
@@ -615,17 +687,30 @@ def _build_architecture_graph(
                         "label": "UNKNOWN",
                         "status": "UNKNOWN",
                         "rationale": "No tier-to-responsibility mapping was supplied.",
+                        "provenance": "ARCHITECTURAL_POLICY",
                     },
                     {
-                        "id": f"EDGE-{quantum['id']}-INFRASTRUCTURE-UNKNOWN",
+                        "id": f"EDGE-{quantum['id']}-INTEGRATION-UNKNOWN",
                         "from": quantum["id"],
-                        "to": "INFRASTRUCTURE-UNKNOWN",
+                        "to": "INTEGRATION-UNKNOWN",
                         "label": "UNKNOWN",
                         "status": "UNKNOWN",
-                        "rationale": "No infrastructure or storage relationship was supplied.",
+                        "rationale": "No integration or inter-quantum contract was supplied.",
+                        "provenance": "ARCHITECTURAL_POLICY",
                     },
                 ]
             )
+    edges.append(
+        {
+            "id": "EDGE-INTEGRATION-INFRASTRUCTURE-UNKNOWN",
+            "from": "INTEGRATION-UNKNOWN",
+            "to": "INFRASTRUCTURE-UNKNOWN",
+            "label": "UNKNOWN",
+            "status": "UNKNOWN",
+            "rationale": "No infrastructure or storage relationship was supplied.",
+            "provenance": "ARCHITECTURAL_POLICY",
+        }
+    )
     edges.extend(
         {
             "id": item["id"],
@@ -634,10 +719,20 @@ def _build_architecture_graph(
             "label": item["label"],
             "status": item["status"],
             "rationale": item["rationale"],
+            "source_refs": item["source_refs"],
+            "provenance": "DETERMINISTIC_TRANSFORMATION",
         }
         for item in interactions["edges"]
     )
     return {
+        "schema": {"id": "EQCR-ARCHITECTURE-GRAPH", "version": "1.0.0"},
+        "layers": [
+            "ACTOR",
+            "PRESENTATION_APPLICATION",
+            "QUANTUM",
+            "INTEGRATION",
+            "INFRASTRUCTURE_STORAGE",
+        ],
         "nodes": nodes,
         "edges": edges,
         "status": "REVIEW_REQUIRED",
@@ -845,7 +940,7 @@ def run_pipeline(
         }
     ]
     quanta["architecture_graph"] = _build_architecture_graph(raw, quanta, interactions, evidence)
-    quality = _build_quality(raw, responsibilities, quanta)
+    quality = _build_quality(raw, responsibilities, quanta, interactions)
 
     has_conflict = optimization["result_status"] == "INFEASIBLE"
     constraint_status = "INFEASIBLE" if has_conflict else "PASS"
@@ -1013,6 +1108,30 @@ def run_pipeline(
             ) if interactions["edges"] else not optimization["feasible_candidate_count"],
             "interaction_option_sources_well_formed": interaction_option_sources_valid,
             "quality_profile_sources_well_formed": quality_sources_valid,
+            "quality_scenarios_have_six_part_status": all(
+                set(profile["scenario_parts"]) == {
+                    "stimulus_source", "stimulus", "environment", "stimulated_artifact", "response", "response_measure"
+                }
+                and all(part["status"] in {"SPECIFIED", "UNKNOWN", "UNSUPPORTED"} for part in profile["scenario_parts"].values())
+                and profile["scenario_completeness"] in {"COMPLETE", "PARTIAL"}
+                for profile in quality["profiles"]
+            ),
+            "quality_scenario_part_citations_resolve": all(
+                (
+                    part["status"] == "SPECIFIED"
+                    and part["source_ref"] is not None
+                    and part["value"].strip() in part["source_ref"]["quote"]
+                    and part["source_ref"]["source_id"] in source_texts
+                    and source_texts[part["source_ref"]["source_id"]][part["source_ref"]["start"] : part["source_ref"]["end"]]
+                    == part["source_ref"]["quote"]
+                )
+                or (
+                    part["status"] in {"UNKNOWN", "UNSUPPORTED"}
+                    and part["source_ref"] is None
+                )
+                for profile in quality["profiles"]
+                for part in profile["scenario_parts"].values()
+            ),
             "quality_scenarios_allocated_without_fake_pass": (
                 {profile["scenario_id"] for profile in quality["profiles"]} == {item.id for item in raw.scenarios}
                 and all(

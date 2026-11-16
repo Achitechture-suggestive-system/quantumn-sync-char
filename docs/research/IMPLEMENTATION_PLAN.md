@@ -30,17 +30,17 @@ Catalog entries must be reviewed and tied to a source before being treated as ar
 
 ## Milestone D — P8 graph, quantum assumptions and interaction contracts
 
-1. Extend the architecture graph to include the required Integration tier while keeping unknown nodes explicit.
-2. Add versioned interaction contract schema and decision table. Sync/Async stays `UNDECIDED` absent timing, consistency, failure, retry and idempotency evidence.
-3. Attach dependencies and deployment assumptions to quantum candidates with source/reviewer provenance; do not infer deployability from a partition.
-4. Add deterministic editable Draw.io export from graph JSON with stable node/edge IDs, unknown placeholders, and XML round-trip/schema tests.
+1. **Implemented and tested:** architecture graph schema 1.0.0 includes Actor → Presentation/Application → Quantum → Integration → Infrastructure. Integration/tier nodes and edges unsupported by requirements are explicit UNKNOWN placeholders with architectural-policy provenance.
+2. **Implemented and tested:** interaction contract and Sync/Async decision-table schemas are versioned. Pipeline retains `UNDECIDED`; schema blocks approved modes unless a cited human decision, reviewer, timezone-aware timestamp, non-contradictory signal and complete contract are present. Streamlit has no interaction approval editor; no real decision exists.
+3. **Partial:** quantum ownership/deployment remain UNKNOWN. Existing candidate relationships are retained; richer independent deployment assumptions need architecture review and evidence.
+4. **Implemented and tested:** deterministic editable Draw.io XML export with stable cell IDs, layer layout, unknown styling and endpoint validation; Streamlit download is available. Tests parse XML but do not perform a Draw.io GUI round-trip.
 
 ## Milestone E — P9–P10 scenario and measurement support
 
-1. Represent the six quality attribute scenario parts explicitly: stimulus source, stimulus, environment, stimulated artifact, response, and response measure. Validate which parts are specified and retain unresolved fields.
-2. Map characteristics using versioned ISO/IEC 25010:2023 product-quality identifiers. Preserve source quote, human/LLM/deterministic provenance, `UNMAPPED`, and reviewer decision; do not claim ISO certification.
-3. Use distinct states: `SPECIFIED`, `PREDICTED`, `MEASURED`, `NOT_MEASURED`, `UNSUPPORTED`. A target is not an observation.
-4. Add measurement adapters only for an available target with a documented environment, repeat protocol, raw measurement and method. No adapter may produce a pass from target text alone.
+1. **Implemented and tested:** QAME scenario schema 1.0.0 emits stimulus source, stimulus, environment, stimulated artifact, response and response measure with `SPECIFIED`/`UNKNOWN`/`UNSUPPORTED`, source refs only for values present in the cited span, and partial/complete status.
+2. **Partial:** output records ISO/IEC 25010:2023 version and source characteristic label; IDs remain `UNMAPPED`/`UNSPECIFIED` pending reviewed taxonomy mapping. No ISO certification claim.
+3. **Preserved:** targets/metrics are source specifications, not measurements. Quality profiles keep `NOT_MEASURED` or `INSUFFICIENT_EVIDENCE`; `PREDICTED` and `UNSUPPORTED` are not synthesized.
+4. **Blocked/absent:** no runnable target, valid measurement environment or raw measurements. No measurement adapter was added; a target alone never produces PASS.
 
 ISO's official page describes the 2023 product-quality model as nine characteristics; implementation must use the standard edition rather than the superseded 2011 model.
 

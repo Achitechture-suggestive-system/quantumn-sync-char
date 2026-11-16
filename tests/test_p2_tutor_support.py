@@ -265,7 +265,15 @@ def test_approved_evidence_and_responsibilities_drive_tutor_optimizer_and_all_st
     }
     assert {edge["responsibility_ids"][0] for edge in artifacts["interactions"]["edges"]} == {"R4", "R5"}
     assert all(edge["selection_status"] == "UNRESOLVED" for edge in artifacts["interactions"]["edges"])
-    assert all(profile["measurement"] is None for profile in artifacts["quality_profiles"]["profiles"])
+    for profile in artifacts["quality_profiles"]["profiles"]:
+        assert profile["measurement"] is None
+        assert profile["measurement_status"] == "NOT_MEASURED"
+        assert profile["target_status"] == "SPECIFIED"
+        assert profile["scenario_parts"]["stimulus"]["status"] == "SPECIFIED"
+        assert profile["scenario_parts"]["response_measure"]["status"] == "SPECIFIED"
+        assert profile["scenario_completeness"] == "PARTIAL"
+        assert profile["quality_characteristic_mapping"]["status"] == "UNMAPPED"
+        assert profile["quality_characteristic_mapping"]["label_provenance"] == "PREPARED_FIXTURE"
     _assert_hard_constraints_hold(artifacts)
 
 

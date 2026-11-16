@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import streamlit as st
 
 from eqcr.fixture import get_fixture
+from eqcr.drawio_export import architecture_graph_to_drawio
 from eqcr.ollama import (
     OllamaError,
     apply_proposals_to_fixture,
@@ -575,6 +576,13 @@ with quantum_tab:
         graph_lines.append("}")
         st.subheader("Quantum and interaction graph")
         st.graphviz_chart("\n".join(graph_lines), width="stretch")
+        st.download_button(
+            "Download editable Draw.io",
+            data=architecture_graph_to_drawio(architecture_graph),
+            file_name="eqcr_qame_architecture.drawio",
+            mime="application/xml",
+            key="download_architecture_drawio",
+        )
         graph_left, graph_right = st.columns(2)
         with graph_left:
             node_ids = [item["id"] for item in architecture_graph["nodes"]]

@@ -38,7 +38,7 @@ flowchart LR
 
 ## “Quantum” trong MVP nghĩa là gì?
 
-Đây là tên của một nhóm responsibility ứng viên. Tìm kiếm phân hoạch dùng Python cổ điển và exhaustive; không có qubits hay quantum solver. Với sáu phần tử, Bell(6)=203 phân hoạch.
+Đây là tên của một nhóm responsibility ứng viên. Tìm kiếm phân hoạch là Python cổ điển: exhaustive qua R8, CP-SAT cho R9–R50; không có qubits hay quantum solver. Với sáu phần tử, Bell(6)=203 phân hoạch; Tutor sáu role tiếp tục đi theo đường exhaustive. CP-SAT chỉ báo optimum subset, không đếm toàn bộ feasible set.
 
 ## Dòng xử lý
 

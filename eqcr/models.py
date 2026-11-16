@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -41,6 +42,10 @@ class Scenario(StrictModel):
     name: str
     stimulus: str
     response_measure: str
+    stimulus_source: str | None = None
+    environment: str | None = None
+    stimulated_artifact: str | None = None
+    response: str | None = None
     target: str | None = None
     interaction_id: str | None = None
     related_requirement_ids: list[str] = Field(default_factory=list)
@@ -50,6 +55,82 @@ class Scenario(StrictModel):
     measurement_method: str | None = None
     status: ValidationStatus = "REVIEW_REQUIRED"
     source_ref: SourceRef
+
+
+class InteractionContract(StrictModel):
+    contract_id: str = Field(min_length=1)
+    schema_id: Literal["EQCR-INTERACTION-CONTRACT"] = "EQCR-INTERACTION-CONTRACT"
+    schema_version: Literal["1.0.0"] = "1.0.0"
+    decision_table_id: Literal["EQCR-SYNC-ASYNC-DECISION"] = "EQCR-SYNC-ASYNC-DECISION"
+    decision_table_version: Literal["1.0.0"] = "1.0.0"
+    selected_mode: Literal["SYNC", "ASYNC", "UNDECIDED"] = "UNDECIDED"
+    selection_status: Literal["UNDECIDED", "APPROVED"] = "UNDECIDED"
+    decision_basis_status: Literal["INSUFFICIENT_EVIDENCE", "HUMAN_DECISION"] = "INSUFFICIENT_EVIDENCE"
+    provenance: Literal["DETERMINISTIC_TRANSFORMATION", "HUMAN_DECISION"] = "DETERMINISTIC_TRANSFORMATION"
+    reviewer_id: str | None = None
+    reviewed_at: datetime | None = None
+    source_refs: list[SourceRef] = Field(default_factory=list)
+    decision_rationale: str = "No human-approved interaction-mode evidence is available."
+    request_must_wait_for_completion: bool | None = None
+    request_may_return_before_completion: bool | None = None
+    operation: str = "UNKNOWN"
+    data_dependency: str = "UNKNOWN"
+    request_fields: str = "UNKNOWN"
+    response_fields: str = "UNKNOWN"
+    versioning: str = "UNKNOWN"
+    consistency: str = "UNKNOWN"
+    latency_budget: str = "UNKNOWN"
+    failure_handling: str = "UNKNOWN"
+    retry_policy: str = "UNKNOWN"
+    timeout_policy: str = "UNKNOWN"
+    idempotency_policy: str = "UNKNOWN"
+    unresolved_decisions: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def selected_mode_has_human_evidence(self):
+        if self.selected_mode == "UNDECIDED":
+            if self.selection_status != "UNDECIDED" or self.decision_basis_status != "INSUFFICIENT_EVIDENCE":
+                raise ValueError("An undecided contract cannot be marked approved or human-decided.")
+            return self
+        mode_signal_present = (
+            self.request_must_wait_for_completion is True
+            if self.selected_mode == "SYNC"
+            else self.request_may_return_before_completion is True
+        )
+        contradictory_signal = (
+            self.request_may_return_before_completion is True
+            if self.selected_mode == "SYNC"
+            else self.request_must_wait_for_completion is True
+        )
+        unresolved_contract_fields = [
+            self.operation,
+            self.data_dependency,
+            self.request_fields,
+            self.response_fields,
+            self.versioning,
+            self.consistency,
+            self.latency_budget,
+            self.failure_handling,
+            self.retry_policy,
+            self.timeout_policy,
+            self.idempotency_policy,
+        ]
+        if (
+            self.selection_status != "APPROVED"
+            or self.decision_basis_status != "HUMAN_DECISION"
+            or self.provenance != "HUMAN_DECISION"
+            or not (self.reviewer_id and self.reviewer_id.strip())
+            or not self.reviewed_at
+            or self.reviewed_at.tzinfo is None
+            or not self.source_refs
+            or not self.decision_rationale.strip()
+            or not mode_signal_present
+            or contradictory_signal
+            or any(not value.strip() or value == "UNKNOWN" for value in unresolved_contract_fields)
+            or self.unresolved_decisions
+        ):
+            raise ValueError("An approved interaction mode requires a complete, cited, non-contradictory human-reviewed contract.")
+        return self
 
 
 class RawRequirements(StrictModel):

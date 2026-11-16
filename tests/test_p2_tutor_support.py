@@ -212,6 +212,10 @@ def test_unreviewed_proposals_do_not_create_optimizer_constraints():
         execution_mode="P2_LOCAL_LLM",
     )
     assert artifacts["constraints"]["items"] == []
+    assert all(
+        item["status"] == "NOT_APPLICABLE"
+        for item in artifacts["constraints"]["policy_evaluation"]["results"]
+    )
     assert artifacts["partitions"]["enumerated_partition_count"] == 203
     assert artifacts["partitions"]["optimal_candidate_count"] == 203
 
@@ -238,6 +242,16 @@ def test_approved_evidence_and_responsibilities_drive_tutor_optimizer_and_all_st
     assert derived[0]["right"] == "R6"
     assert artifacts["partitions"]["enumerated_partition_count"] == 203
     assert artifacts["partitions"]["objective_minimum"] == 0
+    policy_evaluation = artifacts["constraints"]["policy_evaluation"]
+    assert policy_evaluation["catalog_id"] == "EQCR-P2-TUTOR-EXPERIMENTAL-POLICIES"
+    assert policy_evaluation["catalog_version"] == "1.0.0"
+    assert policy_evaluation["catalog_review_status"] == "NOT_INDEPENDENTLY_VALIDATED"
+    applied_rules = [item for item in policy_evaluation["results"] if item["status"] == "APPLIED"]
+    assert len(applied_rules) == 1
+    assert applied_rules[0]["evidence_id"] == "EV-E01-PAIR-01"
+    assert applied_rules[0]["derived_constraint_id"] == derived[0]["id"]
+    assert set(applied_rules[0]["responsibility_endpoints"]) == {"R5", "R6"}
+    assert "EQCR-P2-TUTOR-EXPERIMENTAL-POLICIES@1.0.0" in derived[0]["rationale"]
     assert artifacts["partitions"]["optimal_candidate_count"] < 203
     assert any(set(group) == {"R5", "R6"} for group in artifacts["partitions"]["selected_groups"])
     assert reviewed_fixture["responsibility_provenance"] == "P2_TEST_ONLY"
@@ -253,6 +267,47 @@ def test_approved_evidence_and_responsibilities_drive_tutor_optimizer_and_all_st
     assert all(edge["selection_status"] == "UNRESOLVED" for edge in artifacts["interactions"]["edges"])
     assert all(profile["measurement"] is None for profile in artifacts["quality_profiles"]["profiles"])
     _assert_hard_constraints_hold(artifacts)
+
+
+def test_catalog_evaluation_records_unknown_evidence_abstention():
+    fixture = get_tutor_support_fixture()
+    fixture["evidence"].append(
+        {
+            "id": "EV-UNKNOWN-SHARED-STATE",
+            "subject_id": "R1",
+            "predicate": "SHARES_STATE_OR_INVARIANT",
+            "object_id": "R2",
+            "status": "UNKNOWN",
+            "provenance": "P2_TEST_ONLY",
+            "review_status": "REVIEW_REQUIRED",
+            "source_refs": [],
+            "is_assumption": False,
+            "rationale": "Test-only unresolved evidence must not become an optimizer preference.",
+        }
+    )
+
+    artifacts = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
+    evaluation = next(
+        item
+        for item in artifacts["constraints"]["policy_evaluation"]["results"]
+        if item["evidence_id"] == "EV-UNKNOWN-SHARED-STATE"
+        and item["policy_id"] == "P2-SOFT-SHARED-INVARIANT-COLOCATION"
+    )
+    assert evaluation["status"] == "ABSTAINED"
+    assert "Only PRESENT evidence" in evaluation["reason"]
+    assert not any("EV-UNKNOWN-SHARED-STATE" in item["evidence_ids"] for item in artifacts["constraints"]["items"])
+
+
+def test_explicit_constraint_override_records_that_catalog_was_bypassed():
+    artifacts = run_pipeline(
+        get_tutor_support_fixture(),
+        constraints_override=[],
+        execution_mode="P2_TEST_ONLY",
+    )
+    assert artifacts["constraints"]["policy_evaluation"]["evaluation_status"] == (
+        "BYPASSED_BY_EXPLICIT_CONSTRAINT_OVERRIDE"
+    )
+    assert artifacts["constraints"]["policy_evaluation"]["results"] == []
 
 
 def test_human_evidence_correction_changes_optimizer_and_downstream_assignments():
@@ -379,6 +434,14 @@ def test_invalid_source_span_cannot_create_evidence_derived_optimizer_constraint
     evidence["source_refs"][0]["quote"] = "X" * len(evidence["source_refs"][0]["quote"])
     artifacts = run_pipeline(reviewed_fixture, execution_mode="P2_LOCAL_LLM")
     assert not any(item["origin"] == "ARCHITECTURAL_POLICY" for item in artifacts["constraints"]["items"])
+    evaluation = next(
+        item
+        for item in artifacts["constraints"]["policy_evaluation"]["results"]
+        if item["evidence_id"] == evidence["id"]
+        and item["policy_id"] == "P2-SOFT-SHARED-INVARIANT-COLOCATION"
+    )
+    assert evaluation["status"] == "ABSTAINED"
+    assert "Citations are invalid" in evaluation["reason"]
     assert artifacts["validation_report"]["assertions"]["evidence_sources_well_formed"] is False
 
 

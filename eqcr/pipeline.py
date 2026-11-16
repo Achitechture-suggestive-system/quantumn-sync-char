@@ -8,7 +8,14 @@ from typing import Any, Iterable, Iterator
 
 import networkx as nx
 
-from .models import Constraint, EvidenceConstraintPolicy, EvidenceRecord, RawRequirements, RelationAnnotation, Responsibility
+from .models import (
+    Constraint,
+    EvidenceConstraintPolicyCatalog,
+    EvidenceRecord,
+    RawRequirements,
+    RelationAnnotation,
+    Responsibility,
+)
 from .traceability import refresh_traceability_artifact
 
 
@@ -161,41 +168,66 @@ def _derive_evidence_constraints(
     raw: RawRequirements,
     evidence: list[EvidenceRecord],
     responsibilities: list[Responsibility],
-    policies: list[dict[str, Any]],
+    policy_catalog_data: dict[str, Any],
     source_texts: dict[str, str],
-) -> list[Constraint]:
-    """Apply declared soft policies only to human-approved evidence and responsibilities."""
-    validated_policies = [EvidenceConstraintPolicy.model_validate(item) for item in policies]
+) -> tuple[list[Constraint], dict[str, Any]]:
+    """Evaluate a versioned experimental catalog and explain every application or abstention."""
+    catalog = EvidenceConstraintPolicyCatalog.model_validate(policy_catalog_data)
     responsibility_by_id = {item.id: item for item in responsibilities}
     requirement_by_id = {item.id: item for item in raw.requirements}
     derived = []
     seen = set()
-    for policy in validated_policies:
+    evaluations: list[dict[str, Any]] = []
+    for policy in catalog.entries:
         for record in evidence:
-            if (
-                record.predicate != policy.evidence_predicate
-                or record.status != "PRESENT"
-                or record.review_status != "APPROVED"
-                or not record.source_refs
-            ):
+            result = {
+                "policy_id": policy.id,
+                "policy_version": policy.version,
+                "catalog_id": catalog.catalog_id,
+                "catalog_version": catalog.version,
+                "evidence_id": record.id,
+                "status": "ABSTAINED",
+                "reason": None,
+                "derived_constraint_id": None,
+                "responsibility_endpoints": [],
+                "source_ids": [ref.source_id for ref in record.source_refs],
+                "provenance": "DETERMINISTIC_TRANSFORMATION",
+            }
+            if record.predicate != policy.evidence_predicate:
+                result.update(status="NOT_APPLICABLE", reason="Evidence predicate does not match this catalog entry.")
+                evaluations.append(result)
                 continue
-            if (
-                policy.required_architecture_implication is not None
-                and record.architecture_implication != policy.required_architecture_implication
-            ):
+            if record.status != "PRESENT":
+                result["reason"] = "Only PRESENT evidence can satisfy this policy; UNKNOWN and SCOPED_ABSENT abstain."
+                evaluations.append(result)
                 continue
-            if (
-                record.architecture_implication in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}
-                and not record.relation_annotation_id
-            ):
+            if record.review_status != "APPROVED":
+                result["reason"] = "Evidence has not been approved by human review."
+                evaluations.append(result)
+                continue
+            if not record.source_refs:
+                result["reason"] = "Evidence has no source citations."
+                evaluations.append(result)
+                continue
+            if record.architecture_implication != policy.required_architecture_implication:
+                result["reason"] = "Human architecture implication does not match this policy entry."
+                evaluations.append(result)
+                continue
+            if not record.relation_annotation_id:
+                result["reason"] = "The architectural implication has no linked human relation annotation."
+                evaluations.append(result)
                 continue
             left, right = record.subject_id, record.object_id
             if left == right or left not in responsibility_by_id or right not in responsibility_by_id:
+                result["reason"] = "Responsibility endpoints are reflexive or unresolved."
+                evaluations.append(result)
                 continue
             if any(
                 responsibility_by_id[rid].review_decision_status != "APPROVED"
                 for rid in (left, right)
             ):
+                result["reason"] = "One or both responsibility endpoints are not approved."
+                evaluations.append(result)
                 continue
             source_refs_valid = all(
                 ref.source_id in source_texts
@@ -212,6 +244,8 @@ def _derive_evidence_constraints(
                     or record.subject_requirement_id not in responsibility_by_id[left].requirement_ids
                     or record.object_requirement_id not in responsibility_by_id[right].requirement_ids
                 ):
+                    result["reason"] = "Evidence requirement endpoints do not map to the named responsibility endpoints."
+                    evaluations.append(result)
                     continue
                 endpoint_sources = {
                     requirement_by_id[requirement_id].source_ref.source_id
@@ -228,30 +262,50 @@ def _derive_evidence_constraints(
                 }
             cited_sources = {ref.source_id for ref in record.source_refs}
             if not source_refs_valid or not endpoint_sources or not endpoint_sources <= cited_sources:
+                result["reason"] = "Citations are invalid or do not cover both requirement endpoints."
+                evaluations.append(result)
                 continue
             key = (policy.id, tuple(sorted((left, right))))
             if key in seen:
+                result["reason"] = "A prior evidence row already emitted this policy for the same responsibility pair."
+                evaluations.append(result)
                 continue
             seen.add(key)
-            derived.append(
-                Constraint(
-                    id=f"D-{policy.id}-{record.id}",
-                    relation=policy.relation,
-                    left=left,
-                    right=right,
-                    hardness=policy.hardness,
-                    weight=policy.weight,
-                    evidence_ids=[record.id],
-                    origin="ARCHITECTURAL_POLICY",
-                    enabled=True,
-                    source_refs=record.source_refs,
-                    rationale=(
-                        f"Policy {policy.id}: {policy.rationale} "
-                        f"Applied to reviewer-approved evidence {record.id}."
-                    ),
-                )
+            constraint = Constraint(
+                id=f"D-{policy.id}-{record.id}",
+                relation=policy.relation,
+                left=left,
+                right=right,
+                hardness=policy.hardness,
+                weight=policy.weight,
+                evidence_ids=[record.id],
+                origin="ARCHITECTURAL_POLICY",
+                enabled=True,
+                source_refs=record.source_refs,
+                rationale=(
+                    f"Catalog {catalog.catalog_id}@{catalog.version}; policy {policy.id}@{policy.version}: "
+                    f"{policy.rationale} Applied to reviewer-approved evidence {record.id}."
+                ),
             )
-    return derived
+            derived.append(constraint)
+            result.update(
+                status="APPLIED",
+                reason="All declared evidence, citation, human-decision, and responsibility-endpoint gates passed.",
+                derived_constraint_id=constraint.id,
+                responsibility_endpoints=[left, right],
+            )
+            evaluations.append(result)
+    return derived, {
+        "catalog_id": catalog.catalog_id,
+        "catalog_version": catalog.version,
+        "catalog_status": catalog.status,
+        "catalog_review_status": catalog.review_status,
+        "catalog_snapshot": catalog.model_dump(mode="json"),
+        "evaluation_status": "EVALUATED",
+        "provenance": "DETERMINISTIC_TRANSFORMATION",
+        "results": evaluations,
+        "interpretation": "Experimental case rules are not externally validated tactics or architectural facts.",
+    }
 
 
 def _build_quanta(responsibilities: list[Responsibility], selected: list[list[str]] | None) -> dict[str, Any]:
@@ -684,20 +738,35 @@ def run_pipeline(
                     f"Relation annotation {relation.id} must have exactly one evidence row per approved responsibility pair."
                 )
     selected_constraints = fixture["constraints"] if constraints_override is None else constraints_override
+    policy_evaluation = None
+    policy_catalog_data = fixture.get("constraint_policy_catalog")
     if constraints_override is None:
+        derived_constraints = []
+        if policy_catalog_data is not None:
+            derived_constraints, policy_evaluation = _derive_evidence_constraints(
+                raw,
+                evidence,
+                responsibilities,
+                policy_catalog_data,
+                constraint_source_texts,
+            )
         selected_constraints = [
             *selected_constraints,
-            *[
-                item.model_dump(mode="json")
-                for item in _derive_evidence_constraints(
-                    raw,
-                    evidence,
-                    responsibilities,
-                    fixture.get("constraint_policies", []),
-                    constraint_source_texts,
-                )
-            ],
+            *[item.model_dump(mode="json") for item in derived_constraints],
         ]
+    elif policy_catalog_data is not None:
+        catalog = EvidenceConstraintPolicyCatalog.model_validate(policy_catalog_data)
+        policy_evaluation = {
+            "catalog_id": catalog.catalog_id,
+            "catalog_version": catalog.version,
+            "catalog_status": catalog.status,
+            "catalog_review_status": catalog.review_status,
+            "catalog_snapshot": catalog.model_dump(mode="json"),
+            "evaluation_status": "BYPASSED_BY_EXPLICIT_CONSTRAINT_OVERRIDE",
+            "provenance": "DETERMINISTIC_TRANSFORMATION",
+            "results": [],
+            "interpretation": "Explicit constraint override supplied; catalog rules were not applied in this run.",
+        }
     constraints = [Constraint.model_validate(item) for item in selected_constraints]
     known_scenario_ids = {item.id for item in raw.scenarios}
     known_evidence_ids = {item.id for item in evidence}
@@ -934,6 +1003,13 @@ def run_pipeline(
             "Quality targets have not been measured.",
         ],
     }
+    constraint_artifact = {
+        "items": constraint_dicts,
+        "conflicts": optimization["conflicts"],
+        "status": constraint_status,
+    }
+    if policy_evaluation is not None:
+        constraint_artifact["policy_evaluation"] = policy_evaluation
     artifacts = {
         "raw_requirements": raw_dict,
         "context": context,
@@ -950,7 +1026,7 @@ def run_pipeline(
             "items": [item.model_dump(mode="json") for item in relation_annotations],
             "status": "REVIEW_REQUIRED" if relation_annotations else "INSUFFICIENT_EVIDENCE",
         },
-        "constraints": {"items": constraint_dicts, "conflicts": optimization["conflicts"], "status": constraint_status},
+        "constraints": constraint_artifact,
         "partitions": optimization,
         "quanta": quanta,
         "interactions": interactions,

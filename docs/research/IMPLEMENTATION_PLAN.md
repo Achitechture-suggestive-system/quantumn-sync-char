@@ -13,11 +13,12 @@ This plan follows the repository audit. It preserves the existing P0 baseline an
 ## Milestone B — P4–P6 evidence and policy rules
 
 1. Version the activity/responsibility/evidence schemas without changing historical input meanings.
-2. Add a policy/tactic catalog schema with IDs, version, source, quality driver, evidence preconditions, required human decision, endpoint mapping, emitted constraint, side effects and abstention conditions.
+2. **Implemented for Tutor as an experimental case catalog:** `EvidenceConstraintPolicyCatalog` binds catalog/entry versions, internal source-basis status, quality driver, evidence preconditions, assumptions, named output relation, and abstention conditions. Per-evidence rule evaluation records APPLIED/NOT_APPLICABLE/ABSTAINED and the derived constraint ID. The catalog is explicitly not independently validated and is not presented as a general tactic catalog.
 3. Keep evidence observation, interpretation, architectural decision and optimizer constraint as separate records. Unregistered predicates and ambiguous evidence abstain.
-4. Add duplicate, contradiction, invalid citation, reflexive relation, endpoint mismatch, unsupported promotion and policy/version mutation tests.
+4. **Test coverage:** catalog version/uniqueness/hard-rule rejection, explicit override bypass, and UNKNOWN-evidence abstention are covered; existing citation, reflexive, endpoint, and unsupported-promotion tests remain in place.
+5. **Local verification:** 78 full-suite tests pass; compileall and `git diff --check` pass. The current policy-catalog commit and CI have not yet been published.
 
-Catalog entries must be reviewed and tied to a source before being treated as architectural tactics. CMU/SEI defines tactics in relation to quality-attribute response and analysis models; generic co-location/separation heuristics must not be relabeled as validated tactics.
+Catalog entries must be reviewed and tied to a source before being treated as architectural tactics. The current P2 test catalog is internal and experimental. CMU/SEI defines tactics in relation to quality-attribute response and analysis models; generic co-location/separation heuristics must not be relabeled as validated tactics.
 
 ## Milestone C — P7 optimizer verification and scale
 

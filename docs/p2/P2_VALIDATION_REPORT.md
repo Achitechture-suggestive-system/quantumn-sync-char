@@ -14,15 +14,16 @@ Pasted methodology review đã dẫn tới thay đổi protocol: source-only lab
 
 | Kiểm tra | Kết quả / phạm vi |
 |---|---|
-| Regression + P2 tests | `.venv\Scripts\python.exe -m pytest -q --tb=short` — 72 passed. Experiment-runner tests use `TEST_ONLY_NOT_MODEL_OUTPUT`; none invokes Ollama. |
+| Regression + P2 tests | `.venv\Scripts\python.exe -m pytest -q --tb=short` — 78 passed. Experiment-runner and policy-catalog tests use test-only data; none invokes Ollama. |
 | Compile | `.venv\Scripts\python.exe -m compileall -q app.py eqcr tests scripts` — exit 0. |
 | Frozen P0 baseline / `main` | Không chủ ý sửa `main`, fixture baseline hoặc tag; chỉ làm việc trên `feat/p1-semantic-validation`. |
 | Ollama v6 lịch sử | Đã gọi thật trước protocol mới; `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`, không làm inference hậu-blind hoặc reference label. |
 | Ollama v7 hậu-blind | Chưa chạy; cần source-only annotation thật được khóa trước khi app mở model proposals. |
-| P2 experiment CLI | `scripts/run_p2_experiment.py` đã có; yêu cầu annotation lock v2, đúng source hash, clean committed checkout, model tag `qwen3:4b`, prompt version v7 và local model digest. Chưa chạy do blocker độc lập. |
+| P2 experiment CLI | `scripts/run_p2_experiment.py` đã có; yêu cầu annotation lock v2, đúng source hash, clean committed checkout, model tag `qwen3:4b`, prompt version v7; ghi local model metadata/digest nếu API cung cấp. Chưa chạy do blocker độc lập. |
 | P2 result export | Test-only exporter verifies run manifest, per-file SHA-256 checksum list and ZIP creation. No live run bundle exists. |
 | Source/citation audit | Unit tests kiểm exact span, unknown IDs, missing endpoint citations, duplicate relation và self-relation gates; chưa có v7 live output để đánh giá. |
-| Optimizer causal wiring | Test-only accepted relation → declared soft policy → optimizer → interactions/quality mapping; đây là kiểm code path, không phải case evidence. |
+| Optimizer causal wiring | Test-only accepted relation → versioned policy evaluation → soft constraint → optimizer → interactions/quality mapping; evaluation trace links policy/evidence/source/R endpoints. Đây là kiểm code path, không phải case evidence. |
+| Versioned policy evaluation | Catalog `EQCR-P2-TUTOR-EXPERIMENTAL-POLICIES@1.0.0` records each evidence/policy outcome and abstention reason. Internal experimental rules are not independently reviewed tactics. |
 | Hard constraints | Test kiểm mỗi feasible candidate đối chiếu hard constraints đang bật. Tutor fixture hiện không khai báo hard domain constraint. |
 | Human decisions / revision case thật | Chưa có; worksheet vẫn trống. Không tự thêm approvals, corrections hoặc scores. |
 | Quality results | Hai scenario profiles có thể được tạo deterministic; measurement tiếp tục `NOT_MEASURED`. |
@@ -37,7 +38,7 @@ Pasted methodology review đã dẫn tới thay đổi protocol: source-only lab
 | Historical P1–P6/E1/B1 v6 | Local LLM proposal, unblinded trước protocol; ghi rõ exploratory. |
 | Current model schema v7 | Deterministic schema/prompt definition; chưa có inference v7 thực. |
 | Blind lock | Human annotation nếu được nộp; test fixture chỉ có provenance test-only. |
-| Evidence → constraints | Human relation/implication decision + deterministic mapping + architectural policy. Chưa có actual human output. |
+| Evidence → constraints | Human relation/implication decision + deterministic mapping using versioned internal experimental case policy. Chưa có actual human output hoặc independent policy validation. |
 | Candidate partitions/interactions/quality | Deterministic transformation; test runs là `P2_TEST_ONLY`, live post-review case chưa chạy. |
 | Review decisions | Human decision chỉ khi reviewer thực sự cung cấp; chưa có quyết định case thật trong checkout. |
 
@@ -56,7 +57,7 @@ Structural evaluation của runner đếm proposal coverage/unresolved FRs, exac
 | Evidence policy vào optimizer cho case thật | Test-only path đã xác minh; actual case pending. |
 | 10 pipeline stages với model-reviewed case thật | Chưa đạt; chỉ synthetic test path đã chạy. |
 | Human revision before/after case thật | Chưa đạt; chỉ synthetic test path đã kiểm causal propagation. |
-| Regression tests | 72 local tests passed; [GitHub Actions run 43849233685](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43849233685) also passed on the experiment-runner commit. |
+| Regression tests | 78 local tests passed for the pending policy-catalog code milestone; latest completed CI [run 43878692611](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43878692611) covers the preceding experiment-runner/docs commits. |
 | GitHub milestone / CI | Experiment-runner commit `1fe23ed7886e02b02e44e5ebb850e1b1e6dd6628` đã xác minh trên branch và Actions thành công; actual case experiment vẫn pending. |
 
 ### Checklist chạy P2 khi reviewer độc lập sẵn sàng

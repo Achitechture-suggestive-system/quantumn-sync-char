@@ -165,32 +165,60 @@ def get_tutor_support_fixture() -> dict[str, Any]:
             "responsibilities": responsibilities,
             "evidence": evidence,
             "constraints": [],
-            "constraint_policies": [
-                {
-                    "id": "P2-SOFT-SHARED-INVARIANT-COLOCATION",
-                    "evidence_predicate": "SHARES_STATE_OR_INVARIANT",
-                    "required_architecture_implication": "COLOCATE_CANDIDATE",
-                    "relation": "MUST_LINK",
-                    "hardness": "SOFT",
-                    "weight": 1.0,
-                    "rationale": (
-                        "Only an explicitly reviewed shared-state/invariant architectural candidate with named responsibility "
-                        "pairs creates a reversible soft co-location preference; business order alone never does."
-                    ),
-                },
-                {
-                    "id": "P2-SOFT-INDEPENDENT-CHANGE-SEPARATION",
-                    "evidence_predicate": "REQUIRES_INDEPENDENT_CHANGE",
-                    "required_architecture_implication": "SEPARATE_CANDIDATE",
-                    "relation": "CANNOT_LINK",
-                    "hardness": "SOFT",
-                    "weight": 1.0,
-                    "rationale": (
-                        "Only an explicitly reviewed independent-change architectural candidate with named responsibility "
-                        "pairs creates a reversible soft separation preference; workflow ordering alone never does."
-                    ),
-                },
-            ],
+            "constraint_policy_catalog": {
+                "catalog_id": "EQCR-P2-TUTOR-EXPERIMENTAL-POLICIES",
+                "version": "1.0.0",
+                "status": "EXPERIMENTAL_CASE_POLICY_CATALOG",
+                "review_status": "NOT_INDEPENDENTLY_VALIDATED",
+                "entries": [
+                    {
+                        "id": "P2-SOFT-SHARED-INVARIANT-COLOCATION",
+                        "version": "1.0.0",
+                        "evidence_predicate": "SHARES_STATE_OR_INVARIANT",
+                        "required_architecture_implication": "COLOCATE_CANDIDATE",
+                        "relation": "MUST_LINK",
+                        "hardness": "SOFT",
+                        "weight": 1.0,
+                        "quality_driver": "Candidate cohesion for responsibilities explicitly judged to share state or an invariant.",
+                        "source_basis_status": "INTERNAL_EXPERIMENTAL_CASE_POLICY",
+                        "assumptions": [
+                            "A human reviewer has separately approved the evidence and named the responsibility pair.",
+                            "The soft preference is reversible and does not establish a production boundary.",
+                        ],
+                        "abstention_conditions": [
+                            "Evidence is UNKNOWN, SCOPED_ABSENT, unapproved, uncited, or has an unresolved implication.",
+                            "The reviewer did not name distinct approved responsibility endpoints.",
+                        ],
+                        "rationale": (
+                            "Experimental case rule: an explicitly reviewed shared-state/invariant architectural candidate "
+                            "with named responsibility pairs creates a reversible soft co-location preference; business order alone never does."
+                        ),
+                    },
+                    {
+                        "id": "P2-SOFT-INDEPENDENT-CHANGE-SEPARATION",
+                        "version": "1.0.0",
+                        "evidence_predicate": "REQUIRES_INDEPENDENT_CHANGE",
+                        "required_architecture_implication": "SEPARATE_CANDIDATE",
+                        "relation": "CANNOT_LINK",
+                        "hardness": "SOFT",
+                        "weight": 1.0,
+                        "quality_driver": "Candidate changeability for responsibility pairs explicitly judged to change independently.",
+                        "source_basis_status": "INTERNAL_EXPERIMENTAL_CASE_POLICY",
+                        "assumptions": [
+                            "A human reviewer has separately approved the evidence and named the responsibility pair.",
+                            "The soft preference is reversible and does not establish separate deployment.",
+                        ],
+                        "abstention_conditions": [
+                            "Evidence is UNKNOWN, SCOPED_ABSENT, unapproved, uncited, or has an unresolved implication.",
+                            "The reviewer did not name distinct approved responsibility endpoints.",
+                        ],
+                        "rationale": (
+                            "Experimental case rule: an explicitly reviewed independent-change architectural candidate "
+                            "with named responsibility pairs creates a reversible soft separation preference; workflow ordering alone never does."
+                        ),
+                    },
+                ],
+            },
             "relation_annotations": [],
             "responsibility_review_complete": False,
             "candidate_selection_policy": "MAXIMUM_GROUPS",

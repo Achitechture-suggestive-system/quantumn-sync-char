@@ -6,7 +6,7 @@ SourceRef gồm source_id, quote, start, end. Requirement, workflow và scenario
 
 Responsibility có requirement_ids/source_refs và review status. Evidence record có subject, predicate, object, status, provenance, refs, rationale và is_assumption. Constraint có hai đầu, relation, hardness, weight, quality_scenario_ids, optional evidence_ids, origin, enabled và rationale. evidence_ids mặc định rỗng; constraint chưa có link tường minh vẫn được lưu là chưa có bằng chứng liên kết, không tự suy diễn từ source_refs.
 
-Scenario P2 có thể khai báo `related_requirement_ids`, `interaction_source_requirement_ids`, quality characteristic, metric và measurement method. `constraint_policies` ánh xạ predicate cụ thể sang optimizer constraint; chỉ evidence `PRESENT` + `APPROVED`, hai responsibility endpoints được duyệt và exact citations bao phủ hai endpoint mới tạo constraint. Đây là policy transformation, không phải source fact.
+Scenario P2 có thể khai báo `related_requirement_ids`, `interaction_source_requirement_ids`, quality characteristic, metric và measurement method. Tutor Support khai báo `constraint_policy_catalog` có version, provenance, assumptions, abstention conditions và review status. Hai entry thử nghiệm hiện chỉ tạo soft preference; mỗi policy/evidence pair được ghi thành `APPLIED`, `NOT_APPLICABLE` hoặc `ABSTAINED` kèm lý do, catalog snapshot, source IDs, endpoint IDs và derived constraint ID. Chỉ evidence `PRESENT` + `APPROVED`, hai responsibility endpoints được duyệt, exact citations bao phủ hai endpoint, human architecture implication riêng và relation annotation mới tạo constraint. Đây là policy transformation thử nghiệm, không phải source fact hoặc tactic đã xác nhận.
 
 ## Các artifact chính
 

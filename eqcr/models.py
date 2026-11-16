@@ -158,12 +158,42 @@ class Constraint(StrictModel):
 
 class EvidenceConstraintPolicy(StrictModel):
     id: str = Field(min_length=1)
+    version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     evidence_predicate: str = Field(min_length=1)
     relation: Literal["MUST_LINK", "CANNOT_LINK"]
-    hardness: Literal["HARD", "SOFT"] = "SOFT"
+    hardness: Literal["SOFT"] = "SOFT"
     weight: float = Field(default=1.0, ge=0)
+    quality_driver: str = Field(min_length=1)
     rationale: str = Field(min_length=1)
-    required_architecture_implication: Literal["COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"] | None = None
+    source_basis_status: Literal["INTERNAL_EXPERIMENTAL_CASE_POLICY"]
+    assumptions: list[str] = Field(min_length=1)
+    abstention_conditions: list[str] = Field(min_length=1)
+    required_architecture_implication: Literal["COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"]
+
+    @model_validator(mode="after")
+    def relation_matches_architecture_implication(self):
+        if any(not value.strip() for value in [self.quality_driver, self.rationale, *self.assumptions, *self.abstention_conditions]):
+            raise ValueError("Policy rationale, quality driver, assumptions, and abstention conditions must be non-empty.")
+        if self.relation == "MUST_LINK" and self.required_architecture_implication != "COLOCATE_CANDIDATE":
+            raise ValueError("MUST_LINK policies require a COLOCATE_CANDIDATE implication.")
+        if self.relation == "CANNOT_LINK" and self.required_architecture_implication != "SEPARATE_CANDIDATE":
+            raise ValueError("CANNOT_LINK policies require a SEPARATE_CANDIDATE implication.")
+        return self
+
+
+class EvidenceConstraintPolicyCatalog(StrictModel):
+    catalog_id: str = Field(min_length=1)
+    version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
+    status: Literal["EXPERIMENTAL_CASE_POLICY_CATALOG"]
+    review_status: Literal["NOT_INDEPENDENTLY_VALIDATED"]
+    entries: list[EvidenceConstraintPolicy] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def policy_ids_are_unique(self):
+        ids = [item.id for item in self.entries]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Policy catalog entry IDs must be unique.")
+        return self
 
 
 class RelationAnnotation(StrictModel):

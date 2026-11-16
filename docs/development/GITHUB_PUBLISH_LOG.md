@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## P8–P9 graph, interaction contracts and QAME trace — 16/11/2026
+
+- Branch `feat/p1-semantic-validation`; `main` và P0 tag không đổi. P0 tag commit `3d517b1a39158e539239dc73d594bc0938649feb` vẫn là ancestor của remote `main`.
+- Commit code/docs/tests `722c18245e0a7bd7f94674b2fd55c3174785613c` (`feat(p8-p9): add graph export and scenario trace`) đã push; `git ls-remote` khớp local SHA.
+- Trước push: 104 tests passed; `compileall -q app.py eqcr tests scripts`, staged `git diff --check` pass; staged secret-pattern scan không match; chỉ stage 21 đường dẫn đã review.
+- GitHub Actions [run 43892678200](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43892678200) completed success trên Python 3.13, gồm dependency install, regression/P1 tests và compile.
+- Export, schema and source-span checks được xác minh; chưa có Draw.io GUI round-trip, interaction approval, ISO characteristic review, QAME measurement hoặc live Tutor inference. Các field fixture-only được đánh dấu, không coi là source-backed.
+
 ## P7 CP-SAT partition optimizer — 16/11/2026
 
 - Branch `feat/p1-semantic-validation`; `main`, P0 tag, runs và snapshots không bị thay đổi.

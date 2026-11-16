@@ -46,11 +46,11 @@ ISO's official page describes the 2023 product-quality model as nine characteris
 
 ## Milestone F — P11 evaluation and release report
 
-1. Create three separately versioned tracks: the documented PetClinic case, Tutor Support, and synthetic algorithmic stress cases. Record source/provenance/licensing per input.
-2. Specify independent annotator protocol, adjudication, matching rules, baselines, ablations, reviewer effort, uncertainty and runtime measurement before collecting data.
-3. Separate algorithm correctness, semantic extraction, architecture review and empirical quality measurement in the reports.
-4. Add artifact-bundle validation and a reproducibility rerun command; report actual configurations and actual results only.
-5. Produce `FINAL_RESEARCH_COMPLETION_REPORT.md` with independent statuses `TECHNICALLY_COMPLETE`, `CASE_EXPERIMENT_COMPLETE`, `RESEARCH_VALIDATED`, `BLOCKED_EXTERNAL`, and `PARTIAL`.
+1. **Protocol documented:** [`EVALUATION_TRACKS.md`](EVALUATION_TRACKS.md) separates PetClinic fixture behavior, Tutor independent case, and synthetic optimizer correctness; it records provenance, baselines, ablations, measures and gates without inventing run results.
+2. **Partially specified:** source-only dual-annotator/adjudication, matching, review-effort, partition-agreement and runtime methods are recorded. External source rights, independent labels, domain review and target system are not supplied.
+3. **Separated:** algorithm tests, semantic extraction, architecture review and quality measurement have distinct evidence states. There are no eligible P2 semantic or measured-quality results.
+4. **Partial:** the P2 proposal runner exports a bounded manifest/checksum bundle. Complete multi-stage artifact-bundle validation and rerun protocol remain open.
+5. **Implemented:** [`FINAL_RESEARCH_COMPLETION_REPORT.md`](FINAL_RESEARCH_COMPLETION_REPORT.md) records bounded technical evidence and separately marks the actual case experiment and research validation `BLOCKED_EXTERNAL`.
 
 ## External blockers and stop conditions
 

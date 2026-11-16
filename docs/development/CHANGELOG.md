@@ -1,5 +1,12 @@
 # Changelog
 
+## P8–P9 graph, interaction contracts and QAME trace — 2026-11-16
+
+- Added graph schema 1.0.0 with an explicit UNKNOWN Integration layer, a deterministic editable Draw.io export/download, and endpoint/XML tests. Unknown layers are graph-policy placeholders, not system facts.
+- Added versioned interaction contract/decision table; pipeline remains UNDECIDED unless a complete cited human decision passes the schema gate. The app has no interaction approval editor.
+- Added six-part QAME scenario completeness, source-span/provenance checks and ISO/IEC 25010:2023 `UNMAPPED` status. Prepared fixture values not present in the cited quote remain `UNSUPPORTED`; no measurement is inferred.
+- Verification: 104 tests pass; compileall, staged diff check and secret scan pass. [GitHub Actions run 43892678200](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43892678200) passed. Code commit `722c18245e0a7bd7f94674b2fd55c3174785613c` matches the remote feature branch. P2 live experiment remains externally blocked.
+
 ## P7 CP-SAT partition optimizer — 2026-11-16
 
 - Added a classical CP-SAT backend for 9–50 responsibility IDs while retaining exhaustive enumeration through R8. The backend proves the objective minimum, reports a capped optimal subset, and marks whether optimum enumeration completed; it does not enumerate/count every feasible partition.

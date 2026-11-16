@@ -690,5 +690,7 @@ def test_zip_export_contains_artifacts_and_versioned_snapshots():
             "validation_report.json",
             "snapshots/v1.json",
             "snapshots/v2.json",
+            "reproducibility_manifest.json",
+            "checksums.sha256.json",
         }
         assert json.loads(archive.read("snapshots/v2.json")) == {"status": "INFEASIBLE"}

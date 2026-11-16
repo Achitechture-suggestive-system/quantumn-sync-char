@@ -1,7 +1,7 @@
 # EQCR + QAME — Research Completion Status Report
 
 **Report date:** 2026-11-16
-**Code checkpoint:** `fc477903cef93db892057cb94ccc71e2c27d5103` on `feat/p1-semantic-validation`; [GitHub Actions run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed. This report describes verified work through that code checkpoint; subsequent commits only update documentation.
+**Code checkpoint:** `8707334310dcd8fb7520b9d519a6023b753143a3` on `feat/p1-semantic-validation`; [GitHub Actions run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. This report describes verified work through that code checkpoint; subsequent commits only update documentation.
 
 ## 1. Repository baseline and audited capabilities
 
@@ -14,7 +14,7 @@
 - **P2 infrastructure:** source-only annotation locking, hash/version gates, a reproducible local proposal runner, structural citation/duplicate checks, review dispositions and test-only causal wiring exist. The post-lock Tutor experiment remains blocked.
 - **P6:** a versioned experimental Tutor policy catalog emits soft candidate constraints only after accepted evidence, separate human architectural implication, approved responsibility endpoints and citations. The catalog is not independently validated as an architecture tactic.
 - **P7:** exhaustive enumeration remains through R8; CP-SAT is dispatched for R9–R50. It proves the declared objective before reporting capped optima; it does not enumerate or count the full feasible set. See [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md).
-- **P8:** architecture graph JSON now includes an explicit UNKNOWN Integration layer; Draw.io XML export is deterministic and available from Streamlit. Interaction contracts and their Sync/Async decision table are versioned; the current mode remains UNDECIDED and the UI has no contract-approval editor.
+- **P8:** architecture graph JSON now includes an explicit UNKNOWN Integration layer; Draw.io XML export is deterministic and available from Streamlit. The Human Review editor can store a complete, cited Sync/Async contract and recompute downstream artifacts. The Tutor mode remains UNDECIDED; exact citations do not establish semantic entailment.
 - **P9:** QAME profiles report all six scenario fields and citation/provenance state. Unreviewed ISO/IEC 25010:2023 characteristic IDs remain UNMAPPED. Targets do not create measurements.
 - **P10:** no measurement adapter was added because no runnable target and valid measurement conditions exist.
 - **Artifact export:** the app ZIP now includes versioned input/runtime/solver/provenance metadata and payload hashes, with a validator for checksum coverage and JSON members. It verifies archive integrity, not semantic validity or run authenticity.
@@ -57,6 +57,8 @@ At the P8/P9 code checkpoint:
 - Remote branch SHA matched `722c18245e0a7bd7f94674b2fd55c3174785613c`; CI run `43892678200` passed on Python 3.13, including dependency installation, regression/P1 tests and compilation.
 
 At the subsequent artifact-bundle milestone, the local full suite passed **110 tests**, compileall and `git diff --check` passed. The implementation commit `27f556d7087466ca4c97663994077362fe51e6ff` had an initial CI failure caused by a test assuming no GitHub environment metadata. Follow-up test commit `fc477903cef93db892057cb94ccc71e2c27d5103` isolates that environment and covers both local and CI metadata; [CI run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed.
+
+The interaction-contract review milestone then passed **114 tests** locally, including Streamlit render, exact-span rejection, before/after audit, and an explicit test-only unchanged-partition/QAME result. Compileall and `git diff --check` passed. Commit `8707334310dcd8fb7520b9d519a6023b753143a3` is pushed; [CI run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. No real reviewer decision was entered.
 
 These checks validate bounded code behavior, not case semantics or architecture quality.
 
@@ -125,7 +127,7 @@ The worksheet remains unfilled. No human decision, label, model result or semant
 
 | Status dimension | Result |
 |---|---|
-| `TECHNICALLY_COMPLETE` | `PARTIAL` — bounded P7–P9 behaviors, P2 runner and generic ZIP integrity validator are tested; interaction approval UI, a combined post-review Tutor replay bundle and P10 measurement remain open. |
+| `TECHNICALLY_COMPLETE` | `PARTIAL` — bounded P7–P9 behaviors, interaction review UI, P2 runner and generic ZIP integrity validator are tested; real architecture decisions, a combined post-review Tutor replay bundle and P10 measurement remain open. |
 | `CASE_EXPERIMENT_COMPLETE` | `BLOCKED_EXTERNAL` — no source-only lock, live post-lock model run, actual review decisions or real revision comparison. |
 | `RESEARCH_VALIDATED` | `BLOCKED_EXTERNAL` — no independent labels/adjudication, independent architecture validation or measured quality data. |
 | `BLOCKED_EXTERNAL` | `TRUE` — independent reviewers, source/license decisions and a runnable target are external dependencies. |

@@ -11,7 +11,7 @@ Manifest ghi case/run ID, execution mode, hash input requirements và source ref
 | Raw requirements, workflow, scenarios | `SOURCE_REQUIREMENTS`; hash canonical của gói raw và SourceRefs |
 | Responsibilities, relations, evidence | Đếm theo `provenance` hiện có; `PREPARED_FIXTURE` không đổi thành LLM output |
 | Constraints | Đếm theo `origin` đã ghi trong constraint |
-| Partitions, quanta, interactions, quality profiles | `DETERMINISTIC_TRANSFORMATION` hoặc policy/field-level provenance được nêu riêng; xem từng artifact để biết source refs và trạng thái |
+| Partitions, quanta, interactions, quality profiles | `DETERMINISTIC_TRANSFORMATION` hoặc policy/field-level provenance được nêu riêng; reviewed interaction contracts có `HUMAN_DECISION`; xem từng artifact để biết source refs và trạng thái |
 | Decisions và revisions | Đếm decision type; bản ghi chi tiết vẫn ở JSON artifact/snapshot |
 | LLM/model | Metadata chỉ có khi artifact thực sự chứa proposal; manifest trống không phải bằng chứng đã chạy model |
 

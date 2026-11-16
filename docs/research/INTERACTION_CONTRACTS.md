@@ -4,7 +4,11 @@
 
 Generated interaction edges use `EQCR-INTERACTION-CONTRACT@1.0.0`. The fields preserve operation, data dependency, request/response fields, versioning, consistency, latency, failure, retry, timeout, idempotency, source references and unresolved decisions. Missing values remain `UNKNOWN`. The generated case contract also carries `decision_table_id/version`, `selected_mode`, review state and provenance.
 
-The current pipeline emits `selected_mode=UNDECIDED`, `selection_status=UNDECIDED`, `decision_basis_status=INSUFFICIENT_EVIDENCE`, with deterministic provenance. It creates cited SYNC and ASYNC pattern hypotheses, but does not select either and does not treat them as operational contracts. The Streamlit review flow does not yet offer an interaction-contract approval editor.
+With no reviewer input, the pipeline emits `selected_mode=UNDECIDED`, `selection_status=UNDECIDED`, `decision_basis_status=INSUFFICIENT_EVIDENCE`, with deterministic provenance. It creates cited SYNC and ASYNC pattern hypotheses, but does not select either or treat them as operational contracts.
+
+The Human Review tab has a JSON editor for an interaction candidate. An approved input must satisfy the complete `InteractionContract` schema, include the reviewer, timezone-aware timestamp, rationale, explicit timing signal, and source refs that exactly resolve against the current requirements/workflow/scenario text. The pipeline records `HUMAN_DECISION` provenance, updates the interaction edge, and refreshes downstream quality and traceability artifacts. It stores a before/after decision and versioned snapshot. Since interaction contracts are not optimizer constraints, the partition result is expected to remain unchanged; the quality allocation is recomputed but does not currently consume the selected mode.
+
+The editor validates structure and exact spans only. It cannot determine whether the text semantically requires SYNC/ASYNC, whether a reviewer is qualified, or whether the source is independent of business ordering. Those remain human review obligations. Test decisions use `P2_TEST_ONLY`; the real Tutor case has no selected mode or reviewed contract.
 
 ## Versioned table `EQCR-SYNC-ASYNC-DECISION@1.0.0`
 

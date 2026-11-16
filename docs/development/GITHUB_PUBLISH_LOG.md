@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## Human-reviewed interaction contracts — 16/11/2026
+
+- Branch `feat/p1-semantic-validation`; P0 `main` không thay đổi.
+- Commit `8707334310dcd8fb7520b9d519a6023b753143a3` (`feat(p8): add reviewed interaction contract path`) đã push; `git ls-remote` xác nhận feature ref cùng SHA.
+- Thay đổi: Human Review UI chỉnh contract JSON; schema yêu cầu reviewer, timestamp timezone-aware, source refs, rationale và timing signal; source span phải khớp raw input chính xác. Pipeline ghi quyết định/revision, lưu snapshot và recompute downstream. Contract không ảnh hưởng optimizer constraints; QAME allocation hiện không tiêu thụ mode nên unchanged result được ghi rõ.
+- Verification trước push: 114 tests passed; AppTest render path, test-only contract changes, invalid source citation rejection, traceability/bundle provenance assertions; compileall và `git diff --check` passed. Secret scan staged không có match; chỉ stage 7 code/test paths cụ thể.
+- GitHub Actions [run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) completed success. Không có quyết định interaction thật cho Tutor; tests không phải LLM hoặc reviewer outcome.
+
 ## Reproducibility bundle manifest — 16/11/2026
 
 - Branch `feat/p1-semantic-validation`; không sửa `main` hoặc P0 tag.

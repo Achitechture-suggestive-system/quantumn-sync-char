@@ -1,5 +1,11 @@
 # Changelog
 
+## Human-reviewed interaction contracts — 2026-11-16
+
+- Added a Human Review JSON editor for complete Sync/Async contracts, exact source-span checks, explicit reviewer/rationale/timestamp, decision/revision records and versioned snapshots. Recomputes interaction, QAME and traceability outputs; the mode does not create optimizer constraints, so partitions remain unchanged by design.
+- Updated interaction provenance in run manifests. Source-span mapping is structural only; the editor does not establish semantic entailment or reviewer qualification. No real Tutor interaction decision was supplied.
+- Verification: 114 tests passed locally, including UI render, test-only approved contract propagation, invalid citation rejection, audit trace, unchanged partition/QAME behavior and bundle provenance. Compileall and diff checks passed. Commit `8707334310dcd8fb7520b9d519a6023b753143a3` matches the remote feature ref; [GitHub Actions run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed.
+
 ## Versioned run artifact bundle — 2026-11-16
 
 - App ZIP exports now include an `EQCR-REPRODUCIBILITY-BUNDLE@1.0.0` manifest, SHA-256 for input/source/review artifacts and each payload, code/runtime/dependency/optimizer metadata, and provenance counts. Missing source rights, versions, reviewer identity or CI result remain unrecorded.

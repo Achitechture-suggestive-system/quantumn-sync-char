@@ -31,7 +31,7 @@ Catalog entries must be reviewed and tied to a source before being treated as ar
 ## Milestone D — P8 graph, quantum assumptions and interaction contracts
 
 1. **Implemented and tested:** architecture graph schema 1.0.0 includes Actor → Presentation/Application → Quantum → Integration → Infrastructure. Integration/tier nodes and edges unsupported by requirements are explicit UNKNOWN placeholders with architectural-policy provenance.
-2. **Implemented and tested:** interaction contract and Sync/Async decision-table schemas are versioned. Pipeline retains `UNDECIDED`; schema blocks approved modes unless a cited human decision, reviewer, timezone-aware timestamp, non-contradictory signal and complete contract are present. Streamlit has no interaction approval editor; no real decision exists.
+2. **Implemented and tested:** interaction contract and Sync/Async decision-table schemas are versioned. Pipeline retains `UNDECIDED`; schema blocks approved modes unless a cited human decision, reviewer, timezone-aware timestamp, non-contradictory signal and complete contract are present. The Human Review editor records a decision/revision, checks exact source spans, recomputes downstream artifacts and saves a snapshot. No real Tutor decision exists, and semantic entailment remains a human responsibility.
 3. **Partial:** quantum ownership/deployment remain UNKNOWN. Existing candidate relationships are retained; richer independent deployment assumptions need architecture review and evidence.
 4. **Implemented and tested:** deterministic editable Draw.io XML export with stable cell IDs, layer layout, unknown styling and endpoint validation; Streamlit download is available. Tests parse XML but do not perform a Draw.io GUI round-trip.
 

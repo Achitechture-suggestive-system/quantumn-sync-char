@@ -46,8 +46,27 @@ def _request(path: str, *, payload: dict[str, Any] | None = None, timeout: int =
 
 
 def list_models() -> list[str]:
+    return sorted(item["name"] for item in list_model_details() if item.get("name"))
+
+
+def list_model_details() -> list[dict[str, Any]]:
+    """Return non-secret local model metadata, including the model digest when supplied."""
     response = _request("/api/tags")
-    return sorted(item["name"] for item in response.get("models", []) if item.get("name"))
+    fields = ("name", "digest", "size", "modified_at", "details")
+    return [
+        {key: item.get(key) for key in fields if key in item}
+        for item in response.get("models", [])
+        if item.get("name")
+    ]
+
+
+def get_ollama_version() -> str:
+    """Read the local Ollama API version for a reproducibility manifest."""
+    response = _request("/api/version")
+    version = response.get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise OllamaError("Local Ollama did not return a version string from /api/version.")
+    return version.strip()
 
 
 def propose_responsibilities(
@@ -371,6 +390,8 @@ def propose_responsibilities(
         "inference_started_at_utc": inference_started_at_utc,
         "inference_completed_at_utc": datetime.now(timezone.utc).isoformat(),
         "generation_parameters": GENERATION_PARAMETERS,
+        "raw_response": content,
+        "raw_response_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
         "output_schema": output_schema,
         "prompt": prompt,
         "context_summary": parsed.context_summary,

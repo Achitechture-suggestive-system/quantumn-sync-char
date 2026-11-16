@@ -356,7 +356,7 @@ with input_tab:
                 blind_template = build_blind_annotation_template(st.session_state.fixture["raw_requirements"])
                 blind_input_key = f"p2_blind_annotation_{blind_template['source_bundle_sha256'][:12]}"
                 blind_annotation_text = st.text_area(
-                    "Source-only annotation JSON (0..N responsibilities per FR; relation rows default to NOT_ANNOTATED)",
+                    "Source-only annotation JSON (0..N roles per FR; attest source-only work and no prior model-output exposure)",
                     value=json.dumps(blind_template, ensure_ascii=False, indent=2),
                     height=420,
                     key=blind_input_key,

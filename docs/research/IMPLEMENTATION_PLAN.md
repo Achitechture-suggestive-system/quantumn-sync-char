@@ -4,10 +4,10 @@ This plan follows the repository audit. It preserves the existing P0 baseline an
 
 ## Milestone A — P2 experiment reproducibility (next)
 
-1. Add a deterministic command path that accepts the original prepared case and a verified, source-only lock; validate protocol, source hash, timestamps, model/schema/prompt versions, and output directory before calling local Ollama.
-2. Export raw proposal bundle and a machine-readable run manifest with code SHA, package versions, input/annotation hashes, model response, prompt version, generation settings, timestamps, and output hashes. Do not include credentials or overwrite existing runs.
-3. Add an evaluator that reports structural citation correctness, coverage/unresolved cases, duplicate/error categories, and semantic mapping only when an independently prepared adjudication file contains explicit reference and model-to-reference matching decisions.
-4. Keep `P2_BLOCKED_INDEPENDENT_ANNOTATION` when no qualified, unexposed reviewer supplies a lock. Do not invoke Ollama or fabricate decisions in that state.
+1. **Infrastructure implemented:** `scripts/run_p2_experiment.py` accepts the prepared case and a verified source-only lock; checks protocol/source/timestamps/model/schema/prompt versions and clean Git state before local Ollama.
+2. **Infrastructure implemented:** export raw proposal and structural-evaluation JSON, manifest with code/package/input/annotation/model/prompt/timestamp metadata, per-file hashes, and a ZIP under a unique ignored run directory. Existing run directories are never overwritten.
+3. **Infrastructure implemented, metrics gated:** deterministic report counts exact citation resolution, FR proposal coverage/unresolved cases, relation statuses, duplicates and structural error types. Semantic relation/responsibility metrics remain unavailable until an independently prepared adjudication file and explicit match decisions exist.
+4. **Current state:** `P2_BLOCKED_INDEPENDENT_ANNOTATION`; no qualified, unexposed reviewer has supplied a lock. The CLI returns this blocker before model discovery or inference. Do not fabricate decisions.
 
 ## Milestone B — P4–P6 evidence and policy rules
 

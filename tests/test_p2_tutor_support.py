@@ -22,6 +22,7 @@ def _test_blind_lock(raw):
     submission = build_blind_annotation_template(raw)
     submission["reviewer_id"] = "test-reviewer"
     submission["source_only_attested"] = True
+    submission["no_prior_model_output_exposure"] = True
     return lock_blind_annotation(raw, submission, locked_at="2026-01-01T00:00:00+00:00")
 
 
@@ -484,7 +485,7 @@ def test_blind_annotation_protocol_is_source_only_and_supports_zero_to_many_labe
     submission = build_blind_annotation_template(raw)
     assert set(submission) == {
         "protocol_version", "case_id", "source_bundle_sha256", "reviewer_id",
-        "source_only_attested", "responsibility_annotations", "unresolved_requirement_ids",
+        "source_only_attested", "no_prior_model_output_exposure", "responsibility_annotations", "unresolved_requirement_ids",
         "relation_registry",
     }
     assert len(submission["relation_registry"]) == 60
@@ -494,7 +495,13 @@ def test_blind_annotation_protocol_is_source_only_and_supports_zero_to_many_labe
     assert {item["status"] for item in submission["relation_registry"]} == {"NOT_ANNOTATED"}
     assert all("architecture_implication" not in item for item in submission["relation_registry"])
 
-    submission.update({"reviewer_id": "independent-test-annotator", "source_only_attested": True})
+    submission.update(
+        {
+            "reviewer_id": "independent-test-annotator",
+            "source_only_attested": True,
+            "no_prior_model_output_exposure": True,
+        }
+    )
     submission["responsibility_annotations"] = [
         {
             "annotation_id": "A-FR-01", "name": "Search tutors", "activity": "Search",
@@ -549,7 +556,13 @@ def test_blind_annotation_protocol_is_source_only_and_supports_zero_to_many_labe
     assert not verify_blind_annotation_lock(raw, changed)
 
     source_only_candidate = build_blind_annotation_template(raw)
-    source_only_candidate.update({"reviewer_id": "annotator", "source_only_attested": True})
+    source_only_candidate.update(
+        {
+            "reviewer_id": "annotator",
+            "source_only_attested": True,
+            "no_prior_model_output_exposure": True,
+        }
+    )
     architecture_row = next(
         item for item in source_only_candidate["relation_registry"]
         if item["predicate"] == "SHARES_STATE_OR_INVARIANT"

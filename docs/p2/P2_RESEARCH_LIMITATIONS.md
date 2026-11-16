@@ -2,6 +2,7 @@
 
 - Tutor Support là prepared case nhỏ, không phải requirements thu thập từ production hoặc bộ test đại diện ngành.
 - Các qwen3:4b v6 artifacts có sẵn được tạo trước blind checkpoint; chúng mang trạng thái `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`. Chưa có inference mới sau source-only lock trong checkout hiện tại.
+- Trạng thái thực nghiệm là `P2_BLOCKED_INDEPENDENT_ANNOTATION`: chưa có reviewer chưa tiếp xúc output v6/v7 cung cấp annotation được khóa. Attestation trong app tự khai báo; nó không xác minh identity hoặc lịch sử truy cập.
 - Hash/timestamp checkpoint giúp phát hiện thay đổi và xác nhận thứ tự trong app; reviewer ID tự khai báo, chưa xác minh danh tính ngoài ứng dụng. Checkpoint không chứng minh việc tuân thủ blinding hoặc độc lập giữa reviewers.
 - Chưa có hai source-only annotators, adjudication hay gold labels. Khoa học/trạng thái hiện tại là `ANNOTATION_PROTOCOL_DRAFT — GOLD_LABELS_NOT_AVAILABLE`. Không báo cáo precision, recall, F1, accuracy, agreement hoặc semantic correctness score.
 - `SOURCE_BACKED` chỉ nói citation ID/span đã ánh xạ. Nó không chứng minh entailment hoặc semantic correctness. `APPROVED` ghi nhận quyết định reviewer; nó không tự tạo nhãn gold hoặc xác nhận thực nghiệm.

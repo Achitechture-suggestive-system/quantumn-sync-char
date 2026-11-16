@@ -4,6 +4,8 @@
 
 Worksheet này dành cho một người annotator đọc **chỉ requirements, workflow và quality scenarios** của Tutor Support. Hoàn thành, lưu và khóa nó trước khi mở bất kỳ output Ollama nào. Không có proposal, model name hay model rationale trong phần source-only. File này là mẫu trống; chưa có nhãn chuyên gia.
 
+**Điều kiện độc lập:** sử dụng annotator chưa từng xem model proposals của Tutor Support, kể cả output v6 lịch sử được mô tả trong `LLM_EXTRACTION_EVALUATION.md`. Không mở evaluation/model-review artifacts cho annotator trước khi họ khóa annotation. Nếu chưa có người đáp ứng điều kiện này, ghi `P2_BLOCKED_INDEPENDENT_ANNOTATION`; không tự điền hoặc gắn nhãn blind cho người đã xem model output.
+
 Trạng thái nghiên cứu hiện tại: `ANNOTATION_PROTOCOL_DRAFT — GOLD_LABELS_NOT_AVAILABLE`. Một bản do một người điền có thể là annotation độc lập trước model, nhưng chưa tạo thành gold labels. Cần ít nhất hai annotator làm riêng và bước adjudication đã định trước để tạo reference set.
 
 ## Quy tắc cardinality
@@ -30,12 +32,14 @@ Mỗi dòng bắt đầu ở `NOT_ANNOTATED`. Người annotator có thể đán
 ## Gửi annotation
 
 1. Chọn **Load Tutor Support P2 case** và chỉ đọc khung **Raw requirements, workflow, and scenarios**.
-2. Tải mẫu JSON hiển thị trong **Source-only annotation JSON**. Điền annotator ID tự khai báo, xác nhận `source_only_attested=true`, annotations 0..N và unresolved FRs.
+2. Tải mẫu JSON hiển thị trong **Source-only annotation JSON**. Điền annotator ID tự khai báo, xác nhận `source_only_attested=true` và `no_prior_model_output_exposure=true`, annotations 0..N và unresolved FRs. Hai attestation này được ghi lại nhưng danh tính/lịch sử truy cập không được kiểm chứng bên ngoài app.
 3. Cập nhật các dòng trong relation registry cần annotation; để các dòng còn lại là `NOT_ANNOTATED`.
-4. Dùng **Lock source-only annotation before model review**. Ứng dụng kiểm tra case/source hash, IDs, coverage, universe quan hệ và citations, sau đó thêm thời khóa biểu UTC cùng hash annotation.
-5. Tải và lưu bản JSON đã khóa trước khi bật model output. Không sửa bản đã khóa; muốn sửa phải tạo phiên bản annotation mới và khóa lại trước khi mở proposal.
+4. Dùng **Lock source-only annotation before model review**. Protocol `P2-BLIND-ANNOTATION-v2` yêu cầu cả hai attestation, rồi kiểm tra case/source hash, IDs, coverage, universe quan hệ và citations; app ghi UTC timestamp và hash annotation.
+5. Tải và lưu bản JSON đã khóa. Không sửa bản đã khóa; muốn sửa phải tạo phiên bản annotation mới và khóa lại trước khi mở proposal.
+6. Trên checkout đã commit, clean, có local model `qwen3:4b`, chạy lệnh trong [P2 validation report](P2_VALIDATION_REPORT.md). Output được tạo dưới `runs/p2-experiments/<run-id>/`; folder cũ không bị ghi đè.
+7. Chỉ sau inference mới mở [P2_MODEL_REVIEW.md](P2_MODEL_REVIEW.md) và ghi disposition/rationale thật. Dùng source IDs/FRs; đừng dùng test fixture làm reviewer decision.
 
-Hash chỉ là integrity checkpoint cục bộ. Reviewer identity tự khai báo, không được xác thực bên ngoài; checkpoint không chứng minh người đó đã tuân thủ blinding.
+Hash chỉ là integrity checkpoint cục bộ. Reviewer identity và không-tiếp-xúc-model-output attestation tự khai báo, không được xác thực bên ngoài; checkpoint không chứng minh lịch sử truy cập hoặc tuân thủ blinding. Nếu chưa có reviewer chưa từng thấy model output v6/v7, giữ trạng thái `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
 
 ## Tiêu chí khóa
 

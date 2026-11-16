@@ -13,7 +13,7 @@ from pydantic import Field, model_validator
 from .models import StrictModel
 
 
-BLIND_PROTOCOL_VERSION = "P2-BLIND-ANNOTATION-v1"
+BLIND_PROTOCOL_VERSION = "P2-BLIND-ANNOTATION-v2"
 MAX_OPTIMIZER_RESPONSIBILITIES = 8
 RELATION_PREDICATES = {
     "BUSINESS_PRECEDES": "directed business/workflow ordering only; never an architecture constraint by itself",
@@ -106,11 +106,12 @@ class BlindRelationAnnotation(StrictModel):
 
 
 class BlindAnnotationSubmission(StrictModel):
-    protocol_version: Literal["P2-BLIND-ANNOTATION-v1"]
+    protocol_version: Literal["P2-BLIND-ANNOTATION-v2"]
     case_id: str
     source_bundle_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     reviewer_id: str = Field(min_length=1)
     source_only_attested: bool
+    no_prior_model_output_exposure: bool
     responsibility_annotations: list[BlindResponsibilityAnnotation] = Field(default_factory=list)
     unresolved_requirement_ids: list[str] = Field(default_factory=list)
     relation_registry: list[BlindRelationAnnotation]
@@ -180,6 +181,7 @@ def build_blind_annotation_template(raw: dict) -> dict:
         "source_bundle_sha256": source_bundle_sha256(raw),
         "reviewer_id": "",
         "source_only_attested": False,
+        "no_prior_model_output_exposure": False,
         "responsibility_annotations": [],
         "unresolved_requirement_ids": requirement_ids,
         "relation_registry": build_relation_registry(raw),
@@ -202,6 +204,10 @@ def lock_blind_annotation(raw: dict, submission: dict, *, locked_at: str | None 
         raise ValueError("Blind annotation is bound to a different or changed source package.")
     if not parsed.source_only_attested:
         raise ValueError("Reviewer must attest that this annotation was completed from source-only materials.")
+    if not parsed.no_prior_model_output_exposure:
+        raise ValueError(
+            "Reviewer must attest that they have not seen model output for this case; otherwise use a different annotator."
+        )
 
     covered_requirement_ids: set[str] = set()
     normalized = parsed.model_dump(mode="json")
@@ -234,7 +240,14 @@ def lock_blind_annotation(raw: dict, submission: dict, *, locked_at: str | None 
     if set(provided_by_id) != set(expected_by_id):
         raise ValueError("The relation registry must explicitly contain every directed and undirected pair row.")
     workflow_ids = set(workflow_by_id)
-    now = locked_at or datetime.now(timezone.utc).isoformat()
+    raw_lock_time = locked_at or datetime.now(timezone.utc).isoformat()
+    try:
+        parsed_lock_time = datetime.fromisoformat(raw_lock_time.replace("Z", "+00:00"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Blind annotation lock time must be a valid timezone-aware ISO-8601 timestamp.") from exc
+    if parsed_lock_time.tzinfo is None:
+        raise ValueError("Blind annotation lock time must include a timezone.")
+    now = parsed_lock_time.astimezone(timezone.utc).isoformat()
     for index, relation in enumerate(parsed.relation_registry):
         expected = expected_by_id[relation.relation_id]
         for key in ("subject_requirement_id", "predicate", "object_requirement_id", "direction"):
@@ -253,19 +266,19 @@ def lock_blind_annotation(raw: dict, submission: dict, *, locked_at: str | None 
             )
 
     annotation_hash = _canonical_sha256(normalized)
-    return {
-        "annotation": normalized,
-        "lock": {
-            "protocol_version": BLIND_PROTOCOL_VERSION,
-            "case_id": raw["case_id"],
-            "source_bundle_sha256": expected_source_hash,
-            "annotation_sha256": annotation_hash,
-            "reviewer_id": parsed.reviewer_id,
-            "locked_at": now,
-            "integrity_status": "LOCKED_HASH_VERIFIED",
-            "identity_status": "REVIEWER_ID_SELF_REPORTED",
-        },
+    lock = {
+        "protocol_version": BLIND_PROTOCOL_VERSION,
+        "case_id": raw["case_id"],
+        "source_bundle_sha256": expected_source_hash,
+        "annotation_sha256": annotation_hash,
+        "reviewer_id": parsed.reviewer_id,
+        "locked_at": now,
+        "integrity_status": "LOCKED_HASH_VERIFIED",
+        "identity_status": "REVIEWER_ID_SELF_REPORTED",
+        "exposure_status": "NO_PRIOR_MODEL_OUTPUT_EXPOSURE_SELF_REPORTED",
     }
+    lock["lock_sha256"] = _canonical_sha256(lock)
+    return {"annotation": normalized, "lock": lock}
 
 
 def verify_blind_annotation_lock(raw: dict, locked_bundle: dict | None) -> bool:
@@ -275,11 +288,16 @@ def verify_blind_annotation_lock(raw: dict, locked_bundle: dict | None) -> bool:
     lock = locked_bundle.get("lock")
     if not isinstance(annotation, dict) or not isinstance(lock, dict):
         return False
+    lock_payload = {key: value for key, value in lock.items() if key != "lock_sha256"}
     return bool(
         lock.get("protocol_version") == BLIND_PROTOCOL_VERSION
         and lock.get("case_id") == raw.get("case_id") == annotation.get("case_id")
         and lock.get("source_bundle_sha256") == source_bundle_sha256(raw) == annotation.get("source_bundle_sha256")
         and lock.get("reviewer_id") == annotation.get("reviewer_id")
+        and annotation.get("source_only_attested") is True
+        and annotation.get("no_prior_model_output_exposure") is True
         and lock.get("annotation_sha256") == _canonical_sha256(annotation)
+        and lock.get("exposure_status") == "NO_PRIOR_MODEL_OUTPUT_EXPOSURE_SELF_REPORTED"
+        and lock.get("lock_sha256") == _canonical_sha256(lock_payload)
         and lock.get("integrity_status") == "LOCKED_HASH_VERIFIED"
     )

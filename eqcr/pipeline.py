@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from copy import deepcopy
+from decimal import Decimal
 from typing import Any, Iterable, Iterator
 
 import networkx as nx
@@ -16,6 +17,7 @@ from .models import (
     RelationAnnotation,
     Responsibility,
 )
+from .cpsat_optimizer import optimize_with_cpsat
 from .traceability import refresh_traceability_artifact
 
 
@@ -74,7 +76,12 @@ def _optimize(
     selection_policy: str = "FIRST_OPTIMAL",
 ) -> dict[str, Any]:
     if len(responsibility_ids) > 8:
-        raise ValueError("Exhaustive candidate enumeration is capped at eight responsibilities (Bell(8)=4140).")
+        return optimize_with_cpsat(
+            responsibility_ids,
+            constraints,
+            preferred_partition,
+            selection_policy,
+        )
     if not responsibility_ids:
         return {
             "enumerated_partition_count": 0,
@@ -96,6 +103,7 @@ def _optimize(
     active_hard = [c for c in constraints if c.enabled and c.hardness == "HARD"]
     active_soft = [c for c in constraints if c.enabled and c.hardness == "SOFT"]
     feasible: list[dict[str, Any]] = []
+    exact_costs: list[Decimal] = []
     for partition in all_partitions:
         if any(
             (c.relation == "MUST_LINK" and not _same_group(partition, c.left, c.right))
@@ -103,13 +111,15 @@ def _optimize(
             for c in active_hard
         ):
             continue
-        cost = sum(
-            c.weight
+        exact_cost = sum(
+            (Decimal(str(c.weight))
             for c in active_soft
             if (c.relation == "MUST_LINK" and not _same_group(partition, c.left, c.right))
-            or (c.relation == "CANNOT_LINK" and _same_group(partition, c.left, c.right))
+            or (c.relation == "CANNOT_LINK" and _same_group(partition, c.left, c.right))),
+            Decimal(0),
         )
-        feasible.append({"groups": [list(g) for g in partition], "objective_cost": cost})
+        exact_costs.append(exact_cost)
+        feasible.append({"groups": [list(g) for g in partition], "objective_cost": float(exact_cost)})
 
     conflicts = _constraint_conflicts(constraints)
     if not feasible and not conflicts:
@@ -123,14 +133,15 @@ def _optimize(
             }
         )
     if feasible:
-        min_cost = min(item["objective_cost"] for item in feasible)
-        optimal = [item for item in feasible if item["objective_cost"] == min_cost]
+        min_cost_exact = min(exact_costs)
+        min_cost = float(min_cost_exact)
+        optimal = [item for item, cost in zip(feasible, exact_costs, strict=True) if cost == min_cost_exact]
     else:
         min_cost = None
         optimal = []
-    for index, candidate in enumerate(feasible, start=1):
-        candidate["candidate_id"] = f"P{index:03d}"
-        candidate["is_optimal"] = candidate["objective_cost"] == min_cost
+    for index, candidate in enumerate(feasible):
+        candidate["candidate_id"] = f"P{index + 1:03d}"
+        candidate["is_optimal"] = min_cost is not None and exact_costs[index] == min_cost_exact
 
     preferred = next(
         (
@@ -836,9 +847,25 @@ def run_pipeline(
     quanta["architecture_graph"] = _build_architecture_graph(raw, quanta, interactions, evidence)
     quality = _build_quality(raw, responsibilities, quanta)
 
-    has_conflict = bool(optimization["conflicts"]) or optimization["feasible_candidate_count"] == 0
+    has_conflict = optimization["result_status"] == "INFEASIBLE"
     constraint_status = "INFEASIBLE" if has_conflict else "PASS"
-    candidate_status = "INFEASIBLE" if not optimization["feasible_candidate_count"] else "PASS"
+    candidate_status = (
+        "INFEASIBLE"
+        if has_conflict
+        else "PASS"
+        if optimization["selected_candidate_id"]
+        else "REVIEW_REQUIRED"
+    )
+    if optimization.get("solver_backend") == "CP_SAT":
+        optimization_summary = (
+            f"CP-SAT status {optimization['solver_status']}; reported {optimization['optimal_candidate_count']} "
+            f"optimal candidates; complete optimum enumeration={optimization['optimal_candidate_set_complete']}."
+        )
+    else:
+        optimization_summary = (
+            f"Enumerated {optimization['enumerated_partition_count']} partitions; "
+            f"{optimization['optimal_candidate_count']} optimal candidates."
+        )
     source_texts = {
         item.source_ref.source_id: item.text for item in raw.requirements
     }
@@ -928,7 +955,7 @@ def run_pipeline(
         ),
         _step("03", "Evidence Modeling", "PASS" if any(item.status == "UNKNOWN" for item in evidence) else "REVIEW_REQUIRED", "Typed evidence keeps UNKNOWN distinct from false.", ["evidence"]),
         _step("04", "Constraint & Quality Reasoning", constraint_status, "Direct hard must/cannot conflicts are reported with their policy IDs.", ["constraints"]),
-        _step("05", "Candidate Optimization", candidate_status, f"Enumerated {optimization['enumerated_partition_count']} partitions; {optimization['optimal_candidate_count']} optimal candidates.", ["partitions"]),
+        _step("05", "Candidate Optimization", candidate_status, optimization_summary, ["partitions"]),
         _step("06", "Quantum Boundary Refinement", quanta["assignment_validation_status"], "Primary assignment is checked for exactly-once coverage; deployability remains unverified.", ["quanta"]),
         _step("07", "Interaction Design — Sync / Async", interactions["status"], "Conditional Sync and Async patterns are listed as hypotheses; protocol selection remains unresolved without consistency and runtime evidence.", ["interactions"]),
         _step("08", "Quality Allocation — QAME", quality["status"], "Each supplied quality scenario is traced to its responsibility and proposed quantum; missing targets and measurements remain explicit.", ["quality_profiles"]),
@@ -957,9 +984,16 @@ def run_pipeline(
                 }
                 and set(unresolved_requirement_ids) == set(derived_unresolved_requirement_ids)
             ),
-            "optimizer_responsibility_cap_respected": len(responsibilities) <= 8,
+            "optimizer_responsibility_cap_respected": (
+                len(responsibilities) <= 8
+                or optimization.get("solver_backend") == "CP_SAT" and len(responsibilities) <= 50
+            ),
             "unknown_is_not_false": any(item.status == "UNKNOWN" for item in evidence),
-            "bell_6_count_is_203": optimization["enumerated_partition_count"] == 203,
+            "bell_6_count_is_203": (
+                optimization["enumerated_partition_count"] == 203
+                if len(responsibilities) == 6
+                else None
+            ),
             "fixture_has_10_zero_cost_optima": (
                 (
                     not has_conflict
@@ -1037,6 +1071,7 @@ def run_pipeline(
         "validation_report": validation_report,
         "metadata": {
             "execution_mode": execution_mode,
+            "optimizer_backend": optimization.get("solver_backend", "EXHAUSTIVE_ENUMERATOR"),
             "fixture_label": fixture["fixture_label"],
             "fixture_note": fixture["fixture_note"],
             "responsibility_provenance": fixture.get("responsibility_provenance", fixture["fixture_label"]),
@@ -1079,7 +1114,9 @@ def run_pipeline(
             "Identifiers and hard-constraint consistency are checked; policy truth is not established.",
         ),
         "partitions": (
-            "DETERMINISTIC_EXHAUSTIVE_ENUMERATION",
+            "CP_SAT_INTEGER_OPTIMIZER"
+            if optimization.get("solver_backend") == "CP_SAT"
+            else "DETERMINISTIC_EXHAUSTIVE_ENUMERATION",
             ["responsibilities", "constraints"],
             optimization["result_status"],
             "Set-partition coverage and configured constraints only; architectural quality is not verified.",

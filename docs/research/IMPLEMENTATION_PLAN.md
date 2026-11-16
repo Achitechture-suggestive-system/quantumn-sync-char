@@ -22,11 +22,11 @@ Catalog entries must be reviewed and tied to a source before being treated as ar
 
 ## Milestone C — P7 optimizer verification and scale
 
-1. Publish the objective and weight policy in machine-readable and human-readable form. Current objective: `J = Σ weight(c)` for each enabled soft constraint `c` violated by a partition; hard constraints filter feasibility.
-2. Preserve the exhaustive enumerator as the small-instance oracle and retain all co-optimal solutions.
-3. Add an optional CP-SAT solver behind an explicit size threshold only after it matches the exhaustive oracle for all generated small test cases and randomized seeded cases.
-4. Record solver version, seed, time limit, optimality status and any enumeration cap. Add hard-feasibility validation independent of the solver, transitivity tests, all-optimum tests, infeasibility explanation and weight sensitivity artifacts.
-5. Keep a clear result distinction between `OPTIMAL_FOR_DECLARED_OBJECTIVE` and architectural validation; solver optimum is not a validated architecture.
+1. **Implemented:** [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md) defines `J = Σ weight(c)` for each enabled soft constraint violated; hard constraints filter feasibility. Parsed float weights are converted through their decimal string representation to integer coefficients without further rounding and within explicit limits.
+2. **Preserved:** exhaustive enumeration through eight roles remains default, enumerates all candidates, and is retained as the small-instance oracle.
+3. **Implemented and bounded-verified:** CP-SAT is automatically dispatched for 9–50 roles. It matched an independent product-label oracle on 12 seeded four-role cases and the exhaustive backend on a separate case. Tests cover transitivity, hard conflict explanation, determinism, multiple optima, cap/truncation and sensitivity mechanics.
+4. **Implemented:** output records OR-Tools version, seed, single-worker setting, per-solve time limit, candidate cap, objective status and whether the optimum set enumeration is complete. Sensitivity scenarios are caller-supplied and explicitly non-empirical.
+5. **Remaining:** no scale benchmark at 50 roles, broad runtime distribution, weight range validated by domain experts, or architectural validation. Small algorithm tests do not establish research or architecture validity; see [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md).
 
 ## Milestone D — P8 graph, quantum assumptions and interaction contracts
 

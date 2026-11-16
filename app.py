@@ -539,11 +539,19 @@ with quantum_tab:
     if artifacts:
         st.subheader("Candidate optimization")
         partitions = artifacts["partitions"]
-        st.write(
-            f"Enumerated **{partitions['enumerated_partition_count']}** set partitions; "
-            f"**{partitions['feasible_candidate_count']}** satisfy active hard constraints; "
-            f"**{partitions['optimal_candidate_count']}** tie at J = {partitions['objective_minimum']}."
-        )
+        if partitions.get("solver_backend") == "CP_SAT":
+            st.write(
+                f"CP-SAT proved the declared objective minimum J = **{partitions['objective_minimum']}**; "
+                f"**{partitions['optimal_candidate_count']}** optimal candidates are reported. "
+                f"The complete optimal set was enumerated: **{partitions['optimal_candidate_set_complete']}**."
+            )
+            st.caption("The feasible set was not exhaustively enumerated; the result is not an architecture recommendation.")
+        else:
+            st.write(
+                f"Enumerated **{partitions['enumerated_partition_count']}** set partitions; "
+                f"**{partitions['feasible_candidate_count']}** satisfy active hard constraints; "
+                f"**{partitions['optimal_candidate_count']}** tie at J = {partitions['objective_minimum']}."
+            )
         st.caption(partitions["interpretation"])
         st.dataframe(partitions["optimal_candidates"], width="stretch", hide_index=True)
         st.subheader("Selected display candidate — proposed, not verified")

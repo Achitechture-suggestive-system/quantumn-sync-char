@@ -545,29 +545,38 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
 
     partition_set_node = "partition-set:current"
     partition_data = artifacts["partitions"]
+    candidate_rows = partition_data.get("reported_candidates", partition_data["feasible_candidates"])
+    candidate_reporting_scope = partition_data.get("candidate_reporting_scope", "ALL_FEASIBLE_PARTITIONS")
     add_node(
         partition_set_node,
-        "PARTITION_ENUMERATION",
+        "PARTITION_OPTIMIZATION" if partition_data.get("solver_backend") == "CP_SAT" else "PARTITION_ENUMERATION",
         enumerated_count=partition_data["enumerated_partition_count"],
         feasible_count=partition_data["feasible_candidate_count"],
         optimal_count=partition_data["optimal_candidate_count"],
+        candidate_reporting_scope=candidate_reporting_scope,
+        optimal_candidate_set_complete=partition_data.get("optimal_candidate_set_complete", True),
+        solver_backend=partition_data.get("solver_backend", "EXHAUSTIVE_ENUMERATOR"),
         result_status=partition_data["result_status"],
     )
     partition_node_ids: set[str] = set()
-    for candidate in partition_data["feasible_candidates"]:
+    for candidate in candidate_rows:
         candidate_id = candidate["candidate_id"]
         candidate_node = f"partition:{candidate_id}"
         partition_node_ids.add(candidate_node)
         add_node(
             candidate_node,
-            "FEASIBLE_PARTITION_CANDIDATE",
+            candidate.get("candidate_kind", "FEASIBLE_PARTITION_CANDIDATE"),
             candidate_id=candidate_id,
             groups=candidate["groups"],
             objective_cost=candidate["objective_cost"],
             is_optimal=candidate["is_optimal"],
             selected_for_display=candidate_id == partition_data["selected_candidate_id"],
         )
-        add_edge(partition_set_node, candidate_node, "CONTAINS_FEASIBLE_CANDIDATE")
+        add_edge(
+            partition_set_node,
+            candidate_node,
+            "REPORTS_OPTIMAL_CANDIDATE" if candidate_reporting_scope == "OPTIMAL_CANDIDATES_ONLY" else "CONTAINS_FEASIBLE_CANDIDATE",
+        )
         for group_index, group in enumerate(candidate["groups"], start=1):
             for responsibility_id in group:
                 if responsibility_id in responsibility_by_id:
@@ -796,8 +805,13 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             }
             for issue in issues
         ),
-        "all_feasible_candidates_are_linked": len(partition_node_ids)
-        == partition_data["feasible_candidate_count"],
+        "all_feasible_candidates_are_linked": (
+            len(partition_node_ids) == partition_data["feasible_candidate_count"]
+            if candidate_reporting_scope == "ALL_FEASIBLE_PARTITIONS"
+            and partition_data["feasible_candidate_count"] is not None
+            else None
+        ),
+        "all_reported_partition_candidates_are_linked": len(partition_node_ids) == len(candidate_rows),
         "workflow_mapping_gaps_are_explicit": len(workflow_mappings)
         == len(responsibility_by_id)
         and all(item["status"] in {"MAPPED", "UNRESOLVED"} for item in workflow_mappings),
@@ -818,7 +832,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
         ),
         "no_unresolved_reference_issues": not issues,
     }
-    all_valid = all(assertions.values())
+    all_valid = all(value is not False for value in assertions.values())
     return {
         "status": "PASS" if all_valid else "FAIL",
         "review_status": "REVIEW_REQUIRED",
@@ -836,11 +850,13 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             "relation_annotation_count": len(relation_by_id),
             "constraint_count": len(constraint_by_id),
             "feasible_partition_count": len(partition_node_ids),
+            "reported_partition_count": len(candidate_rows),
         },
         "assertions": assertions,
         "note": (
             "Links describe recorded references and transformations. They do not prove semantic support, "
-            "policy truth, architecture quality, or empirical verification."
+            "policy truth, architecture quality, or empirical verification. CP-SAT reports only the optimal subset, "
+            "so graph linkage does not imply that all feasible partitions were enumerated."
         ),
     }
 

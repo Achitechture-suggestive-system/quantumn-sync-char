@@ -452,7 +452,8 @@ def test_source_checked_llm_proposals_can_feed_candidate_pipeline():
                 "name": f"Proposed {original['name']}",
                 "activity": original["activity"],
                 "operation": original["operation"],
-                "requirement_id": requirement["id"],
+                "requirement_ids": [requirement["id"]],
+                "decomposition_rationale": "Test proposal grounded in the cited FR.",
                 "source_id": source_id,
             }
         )
@@ -526,7 +527,8 @@ def _make_llm_bundle(fixture):
                 "name": original["name"],
                 "activity": original["activity"],
                 "operation": original["operation"],
-                "requirement_id": requirement["id"],
+                "requirement_ids": [requirement["id"]],
+                "decomposition_rationale": "Test proposal grounded in the cited FR.",
             }
         )
     return {
@@ -558,7 +560,7 @@ def _make_llm_bundle(fixture):
 def test_invalid_llm_source_reference_stays_review_required(monkeypatch):
     fixture = get_fixture()
     bundle = _make_llm_bundle(fixture)
-    bundle["proposals"][0]["requirement_id"] = "FR-99"
+    bundle["proposals"][0]["requirement_ids"] = ["FR-99"]
     request_capture = {}
 
     def fake_request(*args, **kwargs):
@@ -572,10 +574,10 @@ def test_invalid_llm_source_reference_stays_review_required(monkeypatch):
     result = propose_responsibilities(fixture["raw_requirements"], "test-model")
     assert result["status"] == "REVIEW_REQUIRED"
     assert result["can_apply_to_fixture"] is False
-    assert result["proposals"][0]["requirement_id_valid"] is False
-    assert result["proposals"][0]["source_id_valid"] is False
+    assert result["proposals"][0]["requirement_ids_valid"] is False
+    assert result["proposals"][0]["source_ids_valid"] is False
     assert isinstance(request_capture["format"], dict)
-    assert result["prompt_version"] == "requirements-context-responsibility-evidence-boundary-v6"
+    assert result["prompt_version"] == "requirements-context-multiresponsibility-relation-boundary-v7"
     assert len(result["input_sha256"]) == 64
     prompt = request_capture["messages"][0]["content"]
     assert "ADDITIONAL CONTEXT FOR SUMMARY ONLY" in prompt

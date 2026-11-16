@@ -1,36 +1,56 @@
 # P2 — Báo cáo validation
 
-## Tóm tắt trạng thái
+## Trạng thái
 
-`feat/p1-semantic-validation` hiện có code path để nạp case Tutor Support, kiểm citation, chặn promotion nếu chưa có human decision, áp policy đã khai báo, chạy đủ 10 stage và tính lại downstream sau evidence correction. Local `qwen3:4b` đã chạy thật trên case mới. Live pipeline run đi qua đủ mười stage nhưng evidence model chưa được reviewer duyệt; vì vậy yêu cầu “optimizer consumes accepted evidence-derived constraints for the actual case” còn **chờ review**, không được báo PASS.
+**`ANNOTATION_PROTOCOL_DRAFT — GOLD_LABELS_NOT_AVAILABLE`**
 
-## Chạy và kiểm tra
+**P2 case thật chưa hoàn tất.** Branch đã có Tutor Support, protocol source-only blind, review decisions và code path relation → policy constraint → exhaustive partitioner → downstream outputs. Chưa có source-only annotation thật, inference qwen hậu-lock, model review thật hoặc revision experiment thật. Không gọi test harness là kết quả model/case study.
 
-| Kiểm tra | Kết quả |
+Pasted methodology review đã dẫn tới thay đổi protocol: source-only labels được tách khỏi review output, 0..N responsibilities cho mỗi FR, relation universe có registry cố định và status riêng, `APPROVE/CORRECT/REJECT/DEFER` được hỗ trợ, và adjudication/gold-label protocol được ghi rõ. Những thay đổi này làm cho inference v6 trước đó không đủ điều kiện làm blind experiment.
+
+## Kiểm tra cục bộ của milestone hiện tại
+
+| Kiểm tra | Kết quả / phạm vi |
 |---|---|
-| Existing regression tests + P2 tests | 54 passed (`.venv\Scripts\python.exe -m pytest -q`) |
-| Compile | `compileall -q app.py eqcr tests` exit 0 |
-| Local inference | `qwen3:4b`, prompt v6; final pipeline input SHA-256 `41af28d651927cc1229cd2361b92b1dcda8fc397f31440d4f40c77d0a324289b`; prior same-hash calls differed |
-| Live Tutor candidate | 10 bước đã chạy; structural traceability `PASS`; overall `REVIEW_REQUIRED` |
-| Live optimizer (chưa human review) | 203 enumerated / 203 feasible / 203 optimal; J=0; derived evidence constraints = 0 |
-| Test-only reviewed policy path | Constraint được tạo đúng evidence ID; 203 enumerated; 52 soft-optimal; correction đổi selected group và interaction mapping |
-| Hard constraint feasibility | Test-only path không khai báo hard constraint; exhaustive partitions thỏa các hard constraints đang bật |
-| Semantic metric | Không báo cáo; chưa có independent reference labels/adjudication |
-| GitHub push/CI | Đạt cho milestone code/docs này; branch ref khớp SHA `4bbdb03d419ab6b556e3447de0b2130dd3f95fdb`; GitHub Actions run `43818037929` thành công, test và compile đều pass. Chi tiết tại `docs/development/GITHUB_PUBLISH_LOG.md`. |
+| Regression + P2 tests | `.venv\Scripts\python.exe -m pytest -q --tb=short` — 63 passed. Test-only proposals dùng provenance `P2_TEST_ONLY`. |
+| Compile | `.venv\Scripts\python.exe -m compileall -q app.py eqcr tests` — exit 0. |
+| Frozen P0 baseline / `main` | Không chủ ý sửa `main`, fixture baseline hoặc tag; chỉ làm việc trên `feat/p1-semantic-validation`. |
+| Ollama v6 lịch sử | Đã gọi thật trước protocol mới; `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`, không làm inference hậu-blind hoặc reference label. |
+| Ollama v7 hậu-blind | Chưa chạy; cần source-only annotation thật được khóa trước khi app mở model proposals. |
+| Source/citation audit | Unit tests kiểm exact span, unknown IDs, missing endpoint citations, duplicate relation và self-relation gates; chưa có v7 live output để đánh giá. |
+| Optimizer causal wiring | Test-only accepted relation → declared soft policy → optimizer → interactions/quality mapping; đây là kiểm code path, không phải case evidence. |
+| Hard constraints | Test kiểm mỗi feasible candidate đối chiếu hard constraints đang bật. Tutor fixture hiện không khai báo hard domain constraint. |
+| Human decisions / revision case thật | Chưa có; worksheet vẫn trống. Không tự thêm approvals, corrections hoặc scores. |
+| Quality results | Hai scenario profiles có thể được tạo deterministic; measurement tiếp tục `NOT_MEASURED`. |
+| Semantic score | Không có; thiếu independent reviewers và adjudicated gold labels. |
+| Push/CI cho milestone mới | Chưa xác minh cho code/doc thay đổi chưa commit hiện tại. Chỉ cập nhật sau commit/push thực tế. |
+
+## Evidence provenance
+
+| Output | Nguồn |
+|---|---|
+| FR/WF/scenario IDs | Prepared case/source requirement. |
+| Historical P1–P6/E1/B1 v6 | Local LLM proposal, unblinded trước protocol; ghi rõ exploratory. |
+| Current model schema v7 | Deterministic schema/prompt definition; chưa có inference v7 thực. |
+| Blind lock | Human annotation nếu được nộp; test fixture chỉ có provenance test-only. |
+| Evidence → constraints | Human relation/implication decision + deterministic mapping + architectural policy. Chưa có actual human output. |
+| Candidate partitions/interactions/quality | Deterministic transformation; test runs là `P2_TEST_ONLY`, live post-review case chưa chạy. |
+| Review decisions | Human decision chỉ khi reviewer thực sự cung cấp; chưa có quyết định case thật trong checkout. |
 
 ## Acceptance matrix
 
-| Tiêu chí | Trạng thái | Bằng chứng / phần còn thiếu |
-|---|---|---|
-| Case không phải PetClinic; FR, workflow, ≥2 scenarios có source ID | Đạt | `NEW_CASE_STUDY.md`, exact source span tests |
-| Ollama inference thật | Đạt | `LLM_EXTRACTION_EVALUATION.md`; local `qwen3:4b` |
-| Citation, unsupported/ambiguous/duplicate review | Một phần | Citation IDs/span pass; E1 self-relation và B1 unsupported rationale; duplicate không quan sát trong mẫu nhỏ |
-| Worksheet độc lập, không fabricated labels | Đạt như template; chưa điền | `HUMAN_REVIEW_WORKSHEET.md` |
-| Human approval/correction trước promotion | Code/test đạt; case thật chờ | `apply_tutor_human_review` yêu cầu quyết định cụ thể; chưa có reviewer thật |
-| Optimizer consumes evidence-derived constraints | Test-only đã chứng minh; case thật chờ | Live run hiện có 0 derived constraints vì chưa review |
-| Tạo candidate, interaction, quality outputs | Đạt cấu trúc | Live run có 6 quanta, 2 edges, 2 profiles; interaction unresolved, quality NOT_MEASURED |
-| Human revision và before/after thật | Test-only đã chứng minh; case thật chờ | Unit test pass; chưa có accepted case evidence để sửa |
-| Regression tests | Đạt cục bộ | 54 passed; CI sau push chưa xác minh |
-| Giữ P0 baseline/main | Đạt theo checkout | Chỉ sửa feature branch; chưa có thay đổi trên main |
+| Tiêu chí | Trạng thái |
+|---|---|
+| Case ngoài PetClinic, nguồn FR/WF/scenario traceable | Đã chuẩn bị và test cấu trúc. |
+| Ollama thật v7 sau blind checkpoint | Chưa đạt; v6 cũ bị loại khỏi blind evidence. |
+| Cited proposals và unsupported/duplicate/ambiguous checks | Code/test đã có; đánh giá live hậu-lock đang chờ output. |
+| Source-only worksheet trước model | Template và UI lock có; chưa có người điền. |
+| Hai reviewer độc lập, adjudication và gold labels | Protocol draft; chưa thực hiện, vì vậy không có semantic metric. |
+| Review actions và unsupported proposal gate | Code/test path có; case thật chờ human decisions. |
+| Evidence policy vào optimizer cho case thật | Test-only path đã xác minh; actual case pending. |
+| 10 pipeline stages với model-reviewed case thật | Chưa đạt; chỉ synthetic test path đã chạy. |
+| Human revision before/after case thật | Chưa đạt; chỉ synthetic test path đã kiểm causal propagation. |
+| Regression tests | 63 local tests passed; CI của milestone mới chưa xác minh. |
+| GitHub milestone / CI | Xác minh và ghi commit SHA, branch ref, CI URL trong docs sau push; không điền trước. |
 
-Đây là báo cáo trạng thái hiện tại, không phải tuyên bố hoàn tất P2. Cần reviewer hoàn thành worksheet rồi mới có thể tạo case artifacts được gắn `APPROVED` và hoàn tất revision experiment thật.
+Để tiếp tục phần thực nghiệm: một reviewer cần hoàn thành source-only worksheet trong [P2_BLIND_ANNOTATION.md](P2_BLIND_ANNOTATION.md), khóa JSON trong app; sau đó gọi `qwen3:4b`, rồi cung cấp review riêng theo [P2_MODEL_REVIEW.md](P2_MODEL_REVIEW.md). Thực nghiệm này vẫn không tạo gold labels nếu thiếu reviewer thứ hai và adjudication.

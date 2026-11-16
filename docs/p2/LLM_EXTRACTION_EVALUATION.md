@@ -1,39 +1,42 @@
-# P2 — Đánh giá output extraction local
+# P2 — Đánh giá extraction và protocol tạo reference labels
 
-## Thiết lập và provenance
+## Trạng thái khoa học
 
-- Model Ollama đã gọi thật: `qwen3:4b`.
-- Prompt version: `requirements-context-responsibility-evidence-boundary-v6`.
-- Generation option: `temperature=0`; input SHA-256 của lần pipeline cuối `41af28d651927cc1229cd2361b92b1dcda8fc397f31440d4f40c77d0a324289b`.
-- Trước khi mở rộng scenario source quote, hai lần gọi thật cùng input SHA `aef49dd9a10d756fbd9893d35812eddf13625f4d50dc0c491e20a51ec91f2e9c` cho wording và evidence citation khác nhau. Không tuyên bố tính tái lập từ temperature 0; seed/model execution metadata chưa được lưu.
-- Bảng và pipeline dưới đây dùng output từ input hash cuối `41af…`. Không có proposal nào được xem là expert label.
+**`ANNOTATION_PROTOCOL_DRAFT — GOLD_LABELS_NOT_AVAILABLE`**
 
-## Output được dùng trong lần chạy pipeline
+Chưa có independent source-only annotations được nộp bởi hai reviewer độc lập, chưa có adjudicator và chưa có gold labels. Vì vậy không có precision, recall, F1, accuracy, semantic correctness rate hay kết luận rằng model “đúng”. `SOURCE_BACKED` trong ứng dụng chỉ có nghĩa ID/span được resolve; nó không xác nhận cách hiểu.
 
-| Proposal | Tên | Activity / operation | Requirement citation | Citation check | Semantic review |
-|---|---|---|---|---|---|
-| P1 | Proposal for FR-01 | Search / tutor directory by subject and available time. | FR-01 → `TUTOR-REQ-FR-01` | exact span resolved | `REVIEW_REQUIRED` |
-| P2 | Proposal for FR-02 | View / tutor profile, subjects, and listed availability. | FR-02 → `TUTOR-REQ-FR-02` | exact span resolved | `REVIEW_REQUIRED` |
-| P3 | Proposal for FR-03 | Publish / weekly availability slots. | FR-03 → `TUTOR-REQ-FR-03` | exact span resolved | `REVIEW_REQUIRED` |
-| P4 | Proposal for FR-04 | Request / session slot. | FR-04 → `TUTOR-REQ-FR-04` | exact span resolved | `REVIEW_REQUIRED` |
-| P5 | Proposal for FR-05 | Accept/Decline / pending session request. | FR-05 → `TUTOR-REQ-FR-05` | exact span resolved | `REVIEW_REQUIRED` |
-| P6 | Proposal for FR-06 | Receive / notice of tutor's decision. | FR-06 → `TUTOR-REQ-FR-06` | exact span resolved | `REVIEW_REQUIRED` |
+## Inference thật đã chạy trước protocol blind mới
 
-Tên chứa literal FR ID và operation ngắn, nên dù citation hợp lệ proposal vẫn cần reviewer xác nhận hoặc sửa wording. `can_apply_to_fixture=true` chỉ là gate coverage/citation, không phải quality score.
+Checkout trước đây đã gọi local `qwen3:4b` thật với prompt `requirements-context-responsibility-evidence-boundary-v6`, `temperature=0`, input SHA-256 `41af28d651927cc1229cd2361b92b1dcda8fc397f31440d4f40c77d0a324289b`. Hai lần gọi cùng input hash cũ `aef49dd9a10d756fbd9893d35812eddf13625f4d50dc0c491e20a51ec91f2e9c` cũng từng cho wording/citations khác. Đây là dữ liệu ghi nhận từ inference cũ, **trước blind checkpoint**.
 
-## Evidence và boundary proposal
+Phân loại bắt buộc của toàn bộ output cũ: `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`. Output này không được dùng để đánh giá độc lập, làm gold label, thiết kế annotation, hay làm bằng chứng rằng review thật đã xảy ra. Nó được giữ ở đây chỉ để bảo toàn provenance và mô tả lý do protocol mới cần checkpoint.
 
-| ID | Proposal | Citation IDs | Kiểm tra | Đánh giá cần reviewer |
-|---|---|---|---|---|
-| E1 | FR-06 `is supported by` FR-06, status `PRESENT` | FR-06 (`TUTOR-REQ-FR-06`) | Citation resolve và endpoint set khớp; relation tự tham chiếu. | Tautological/ambiguous; nội dung FR-06 không chứng minh một evidence relation với chính nó. Dù reviewer chấp nhận, policy gate không sinh constraint từ self-relation. |
-| B1 | Gom FR-01 và FR-02; “prerequisite for session requests” | FR-01, FR-02 | Citation resolve và bao phủ hai hypothesis endpoints. | Rationale về prerequisite không được nêu trong hai FR; boundary vẫn là giả thuyết, không được optimizer dùng. |
+| Proposal cũ | Nội dung quan sát được | Citation / cấu trúc | Ghi chú exploratory, không phải nhãn |
+|---|---|---|---|
+| P1–P6 | Mỗi proposal nêu một responsibility ngắn ứng với FR tương ứng; wording dùng literal FR ID hoặc tóm tắt ngắn. | FR-01..FR-06 resolve tới source IDs/spans. | Resolve không xác nhận semantic coverage hoặc granularity. |
+| E1 | `FR-06 is supported by FR-06`, status `PRESENT`. | Citation resolve; relation tự tham chiếu. | Được nhận diện là self-relation/ambiguous khi đọc lại; chưa phải expert label. |
+| B1 | Gom FR-01 và FR-02, rationale nói “prerequisite for session requests”. | Citation IDs resolve. | Rationale không được nêu trong hai FR; đây là rà soát của nhóm trên input, không phải nhãn độc lập. |
 
-Không có duplicate relation trong output inference cuối; một proposal không đủ để đo duplicate rate. `citation_status=RESOLVED` kiểm tra ID/span, không đo entailment. Unsupported/ambiguous ở bảng trên là rà soát đối chiếu thủ công theo nội dung input, không phải independent reference label.
+Hai lần inference trước đó trên cùng hash `aef49…` có khác biệt wording/evidence; mẫu nhỏ và metadata generation chưa đủ để suy rộng về tái lập. Không có output inference hậu-blind trong checkout hiện tại. App ở prompt version mới yêu cầu blind source annotation được hash-lock trước khi gọi Tutor Support model.
 
-## So sánh hai lần gọi cùng input
+## Audit citation và output
 
-Hai lần gọi trước đó cùng hash `aef49…` lần lượt nêu `triggers` FR-04→FR-05 với citation FR-04/05 và `leads to` cùng cặp nhưng cite FR-03; wording responsibility cũng khác. Lần pipeline cuối trên input hash mới `41af…` tạo self-relation E1. Cả output đều `REVIEW_REQUIRED`. Đây là variation quan sát được, không phải phép đo độ ổn định tổng quát.
+Ollama output được kiểm tra theo các trường riêng: proposal ID duy nhất, FR IDs biết trước, FR coverage 0..N, source IDs/spans resolve, proposal duplicates/overlaps, relation endpoint validity, relation registry membership, duplicate/conflicting relations, self-relations và boundary source coverage. Những kiểm tra này là deterministic structural validation.
 
-## Không có metric semantic
+- Trùng FR coverage không tự động là duplicate responsibility; nhiều role cho một FR là hợp lệ.
+- Thiếu proposal cho một FR không tự động là lỗi: FR được ghi là uncovered/unresolved.
+- Relation nằm ngoài predicate registry không thể được approve; reviewer phải correct/reject/defer.
+- Citation resolve hoặc `can_apply_to_fixture=true` không được gọi là semantic validation hoặc score.
+- Không có duplicate relation nào được quan sát trong một output cũ; cỡ mẫu này không chứng minh duplicate rate bằng 0.
 
-Chưa có reviewer độc lập điền worksheet, adjudication hoặc reference labels. Không tính precision, recall, F1, accuracy hay semantic correctness rate. Exact-span success chỉ là kiểm tra cấu trúc citation.
+## Protocol evaluation đề xuất trước khi đo
+
+1. Dùng cùng frozen source bundle và prompt/schema version; ghi model tag/response tag, prompt version, generation options, thời điểm UTC, source hash, blind annotation hashes và raw response artifact.
+2. Có ít nhất hai reviewer làm source-only annotation độc lập trước khi xem output. Mỗi bản được hash-lock riêng; identity chỉ tự khai báo nếu chưa có kiểm chứng ngoài ứng dụng.
+3. Sau checkpoint, mỗi reviewer review model proposals độc lập bằng `APPROVE`, `CORRECT`, `REJECT`, `DEFER`. Không nhập quyết định review trở lại source-only labels.
+4. Adjudicator thứ ba xử lý bất đồng sau khi hai bộ quyết định đã khóa; lưu cả bản riêng, bất đồng, quyết định và rationale. Không adjudication thì không gọi reference set là gold.
+5. Trước đo lường, đăng ký matching rules cho 0..N responsibility sets, multi-FR role mapping, predicate/direction/status và source citation. Phân biệt citation-resolution rate với semantic matching.
+6. Chỉ sau đó mới tính precision/recall/F1 hoặc agreement theo matching rule đã khóa; báo cáo theo case, cardinality, bất đồng và unresolved. Giữ test cases tách khỏi prompt/policy tuning.
+
+Các bước trên là protocol draft, chưa được thực hiện. Không có metric hoặc semantic accuracy score trong báo cáo này.

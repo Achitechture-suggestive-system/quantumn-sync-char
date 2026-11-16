@@ -97,6 +97,9 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
         item["id"]: item for item in artifacts["responsibilities"]["items"]
     }
     evidence_by_id = {item["id"]: item for item in artifacts["evidence"]["items"]}
+    relation_by_id = {
+        item["id"]: item for item in artifacts.get("relation_registry", {}).get("items", [])
+    }
     constraint_by_id = {item["id"]: item for item in artifacts["constraints"]["items"]}
 
     def add_citation(
@@ -242,7 +245,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
         for item in llm_bundle.get("proposals", []):
             proposal_id = item.get("id", "")
             proposal_node = f"llm-responsibility:{proposal_id}"
-            requirement_id = item.get("requirement_id")
+            proposal_requirement_ids = item.get("requirement_ids") or [item.get("requirement_id")]
             proposal_node_exists = proposal_node in node_ids
             if proposal_node_exists:
                 next(node for node in nodes if node["id"] == proposal_node).update(
@@ -250,7 +253,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                         "provenance": llm_bundle.get("provenance", "LOCAL_OLLAMA_UNVERIFIED"),
                         "review_status": item.get("status", "REVIEW_REQUIRED"),
                         "source_span_status": (
-                            "EXACT_INPUT_SPAN" if item.get("source_span_resolved") else "UNRESOLVED"
+                            "EXACT_INPUT_SPAN" if item.get("source_spans_resolved") else "UNRESOLVED"
                         ),
                     }
                 )
@@ -259,15 +262,16 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                     proposal_node,
                     "LLM_RESPONSIBILITY_PROPOSAL",
                     proposal_id=proposal_id,
-                    requirement_id=requirement_id,
+                    requirement_ids=proposal_requirement_ids,
                     provenance=llm_bundle.get("provenance", "LOCAL_OLLAMA_UNVERIFIED"),
                     review_status=item.get("status", "REVIEW_REQUIRED"),
                     source_span_status=(
-                        "EXACT_INPUT_SPAN" if item.get("source_span_resolved") else "UNRESOLVED"
+                        "EXACT_INPUT_SPAN" if item.get("source_spans_resolved") else "UNRESOLVED"
                     ),
                 )
-            if requirement_id in requirement_ids:
-                add_edge(f"requirement:{requirement_id}", proposal_node, "PROPOSED_FROM")
+            for requirement_id in proposal_requirement_ids:
+                if requirement_id in requirement_ids:
+                    add_edge(f"requirement:{requirement_id}", proposal_node, "PROPOSED_FROM")
             responsibility = next(
                 (
                     candidate
@@ -283,8 +287,8 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                     "USED_AS_UNVERIFIED_CANDIDATE_INPUT",
                     review_status="REVIEW_REQUIRED",
                 )
-            reference = item.get("source_ref")
-            if reference:
+            references = item.get("source_refs") or ([item["source_ref"]] if item.get("source_ref") else [])
+            for reference in references:
                 if not add_citation(
                     proposal_node,
                     reference,
@@ -293,6 +297,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                     issues.append(
                         {"kind": "UNRESOLVED_LLM_CITATION", "reference": proposal_id}
                     )
+
         for key, kind in (
             ("evidence_proposals", "LLM_EVIDENCE_PROPOSAL"),
             ("boundary_hypotheses", "LLM_BOUNDARY_HYPOTHESIS"),
@@ -326,6 +331,33 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                                 "reference": item.get("id", ""),
                             }
                         )
+
+        lock_bundle = llm_bundle.get("blind_annotation_lock")
+        if isinstance(lock_bundle, dict) and isinstance(lock_bundle.get("lock"), dict):
+            lock = lock_bundle["lock"]
+            blind_node = f"blind-annotation:{lock.get('annotation_sha256', '')[:16]}"
+            add_node(
+                blind_node,
+                "BLIND_ANNOTATION_CHECKPOINT",
+                annotation_sha256=lock.get("annotation_sha256"),
+                source_bundle_sha256=lock.get("source_bundle_sha256"),
+                locked_at=lock.get("locked_at"),
+                reviewer_id=lock.get("reviewer_id"),
+                identity_status=lock.get("identity_status"),
+            )
+            for item in llm_bundle.get("proposals", []):
+                add_edge(
+                    blind_node,
+                    f"llm-responsibility:{item.get('id', '')}",
+                    "LOCKED_BEFORE_MODEL_PROPOSAL_REVIEW",
+                )
+            for key in ("evidence_proposals", "boundary_hypotheses"):
+                for item in llm_bundle.get(key, []):
+                    add_edge(
+                        blind_node,
+                        f"{key}:{item.get('id', '')}",
+                        "LOCKED_BEFORE_MODEL_PROPOSAL_REVIEW",
+                    )
 
     for evidence_id, item in evidence_by_id.items():
         evidence_node = f"evidence:{evidence_id}"
@@ -410,6 +442,42 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                 issues.append(
                     {"kind": "UNRESOLVED_EVIDENCE_CITATION", "reference": evidence_id}
                 )
+    for relation_id, item in relation_by_id.items():
+        relation_node = f"relation:{relation_id}"
+        add_node(
+            relation_node,
+            "REVIEWED_RELATION_ANNOTATION",
+            predicate=item.get("predicate"),
+            direction=item.get("direction"),
+            evidence_status=item.get("status"),
+            review_status=item.get("review_status"),
+            architecture_implication=item.get("architecture_implication"),
+            provenance=item.get("provenance"),
+        )
+        for requirement_id in (item.get("subject_requirement_id"), item.get("object_requirement_id")):
+            if requirement_id in requirement_ids:
+                add_edge(f"requirement:{requirement_id}", relation_node, "RELATION_ENDPOINT")
+        for reference in item.get("source_refs", []):
+            if not add_citation(relation_node, reference, owner_provenance=item.get("provenance", "UNKNOWN")):
+                issues.append({"kind": "UNRESOLVED_RELATION_CITATION", "reference": relation_id})
+        for left, right in item.get("responsibility_pairs", []):
+            for responsibility_id in (left, right):
+                if responsibility_id in responsibility_by_id:
+                    add_edge(
+                        relation_node,
+                        f"responsibility:{responsibility_id}",
+                        "EXPLICIT_ARCHITECTURE_CANDIDATE_ENDPOINT",
+                    )
+
+    for evidence_id, item in evidence_by_id.items():
+        relation_annotation_id = item.get("relation_annotation_id")
+        relation_node = f"relation:{relation_annotation_id}"
+        if relation_annotation_id and relation_node in node_ids:
+            add_edge(
+                relation_node,
+                f"evidence:{evidence_id}",
+                "MATERIALIZES_REVIEWED_ARCHITECTURE_PAIR",
+            )
 
     constraints_without_evidence: list[dict[str, str]] = []
     for constraint_id, item in constraint_by_id.items():
@@ -622,6 +690,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
     artifact_nodes = {
         "responsibilities": {item: f"responsibility:{item}" for item in responsibility_by_id},
         "evidence": {item: f"evidence:{item}" for item in evidence_by_id},
+        "relation_registry": {item: f"relation:{item}" for item in relation_by_id},
         "constraints": {item: f"constraint:{item}" for item in constraint_by_id},
         "quanta": {item["id"]: f"quantum:{item['id']}" for item in artifacts["quanta"]["quanta"]},
         "interactions": {
@@ -711,6 +780,14 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             )
             for evidence_id, item in evidence_by_id.items()
         ),
+        "relation_registry_endpoints_and_sources_resolve": not any(
+            issue["kind"] in {"UNRESOLVED_RELATION_CITATION"}
+            for issue in issues
+        ) and all(
+            item.get("subject_requirement_id") in requirement_ids
+            and item.get("object_requirement_id") in requirement_ids
+            for item in relation_by_id.values()
+        ),
         "constraint_endpoints_and_evidence_links_resolve": not any(
             issue["kind"] in {
                 "UNKNOWN_CONSTRAINT_ENDPOINT",
@@ -756,6 +833,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             "input_source_count": len(sources),
             "responsibility_count": len(responsibility_by_id),
             "evidence_count": len(evidence_by_id),
+            "relation_annotation_count": len(relation_by_id),
             "constraint_count": len(constraint_by_id),
             "feasible_partition_count": len(partition_node_ids),
         },
@@ -777,6 +855,7 @@ def refresh_traceability_artifact(artifacts: dict[str, Any]) -> dict[str, Any]:
                 "raw_requirements",
                 "responsibilities",
                 "evidence",
+                "relation_registry",
                 "constraints",
                 "partitions",
                 "decisions",

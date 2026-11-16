@@ -1,8 +1,8 @@
 # P2 — Ca nghiên cứu Tutor Support mới
 
-## Phạm vi và nhãn nguồn
+## Phạm vi và trạng thái dữ liệu
 
-`TUTOR-SUPPORT-P2-01` là ca requirements nhỏ do nhóm dự án chuẩn bị riêng cho P2; không dùng mã nguồn PetClinic hay fixture P0. Đây là dữ liệu minh họa đã chuẩn bị, không phải hệ thống production hoặc kết quả chuyên gia. Nguồn được đóng gói theo từng ID trong `eqcr/tutor_support.py`.
+`TUTOR-SUPPORT-P2-01` là một case requirements nhỏ, nguyên bản, được chuẩn bị riêng cho P2; không dùng mã nguồn hoặc fixture PetClinic. Đây là `PREPARED_FIXTURE`, không phải yêu cầu production, annotation chuyên gia hay bằng chứng triển khai. Nội dung và exact source span được định nghĩa trong `eqcr/tutor_support.py`.
 
 | ID | Yêu cầu chức năng | Source ID |
 |---|---|---|
@@ -13,22 +13,28 @@
 | FR-05 | Tutor chấp nhận hoặc từ chối yêu cầu buổi học đang chờ. | `TUTOR-REQ-FR-05` |
 | FR-06 | Learner nhận thông báo khi tutor chấp nhận hoặc từ chối. | `TUTOR-REQ-FR-06` |
 
-Workflow tách thành các hoạt động có source ID riêng: `WF-01` tìm tutor, `WF-02` xem hồ sơ/chọn giờ, `WF-03` gửi yêu cầu và tutor quyết định, `WF-04` learner nhận thông báo. Workflow được chuyển vào model như ngữ cảnh, nhưng schema trích xuất hiện chỉ cho phép citation FR; không được ghi workflow ID như bằng chứng citation của proposal.
+Workflow có source ID riêng: `WF-01` tìm tutor; `WF-02` xem hồ sơ/chọn giờ; `WF-03` gửi yêu cầu và tutor quyết định; `WF-04` learner nhận thông báo. Scenario links là khai báo trong prepared case, không phải phát hiện từ Ollama hoặc reviewer.
 
-| Scenario | Nguồn | Liên kết FR | Target | Trạng thái |
+| Scenario | Source ID | FR liên quan | Target | Trạng thái đo |
 |---|---|---|---|---|
-| `SC-REQUEST-ACK` — xác nhận yêu cầu buổi học | Source ID cùng tên | FR-04, FR-05 | p95 ≤ 2 giây tại 50 yêu cầu/phút | `NOT_MEASURED` |
-| `SC-DECISION-NOTICE` — thông báo quyết định tutor | Source ID cùng tên | FR-05, FR-06 | ≥99% thông báo trong 30 giây, cửa sổ 24 giờ | `NOT_MEASURED` |
+| `SC-REQUEST-ACK` — xác nhận yêu cầu buổi học | `SC-REQUEST-ACK` | FR-04, FR-05 | p95 ≤ 2 giây tại 50 yêu cầu/phút | `NOT_MEASURED` |
+| `SC-DECISION-NOTICE` — thông báo quyết định tutor | `SC-DECISION-NOTICE` | FR-05, FR-06 | ≥99% thông báo trong 30 giây, cửa sổ 24 giờ | `NOT_MEASURED` |
 
-Scenario links là khai báo của bộ dữ liệu chuẩn bị; chúng cấp nguồn cho interaction/quality allocation. Chúng không phải phát hiện do Ollama hoặc reviewer tạo.
+## Provenance của các đầu ra
 
-## Provenance
+| Đầu ra | Provenance | Cách diễn giải được phép |
+|---|---|---|
+| FR, WF, scenario và source spans | Prepared fixture / source requirement | Dùng làm input có ID; chưa phải dữ liệu production. |
+| Responsibility/evidence/boundary proposal | Local LLM proposal | Chưa xác nhận nghĩa; chỉ thành candidate sau citation validation. |
+| Source-only annotation và relation statuses | Human decision, nếu reviewer điền và khóa | Ghi nhận annotation trước khi mở proposal; chưa là gold label khi thiếu người độc lập và adjudication. |
+| R IDs, exact citation resolution, interaction edges, quality profiles | Deterministic transformation | Có thể truy về source/proposal/reviewer decision; không tự xác nhận nghĩa. |
+| Evidence-derived constraint | Architectural policy sau human review | Soft candidate preference, chỉ tạo khi evidence, implication và role pair được duyệt tường minh. |
+| Placeholder responsibilities trong template | Prepared fixture | Chỉ để giữ schema; không được trình bày là model output hoặc human label. |
 
-- **Source requirement / prepared fixture:** FR, workflow và quality scenario ở trên cùng exact source span.
-- **LLM proposal:** Chỉ các giá trị được ghi riêng trong `LLM_EXTRACTION_EVALUATION.md`; tất cả ở trạng thái `REVIEW_REQUIRED` trước review.
-- **Deterministic transformation:** R1–R6 ánh xạ theo thứ tự requirement; interaction edges và Quality Profiles ánh xạ từ scenario link; Bell partition enumeration dùng Python cổ điển.
-- **Architectural policy:** `P2-SOFT-LIFECYCLE-COHESION` chỉ biến evidence `same_workflow_lifecycle` được duyệt thành soft MUST_LINK với weight 1.0.
-- **Human decision:** Chưa có quyết định của reviewer thật được ghi nhận. Worksheet vẫn để trống.
-- **Prepared fixture:** Responsibility placeholders chỉ giúp kiểm tra schema; không phải dự đoán model hay kết luận thiết kế.
+Chính sách P2 dùng `SHARES_STATE_OR_INVARIANT` → soft `MUST_LINK` chỉ khi reviewer tách riêng quyết định `COLOCATE_CANDIDATE`; `REQUIRES_INDEPENDENT_CHANGE` → soft `CANNOT_LINK` chỉ khi reviewer tách riêng `SEPARATE_CANDIDATE`. Predicate workflow `BUSINESS_PRECEDES` chỉ biểu diễn thứ tự nghiệp vụ và không bao giờ tự sinh constraint kiến trúc. Các policy này là quyết định thiết kế có thể đảo ngược, không phải quy tắc của Tutor Support.
 
-Không đổi fixture hoặc verified baseline P0 trên `main`.
+## Tình trạng nghiên cứu
+
+Một số output Ollama cũ được tạo trước khi có blind checkpoint. Chúng được giữ lại như quan sát exploratory, không được dùng làm label độc lập hay số liệu semantic. Từ protocol P2 hiện tại, UI buộc reviewer khóa source-only annotation với timestamp/hash trước khi cho phép gọi local model. Chưa có reviewer thật hoàn tất checkpoint trong repo này; do đó case chưa có kết quả inference hậu-blind hoặc review thật.
+
+Không thay fixture hoặc verified baseline P0 trên `main`. Thuật toán phân hoạch là enumerator Python cổ điển; “Quantum” là tên đơn vị candidate, không phải quantum computing hoặc production architecture.

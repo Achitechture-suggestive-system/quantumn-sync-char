@@ -92,7 +92,8 @@ def test_ollama_proposal_lineage_is_visible_and_stays_review_required():
                 "name": f"Model proposal {requirement_id}",
                 "activity": "Reviewable activity",
                 "operation": f"operation {requirement_id}",
-                "requirement_id": requirement_id,
+                "requirement_ids": [requirement_id],
+                "decomposition_rationale": "Test-only responsibility rationale.",
                 "source_id": source_ref["source_id"],
                 "source_ref": source_ref,
                 "source_span_resolved": True,
@@ -132,8 +133,7 @@ def test_ollama_proposal_lineage_is_visible_and_stays_review_required():
     nodes = {item["id"]: item for item in graph["nodes"]}
     assert graph["status"] == "PASS"
     assert nodes["llm-responsibility:MODEL-FR-01"]["review_status"] == "REVIEW_REQUIRED"
-    assert nodes["evidence:EV-R1-LLM"]["provenance"] == "MODEL_PROPOSED"
-    assert nodes["evidence:EV-R1-LLM"]["review_status"] == "REVIEW_REQUIRED"
+    assert not any(item.get("provenance") == "MODEL_PROPOSED" for item in graph["nodes"] if item["kind"] == "EVIDENCE_RELATION")
     assert nodes["evidence_proposals:MODEL-EVIDENCE-01"]["review_status"] == "REVIEW_REQUIRED"
     assert nodes["boundary_hypotheses:MODEL-BOUNDARY-01"]["review_status"] == "REVIEW_REQUIRED"
     assert graph["assertions"]["no_unresolved_reference_issues"] is True

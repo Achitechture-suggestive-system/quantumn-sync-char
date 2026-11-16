@@ -91,11 +91,19 @@ class RawRequirements(StrictModel):
 
 
 class Responsibility(StrictModel):
-    id: str = Field(pattern=r"^R[1-6]$")
+    id: str = Field(pattern=r"^R[1-9]\d*$")
     proposal_id: str | None = None
+    provenance: Literal[
+        "PREPARED_FIXTURE",
+        "LOCAL_OLLAMA_PROPOSAL",
+        "HUMAN_CORRECTION",
+        "HUMAN_ADDITION",
+        "P2_TEST_ONLY",
+    ] | None = None
     name: str
     activity: str
     operation: str
+    decomposition_rationale: str = ""
     requirement_ids: list[str]
     source_refs: list[SourceRef]
     workflow_activity_ids: list[str] = Field(default_factory=list)
@@ -117,6 +125,7 @@ class EvidenceRecord(StrictModel):
         "POLICY",
         "HUMAN_OVERRIDE",
         "MODEL_PROPOSED",
+        "P2_TEST_ONLY",
         "SCOPE_BOUNDARY",
         "UNKNOWN",
     ] = "UNKNOWN"
@@ -124,6 +133,12 @@ class EvidenceRecord(StrictModel):
     source_refs: list[SourceRef] = Field(default_factory=list)
     is_assumption: bool = False
     rationale: str
+    relation_annotation_id: str | None = None
+    subject_requirement_id: str | None = None
+    object_requirement_id: str | None = None
+    architecture_implication: Literal[
+        "NONE", "UNRESOLVED", "COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"
+    ] = "UNRESOLVED"
 
 
 class Constraint(StrictModel):
@@ -148,6 +163,60 @@ class EvidenceConstraintPolicy(StrictModel):
     hardness: Literal["HARD", "SOFT"] = "SOFT"
     weight: float = Field(default=1.0, ge=0)
     rationale: str = Field(min_length=1)
+    required_architecture_implication: Literal["COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"] | None = None
+
+
+class RelationAnnotation(StrictModel):
+    id: str = Field(min_length=1)
+    subject_requirement_id: str = Field(pattern=r"^FR-\d{2}$")
+    predicate: Literal[
+        "BUSINESS_PRECEDES",
+        "SHARES_STATE_OR_INVARIANT",
+        "REQUIRES_INDEPENDENT_CHANGE",
+    ]
+    object_requirement_id: str = Field(pattern=r"^FR-\d{2}$")
+    direction: Literal["DIRECTED", "UNDIRECTED"]
+    status: EvidenceStatus
+    review_status: Literal["REVIEW_REQUIRED", "APPROVED", "REJECTED", "DEFERRED"]
+    provenance: Literal["LOCAL_OLLAMA_UNVERIFIED", "LOCAL_OLLAMA_REVIEWED", "HUMAN_OVERRIDE", "P2_TEST_ONLY"]
+    source_requirement_ids: list[str] = Field(default_factory=list)
+    source_workflow_ids: list[str] = Field(default_factory=list)
+    source_refs: list[SourceRef] = Field(default_factory=list)
+    rationale: str
+    architecture_implication: Literal[
+        "NONE", "UNRESOLVED", "COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"
+    ] = "UNRESOLVED"
+    architecture_rationale: str = ""
+    responsibility_pairs: list[tuple[str, str]] = Field(default_factory=list)
+    proposal_id: str | None = None
+
+    @model_validator(mode="after")
+    def relation_semantics_are_separate(self):
+        if self.subject_requirement_id == self.object_requirement_id:
+            raise ValueError("Relation annotations cannot be reflexive.")
+        if self.predicate == "BUSINESS_PRECEDES" and self.direction != "DIRECTED":
+            raise ValueError("BUSINESS_PRECEDES must be directed.")
+        if self.predicate != "BUSINESS_PRECEDES" and self.direction != "UNDIRECTED":
+            raise ValueError("Architectural relation registry predicates must be undirected.")
+        if self.direction == "UNDIRECTED" and self.subject_requirement_id >= self.object_requirement_id:
+            raise ValueError("Undirected relation endpoints must use canonical lexical order.")
+        if self.predicate == "BUSINESS_PRECEDES" and self.architecture_implication not in {"NONE", "UNRESOLVED"}:
+            raise ValueError("Business ordering alone cannot create an architectural implication.")
+        if self.predicate == "SHARES_STATE_OR_INVARIANT" and self.architecture_implication == "SEPARATE_CANDIDATE":
+            raise ValueError("Shared-state evidence cannot be used to assert independent-change separation.")
+        if self.predicate == "REQUIRES_INDEPENDENT_CHANGE" and self.architecture_implication == "COLOCATE_CANDIDATE":
+            raise ValueError("Independent-change evidence cannot be used to assert co-location.")
+        if len(self.responsibility_pairs) != len(set(self.responsibility_pairs)):
+            raise ValueError("A relation annotation cannot repeat responsibility pairs.")
+        if any(left == right for left, right in self.responsibility_pairs):
+            raise ValueError("A relation annotation responsibility pair must contain distinct R IDs.")
+        if self.architecture_implication in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}:
+            if self.status != "PRESENT" or not self.architecture_rationale.strip() or not self.responsibility_pairs:
+                raise ValueError("An architectural candidate requires PRESENT evidence, a separate rationale, and explicit R pairs.")
+        return self
+
+
+RequirementCitationId = Annotated[str, Field(pattern=r"^FR-\d{2}$")]
 
 
 class LLMProposal(StrictModel):
@@ -155,15 +224,19 @@ class LLMProposal(StrictModel):
     name: str
     activity: str
     operation: str
-    requirement_id: str = Field(pattern=r"^FR-\d{2}$")
+    requirement_ids: list[RequirementCitationId] = Field(min_length=1)
+    decomposition_rationale: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def requirement_ids_are_unique(self):
+        if len(self.requirement_ids) != len(set(self.requirement_ids)):
+            raise ValueError("A responsibility proposal cannot repeat requirement IDs.")
+        return self
 
 
 class LLMNormalizedRequirement(StrictModel):
     id: str = Field(pattern=r"^FR-\d{2}$")
     normalized_text: str
-
-
-RequirementCitationId = Annotated[str, Field(pattern=r"^FR-\d{2}$")]
 
 
 class LLMEvidenceProposal(StrictModel):
@@ -186,6 +259,6 @@ class LLMBoundaryHypothesis(StrictModel):
 class LLMProposalBundle(StrictModel):
     context_summary: str
     normalized_requirements: list[LLMNormalizedRequirement] = Field(min_length=6, max_length=6)
-    proposals: list[LLMProposal] = Field(min_length=6, max_length=6)
+    proposals: list[LLMProposal] = Field(default_factory=list, max_length=8)
     evidence_proposals: list[LLMEvidenceProposal] = Field(min_length=1)
     boundary_hypotheses: list[LLMBoundaryHypothesis] = Field(min_length=1)

@@ -26,7 +26,14 @@ from eqcr.review import (
     replay_artifact_review_decisions,
 )
 from eqcr.traceability import refresh_traceability_artifact
-from eqcr.tutor_support import apply_tutor_human_review, get_tutor_support_fixture
+from eqcr.p2_review import apply_tutor_human_review
+from eqcr.p2_protocol import (
+    RELATION_PREDICATES,
+    build_blind_annotation_template,
+    lock_blind_annotation,
+    verify_blind_annotation_lock,
+)
+from eqcr.tutor_support import get_tutor_support_fixture
 from eqcr.storage import (
     list_snapshots,
     load_snapshot,
@@ -112,6 +119,7 @@ for key, value in {
     "snapshot_version": 0,
     "ollama_models": [],
     "ollama_proposals": None,
+    "p2_blind_annotation_lock": None,
     "notice": None,
     "review_preview": None,
     "responsibility_preview": None,
@@ -273,6 +281,7 @@ with input_tab:
         st.session_state.run_dir = None
         st.session_state.snapshot_version = 0
         st.session_state.ollama_proposals = None
+        st.session_state.p2_blind_annotation_lock = None
         st.session_state.review_preview = None
         st.session_state.responsibility_preview = None
         st.session_state.notice = "Loaded the PRECOMPUTED PetClinic mini-case input."
@@ -285,6 +294,7 @@ with input_tab:
         st.session_state.run_dir = None
         st.session_state.snapshot_version = 0
         st.session_state.ollama_proposals = None
+        st.session_state.p2_blind_annotation_lock = None
         st.session_state.review_preview = None
         st.session_state.responsibility_preview = None
         st.session_state.notice = "Loaded the original Tutor Support P2 requirements case."
@@ -321,6 +331,47 @@ with input_tab:
             "requirements-only · no source code supplied"
         )
         _show_json("Raw requirements, workflow, and scenarios", st.session_state.fixture["raw_requirements"])
+        blind_lock_valid = True
+        if is_tutor_case:
+            blind_lock = st.session_state.p2_blind_annotation_lock
+            blind_lock_valid = verify_blind_annotation_lock(
+                st.session_state.fixture["raw_requirements"], blind_lock
+            )
+            if blind_lock_valid:
+                lock_info = blind_lock["lock"]
+                st.success(
+                    f"Source-only annotation locked at {lock_info['locked_at']} · "
+                    f"reviewer {lock_info['reviewer_id']} · SHA-256 {lock_info['annotation_sha256']}"
+                )
+                st.download_button(
+                    "Download locked blind annotation",
+                    data=json.dumps(blind_lock, ensure_ascii=False, indent=2),
+                    file_name="P2_BLIND_ANNOTATION_LOCK.json",
+                    mime="application/json",
+                )
+            else:
+                st.info(
+                    "Complete and lock the source-only annotation first. Model proposals and their review remain hidden until the app records its timestamp and content hash."
+                )
+                blind_template = build_blind_annotation_template(st.session_state.fixture["raw_requirements"])
+                blind_input_key = f"p2_blind_annotation_{blind_template['source_bundle_sha256'][:12]}"
+                blind_annotation_text = st.text_area(
+                    "Source-only annotation JSON (0..N responsibilities per FR; relation rows default to NOT_ANNOTATED)",
+                    value=json.dumps(blind_template, ensure_ascii=False, indent=2),
+                    height=420,
+                    key=blind_input_key,
+                )
+                if st.button("Lock source-only annotation before model review", type="primary"):
+                    try:
+                        submitted_annotation = json.loads(blind_annotation_text)
+                        st.session_state.p2_blind_annotation_lock = lock_blind_annotation(
+                            st.session_state.fixture["raw_requirements"],
+                            submitted_annotation,
+                        )
+                        st.session_state.notice = "Source-only annotation locked. Proposals can now be generated and reviewed in this session."
+                        st.rerun()
+                    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+                        st.error(f"Could not lock the source-only annotation: {exc}")
     else:
         st.info("Choose PetClinic demo data, the Tutor Support P2 case, or a structured JSON package to inspect an input.")
 
@@ -334,13 +385,22 @@ with input_tab:
             st.session_state.ollama_models,
             index=st.session_state.ollama_models.index(preferred),
         )
-        if st.button("Run local Ollama proposals"):
+        blind_lock_valid = (
+            not is_tutor_case
+            or verify_blind_annotation_lock(
+                st.session_state.fixture["raw_requirements"],
+                st.session_state.p2_blind_annotation_lock,
+            )
+        )
+        if st.button("Run local Ollama proposals", disabled=not blind_lock_valid):
             if st.session_state.fixture is None:
                 st.session_state.fixture = get_fixture()
             with st.spinner("Waiting for the local model..."):
                 try:
                     proposal_data = propose_responsibilities(
-                        st.session_state.fixture["raw_requirements"], model
+                        st.session_state.fixture["raw_requirements"],
+                        model,
+                        blind_annotation_lock=st.session_state.p2_blind_annotation_lock if is_tutor_case else None,
                     )
                     st.session_state.ollama_proposals = proposal_data
                     st.session_state.notice = "LLM proposals received; source IDs were resolved to exact input spans. Semantic review is still required."
@@ -349,11 +409,19 @@ with input_tab:
                         _save_current()
                 except OllamaError as exc:
                     st.session_state.notice = str(exc)
-        if st.session_state.ollama_proposals:
+        if st.session_state.ollama_proposals and blind_lock_valid:
             proposal_data = st.session_state.ollama_proposals
             st.caption(
                 f"Model `{proposal_data['model']}` · prompt `{proposal_data['prompt_version']}` · "
                 f"input SHA-256 `{proposal_data['input_sha256']}` · all semantics remain review-required."
+            )
+            _show_json(
+                "Responsibility coverage (zero, one, or multiple model candidates per FR)",
+                {
+                    "counts": proposal_data.get("proposal_coverage_by_requirement", {}),
+                    "uncovered_requirement_ids": proposal_data.get("uncovered_requirement_ids", []),
+                    "optimizer_cap": 8,
+                },
             )
             _show_json(
                 "Context normalization proposals",
@@ -405,7 +473,7 @@ with input_tab:
                     except OllamaError as exc:
                         st.error(str(exc))
             else:
-                st.warning("The model output did not provide complete, source-checked coverage of all six FRs, so it cannot be sent to optimization.")
+                st.warning("The model output has invalid/duplicate citations or exceeds the exact optimizer cap. It cannot be sent to optimization until corrected or reduced in Human Review.")
                 if is_tutor_case and st.button("Prepare Tutor case for human corrections"):
                     st.session_state.pending_model_fixture = deepcopy(st.session_state.fixture)
                     st.session_state.notice = (
@@ -551,7 +619,8 @@ with review_tab:
     has_p2_review = bool(
         artifacts
         and any(
-            item.get("decision_type") in {"HUMAN_SEMANTIC_REVIEW", "HUMAN_HYPOTHESIS_REVIEW"}
+            item.get("decision_type")
+            in {"HUMAN_RESPONSIBILITY_REVIEW", "HUMAN_RELATION_REVIEW", "HUMAN_HYPOTHESIS_REVIEW"}
             for item in artifacts.get("decisions", {}).get("items", [])
         )
     )
@@ -560,19 +629,15 @@ with review_tab:
         review_template = {
             "responsibilities": [
                 {
-                    "requirement_id": item["id"],
-                    "proposal_id": next(
-                        (proposal["id"] for proposal in proposal_data["proposals"] if proposal["requirement_id"] == item["id"]),
-                        "",
-                    ),
+                    "proposal_id": proposal["id"],
                     "action": "",
                     "reason": "",
                     "source": "",
                     "actor": "",
-                    "workflow_activity_ids": [],
                 }
-                for item in artifacts["raw_requirements"]["requirements"]
+                for proposal in proposal_data["proposals"]
             ],
+            "additional_responsibilities": [],
             "evidence": [
                 {
                     "proposal_id": item["id"],
@@ -580,6 +645,9 @@ with review_tab:
                     "reason": "",
                     "source": "",
                     "actor": "",
+                    "architecture_implication": "UNRESOLVED",
+                    "architecture_rationale": "",
+                    "responsibility_pairs": [],
                 }
                 for item in proposal_data["evidence_proposals"]
             ],
@@ -597,8 +665,9 @@ with review_tab:
         review_input_key = f"tutor_review_json_{proposal_data['input_sha256'][:12]}"
         with st.expander("Review Tutor Support proposals before evidence can affect optimization", expanded=False):
             st.caption(
-                "Enter APPROVE or CORRECT for each responsibility and APPROVE/CORRECT/REJECT for every evidence proposal. "
-                "Unreviewed or citation-invalid proposals cannot create optimizer constraints."
+                "Each responsibility proposal may be APPROVED, CORRECTED into one or more roles, REJECTED, or DEFERRED. "
+                "Add manual responsibility rows only with source citations. Relation approval records business evidence; "
+                "optimizer constraints require a separate architecture implication and explicit responsibility pairs."
             )
             review_payload_text = st.text_area(
                 "Human review decisions (JSON)",
@@ -650,43 +719,72 @@ with review_tab:
             st.caption(artifacts["traceability"]["note"])
             st.json(artifacts["traceability"], expanded=False)
         if is_tutor_run:
-            responsibility_to_requirement = {
-                item["id"]: item["requirement_ids"][0]
-                for item in artifacts["responsibilities"]["items"]
-                if len(item["requirement_ids"]) == 1
-            }
-            known_responsibility_ids = set(responsibility_to_requirement)
+            role_by_id = {item["id"]: item for item in artifacts["responsibilities"]["items"]}
             accepted_relations = [
                 item
                 for item in artifacts["evidence"]["items"]
                 if item.get("review_status") == "APPROVED"
                 and item.get("status") == "PRESENT"
-                and item.get("subject_id") in known_responsibility_ids
-                and item.get("object_id") in known_responsibility_ids
+                and item.get("relation_annotation_id")
+                and item.get("architecture_implication") in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}
+                and item.get("subject_id") in role_by_id
+                and item.get("object_id") in role_by_id
             ]
             st.subheader("Revise an approved evidence relation")
             if accepted_relations:
+                st.caption(
+                    "Choose an FR pair and the reviewed responsibilities that cover those endpoints. "
+                    "PRESENT relations need source citations for both FRs and a separate architecture rationale."
+                )
                 requirement_ids = [item["id"] for item in artifacts["raw_requirements"]["requirements"]]
                 with st.form("p2_evidence_revision_form"):
                     evidence_id = st.selectbox("Approved evidence relation", [item["id"] for item in accepted_relations])
                     current_evidence = next(item for item in accepted_relations if item["id"] == evidence_id)
-                    default_subject = responsibility_to_requirement[current_evidence["subject_id"]]
-                    default_object = responsibility_to_requirement[current_evidence["object_id"]]
+                    responsibility_ids = list(role_by_id)
+                    current_relation = next(
+                        item for item in artifacts["relation_registry"]["items"]
+                        if item["id"] == current_evidence["relation_annotation_id"]
+                    )
+                    current_subject_role = current_evidence["subject_id"]
+                    current_object_role = current_evidence["object_id"]
+                    subject_responsibility_id = st.selectbox(
+                        "Subject responsibility",
+                        responsibility_ids,
+                        index=responsibility_ids.index(current_subject_role),
+                    )
                     subject_requirement_id = st.selectbox(
                         "Subject requirement",
                         requirement_ids,
-                        index=requirement_ids.index(default_subject),
+                        index=requirement_ids.index(current_relation["subject_requirement_id"]),
                     )
-                    relation_predicate = st.text_input("Predicate", value=current_evidence["predicate"])
+                    relation_predicate = st.selectbox(
+                        "Registered architectural relation predicate",
+                        [item for item in sorted(RELATION_PREDICATES) if item != "BUSINESS_PRECEDES"],
+                        index=[item for item in sorted(RELATION_PREDICATES) if item != "BUSINESS_PRECEDES"].index(current_evidence["predicate"]),
+                    )
+                    object_responsibility_id = st.selectbox(
+                        "Object responsibility",
+                        responsibility_ids,
+                        index=responsibility_ids.index(current_object_role),
+                    )
                     object_requirement_id = st.selectbox(
                         "Object requirement",
                         requirement_ids,
-                        index=requirement_ids.index(default_object),
+                        index=requirement_ids.index(current_relation["object_requirement_id"]),
+                    )
+                    architecture_implication = st.selectbox(
+                        "Separate architecture implication",
+                        ["COLOCATE_CANDIDATE"] if relation_predicate == "SHARES_STATE_OR_INVARIANT" else ["SEPARATE_CANDIDATE"],
+                        index=0,
                     )
                     source_requirement_ids = st.multiselect(
                         "Source requirements cited",
                         requirement_ids,
-                        default=[subject_requirement_id, object_requirement_id],
+                        default=list(dict.fromkeys([subject_requirement_id, object_requirement_id])),
+                    )
+                    architecture_rationale = st.text_area(
+                        "Architectural candidate rationale",
+                        value=current_relation.get("architecture_rationale", ""),
                     )
                     evidence_edit_reason = st.text_area(
                         "Correction reason",
@@ -707,6 +805,10 @@ with review_tab:
                             predicate=relation_predicate,
                             object_requirement_id=object_requirement_id,
                             source_requirement_ids=source_requirement_ids,
+                            subject_responsibility_id=subject_responsibility_id,
+                            object_responsibility_id=object_responsibility_id,
+                            architecture_implication=architecture_implication,
+                            architecture_rationale=architecture_rationale,
                             reason=evidence_edit_reason,
                             source=evidence_edit_source,
                             actor=evidence_edit_actor,
@@ -739,7 +841,7 @@ with review_tab:
                         updated["validation_report"]["regression_check"] = {
                             "status": "PASS" if unchanged else "FAIL",
                             "checked_artifacts": revision_record["unaffected_artifacts"],
-                            "note": "Evidence-only correction leaves unrelated source and responsibility artifacts unchanged.",
+                            "note": "Relation and evidence correction leaves unrelated source and responsibility artifacts unchanged.",
                         }
                         st.session_state.fixture = revised_fixture
                         st.session_state.run_fixture = revised_fixture

@@ -27,4 +27,4 @@ Không tuyên bố precision/recall khi thiếu labels độc lập, deployabili
 
 Ollama là tùy chọn; tests xác định không yêu cầu daemon hay credential. Chỉ ghi nhận inference chạy thật khi đã gọi model cục bộ thực tế.
 
-Optimizer hiện tại là enumerator Python cổ điển/exhaustive; NetworkX dùng cho graph. “Quantum” là tên đơn vị ứng viên, không phải quantum computing. Schema hiện giới hạn R1–R6. Boundaries, interactions và quality profiles là ứng viên cần review, không phải sự thật production.
+Optimizer hiện tại là enumerator Python cổ điển/exhaustive; NetworkX dùng cho graph. “Quantum” là tên đơn vị ứng viên, không phải quantum computing. P2 schema hỗ trợ tối đa R1–R8 do exact partition enumerator. Boundaries, interactions và quality profiles là ứng viên cần review, không phải sự thật production.

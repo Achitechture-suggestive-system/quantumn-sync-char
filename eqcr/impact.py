@@ -7,9 +7,10 @@ from collections import deque
 
 # Keys are persisted artifact names; values are the artifacts that consume them.
 DEPENDENTS: dict[str, tuple[str, ...]] = {
-    "raw_requirements": ("context", "responsibilities", "evidence", "interactions", "quality_profiles", "traceability"),
+    "raw_requirements": ("context", "responsibilities", "relation_registry", "interactions", "quality_profiles", "traceability"),
     "context": ("responsibilities", "traceability"),
-    "responsibilities": ("evidence", "partitions", "quanta", "validation_report", "traceability"),
+    "responsibilities": ("evidence", "relation_registry", "partitions", "quanta", "validation_report", "traceability"),
+    "relation_registry": ("evidence",),
     "evidence": ("constraints", "quanta", "interactions", "validation_report", "traceability"),
     "constraints": ("partitions", "validation_report", "traceability"),
     "partitions": ("quanta", "validation_report", "traceability"),
@@ -25,6 +26,7 @@ STEP_BY_ARTIFACT = {
     "raw_requirements": "01",
     "context": "01",
     "responsibilities": "02",
+    "relation_registry": "03",
     "evidence": "03",
     "constraints": "04",
     "partitions": "05",

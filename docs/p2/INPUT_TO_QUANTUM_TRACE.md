@@ -1,42 +1,53 @@
-# P2 — Audit luồng Ollama → Evidence → Constraint → Quantum
+# P2 — Audit dependency thật từ input tới Quantum
 
-## Audit trước thay đổi
+## Kết luận audit nhân quả
 
-1. `app.py` gọi `propose_responsibilities` và giữ JSON Ollama trong session. `eqcr/ollama.py` giải citation FR về source span chính xác, nhưng gắn tất cả proposal với `REVIEW_REQUIRED`.
-2. Nút candidate run gọi `apply_proposals_to_fixture`. Gate `can_apply_to_fixture` chỉ kiểm tra đủ sáu FR, citation và ID; nó không chấp nhận semantics.
-3. Bundle evidence/boundary được hiển thị riêng, không được chuyển thành evidence/constraint đầu vào. Candidate fixture vẫn giữ constraints của fixture gốc.
-4. `eqcr/pipeline.py` lấy `fixture["constraints"]` hoặc `constraints_override` làm toàn bộ optimizer input. Vì vậy Ollama responsibility text có thể đi vào artifacts; evidence proposal không có đường nhân quả tới optimizer.
-5. Trước P2, optimizer còn có tie-break R1–R6 nằm trong code; interaction builder chọn cặp R4/R6; quality builder chọn FR-01/FR-04/FR-06. Các output này không khái quát cho Tutor Support.
+Có hai đường khác nhau và phải báo cáo riêng:
 
-## Thay đổi P2
+1. **Candidate run chưa review:** `apply_proposals_to_fixture` có thể đưa responsibility proposals có citation hợp lệ vào biến R của optimizer để xem candidate. Candidate này vẫn `REVIEW_REQUIRED`. Evidence/boundary model proposals không tự trở thành evidence hay constraint. Đây không phải đường chứng minh quyết định semantic đã được duyệt.
+2. **Run sau human review:** `apply_tutor_human_review` chỉ tạo responsibility inputs từ proposal `APPROVE`, `CORRECT`, `REJECT`, `DEFER` tường minh; relation có disposition riêng. Một relation chỉ sinh `EvidenceRecord` khi reviewer ghi implication kiến trúc riêng và named R pairs hợp lệ. Evidence được kiểm tra source spans/policy rồi mới có thể tạo soft constraint. Constraint là đầu vào enumerator, và candidate/quantum/interaction/quality outputs được tính lại từ đó.
 
-- Scenario khai báo `related_requirement_ids`, citation source cho interaction và quality metadata. Pipeline ánh xạ từ requirement ID sang responsibility ID, không chọn ID PetClinic cố định.
-- Constraint policy được khai báo trong case. Policy chỉ tạo constraint khi evidence có `PRESENT`, reviewer đặt `APPROVED`, hai responsibility endpoint cũng được reviewer duyệt, source span giải được chính xác và citation bao phủ hai endpoint.
-- Output policy là soft constraint có `evidence_ids`, source refs, rationale và `origin=ARCHITECTURAL_POLICY`. Evidence chưa review, bị reject, UNKNOWN, thiếu citation endpoint hoặc citation sai không tạo constraint.
-- `apply_tutor_human_review` ghi riêng quyết định approve/correct/reject cùng actor, source và reason. `apply_evidence_relation_edit` sửa evidence đã duyệt, ghi impact trước revalidation rồi để pipeline tính lại constraint, partition, quantum, interaction, quality và traceability.
-- PetClinic chọn partition hiển thị qua cấu hình fixture; Tutor case dùng tie-break `MAXIMUM_GROUPS`. Tie-break chỉ chọn một candidate để hiển thị, không thay objective.
+Vì vậy causal claim P2 chỉ được kiểm tra nếu có model inference hậu-blind, reviewer decisions thật và trace đầy đủ. Test harness hiện chỉ kiểm tra wiring bằng dữ liệu `TEST-ONLY`; không thay thế run case thật.
 
-## Luồng thực tế đã chạy với local Ollama
+## Audit từng dependency
 
-Model `qwen3:4b`, prompt `requirements-context-responsibility-evidence-boundary-v6`, temperature 0; input hash `41af28d651927cc1229cd2361b92b1dcda8fc397f31440d4f40c77d0a324289b`. Lần chạy pipeline dùng output inference ghi trong báo cáo model.
+| Nút | Đọc từ | Sinh ra | Provenance/trạng thái | Gate / giới hạn |
+|---|---|---|---|---|
+| Source package | FR, workflow, scenarios trong `eqcr/tutor_support.py` | Raw requirements, exact spans | Prepared fixture/source requirement | Không phải production elicitation. |
+| Blind checkpoint | Source-only JSON, source-bundle hash | Annotation hash, reviewer ID tự khai báo, UTC time | Human decision trước model | UI ẩn model proposals tới khi khóa; hash phát hiện sửa nội dung sau lock, không xác minh danh tính hoặc hành vi blinding. |
+| Ollama extraction | Raw FR map + workflow/scenario context; schema v7 | Normalized text, 0..8 responsibility proposals, evidence proposals, boundary hypotheses | Local LLM proposal / `REVIEW_REQUIRED` | FR IDs resolve được không chứng minh entailment. Workflow/scenario context không được dùng làm citation IDs cho model claims. |
+| Citation audit | Proposal IDs/FR IDs + raw source map | exact source refs, coverage, duplicate/overlap flags, registry/direction flags | Deterministic transformation | Không có semantic score. `can_apply_to_fixture` chỉ là kiểm tra schema/citations/cap. |
+| Candidate responsibility set | Citation-valid responsibility proposals | Dynamic R1..Rn candidate variables | LLM proposal, chưa review | Có thể chạy candidate optimizer để inspect; vẫn giữ `REVIEW_REQUIRED`. Không tạo verified evidence. |
+| Human proposal review | Locked blind checkpoint + model proposal bundle | 0..N approved/corrected roles; relation dispositions; decision records | Human decision | Mỗi proposal cần `APPROVE/CORRECT/REJECT/DEFER`; FR có thể không có role và được ghi unresolved. |
+| Relation registry | Predicate, FR endpoints, direction, status, citations, architecture implication và rationale tách riêng | Typed `RelationAnnotation` | Human decision sau model review, gắn proposal provenance | 60 predicate/pair rows chỉ thuộc blind annotation universe. Business ordering không phải implication kiến trúc. |
+| Evidence materialization | `PRESENT` relation + explicit architecture implication + R pairs | EvidenceRecord gắn relation ID, FR endpoints, refs | Human decision + deterministic mapping | Citation cần bao phủ endpoints; Pydantic, source-span, role-pair validation; unknown/unregistered/rejected/deferred không được promote. |
+| Constraint derivation | EvidenceRecord + responsibility approvals + declared case policy | Soft MUST_LINK/CANNOT_LINK có `evidence_ids` | Architectural policy | Policy chỉ match predicate và implication đã khai báo; source refs phải khớp text; evidence phải cite đúng FR endpoints/roles. |
+| Partition optimizer | Reviewed R IDs + base constraints + derived evidence constraints | Exhaustive Bell partition candidates, feasible/optimal sets, cost | Deterministic classical Python transformation | Optimizer enumerates all candidate partitions; zero hard constraints currently come từ domain. SOFT weight ảnh hưởng objective; selected candidate là display policy, không recommendation. |
+| Quantum candidates | Selected groups + responsibility records | R group allocations | Deterministic transformation | Quantum là nhãn candidate unit; không quantum computing. |
+| Interactions | Scenario `related_requirement_ids` + all responsibility mappings + quantum assignment | Interaction hypotheses and same-quantum flags | Prepared scenario + deterministic transformation | Không chọn sync/async hoặc contract production. |
+| Quality Profiles | Scenario target/metric/method + all roles matching FRs + assignment | Scenario responsibility/quantum mapping | Prepared scenario + deterministic transformation | `measurement=null`, `NOT_MEASURED`; không phải PASS. |
+| Traceability | Source refs, proposals, lock, decisions, relations, evidence, constraints, partitions and outputs | Typed graph | Deterministic linkage | Structural graph PASS không chứng minh semantic correctness. |
 
-| Bước | Input/output | Provenance và trạng thái thực tế |
-|---|---|---|
-| 01 Context Understanding | Sáu FR, bốn workflow, hai scenario; exact span check. | Source requirement + prepared fixture; `PASS`. |
-| 02 Responsibility Identification | P1–P6 do qwen đề xuất; tất cả FR citation resolve. | LLM proposal; `REVIEW_REQUIRED`. |
-| 03 Evidence Modeling | E1 (`FR-06 is supported by FR-06`) được giữ ở proposal artifact; chưa đưa vào evidence đã duyệt. | LLM proposal; `REVIEW_REQUIRED`; self-relation không tạo optimizer constraint. |
-| 04 Constraint & Quality Reasoning | Không có evidence decision người thật nên policy chưa sinh constraint. | Architectural policy chưa kích hoạt; `PASS` về cấu trúc, không phải xác nhận ngữ nghĩa. |
-| 05 Candidate Optimization | 203 enumerated, 203 feasible, 203 optimal, J=0. | Deterministic transformation; không nhận constraint từ E1. |
-| 06 Quantum Boundary Refinement | Sáu nhóm đơn, R1–R6; candidate display tie-break. | Deterministic transformation từ partition và proposal names. |
-| 07 Interaction Design | Hai edge scenario-driven; cả hai `INSUFFICIENT_EVIDENCE`, Sync/Async chưa chọn. | Deterministic pattern hypotheses + source requirement. |
-| 08 Quality Allocation | Hai profile được gắn với scenario và FR; cả hai `NOT_MEASURED`. | Deterministic transformation từ prepared scenario; không có PASS chất lượng. |
-| 09 Human-in-the-Loop Review | Chưa có reviewer thật. | `REVIEW_REQUIRED`; worksheet chưa điền. |
-| 10 Verification & Iteration | Traceability graph cấu trúc `PASS`; pipeline report `REVIEW_REQUIRED`. | Deterministic structural checks; không chứng minh semantic entailment. |
+## Predicate universe và policy
 
-Pipeline đã thực thi đủ mười bước cho case mới với proposal thật. Tuy vậy, lần chạy này chưa đạt acceptance “optimizer dùng accepted evidence-derived constraint” vì chưa có human decision. Unit tests xác nhận gate và propagation bằng dữ liệu test-only; không dùng test decision làm nhãn cho case thật.
+Blind annotation registry được cố định theo 6 FR: 30 ordered rows `BUSINESS_PRECEDES`, 15 undirected `SHARES_STATE_OR_INVARIANT`, 15 undirected `REQUIRES_INDEPENDENT_CHANGE`. `NOT_ANNOTATED` chỉ nghĩa là chưa quyết định; nó khác `UNKNOWN` và `SCOPED_ABSENT`.
 
-## Đường nhân quả sau khi reviewer phản hồi
+| Predicate | Direction | Được ghi nhận | Optimizer mapping nếu reviewer quyết định riêng |
+|---|---|---|---|
+| `BUSINESS_PRECEDES` | Directed | Thứ tự nghiệp vụ | Không có, bất kể APPROVE; không suy ra topology hoặc interaction protocol. |
+| `SHARES_STATE_OR_INVARIANT` | Undirected | Shared state/invariant candidate | `COLOCATE_CANDIDATE` → soft `MUST_LINK` theo policy P2. |
+| `REQUIRES_INDEPENDENT_CHANGE` | Undirected | Independent-change candidate | `SEPARATE_CANDIDATE` → soft `CANNOT_LINK` theo policy P2. |
 
-`source requirement → Ollama proposal → citation validation → human approve/correct → typed evidence → explicit soft policy → optimizer cost/optima → selected partition → quanta/interactions/quality → traceability`.
+Hai policy là architectural policy có thể thay đổi; chúng không phải source requirement hoặc human label. Việc reviewer duyệt predicate chưa tự động duyệt implication. Cả implication, rationale, responsibility pairs và source relation đều cần được ghi.
 
-Nếu reviewer reject E1 hoặc sửa predicate không khớp policy, output optimizer vẫn giữ nguyên 203 optima; đó là kết quả hợp lệ và phải ghi “unchanged because no accepted evidence matched policy,” không được tự thêm constraint.
+## Revision impact
+
+`apply_evidence_relation_edit` chỉ sửa một evidence đã duyệt và có relation annotation. Nó kiểm predicate registry, tương thích giữa predicate và implication, citation endpoint FR, exact R pair, rồi sửa cả relation annotation lẫn evidence materialization. `impact_preview("relation_registry")` đánh dấu evidence và các downstream constraint/partition/quantum/interaction/quality/validation/traceability artifacts cần tính lại. Revision lưu before/after, actor, source, reason và invalidated artifacts.
+
+Nếu constraint hoặc assignment không đổi, phải nêu nguyên nhân bằng artifacts (ví dụ relation bị reject/defer hoặc policy không khớp); không mô tả “unchanged” như một tác động nhân quả.
+
+## Inference lịch sử và test wiring
+
+Run `qwen3:4b` v6 trước blind checkpoint là `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`; chi tiết trong `LLM_EXTRACTION_EVALUATION.md`. Không tính nó là run hậu protocol.
+
+Unit tests hiện kiểm chứng test-only proposal/review/evidence đi qua optimizer, tạo 203 phân hoạch khi 6 R, constraint soft đổi optimal/display assignment, rồi đổi interaction `same_quantum`; source IDs giữ traceability và hard constraints được kiểm từng candidate. Đây là bằng chứng code path deterministic, không phải semantic outcome của Tutor Support. Chưa có case run hậu-blind/review thật.

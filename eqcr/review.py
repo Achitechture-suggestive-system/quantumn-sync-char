@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Any
 
 from .impact import STEP_BY_ARTIFACT, impact_preview
+from .p2_protocol import RELATION_PREDICATES
 from .traceability import refresh_traceability_artifact
 
 
@@ -174,7 +175,7 @@ def apply_constraint_edit(
     before_list = deepcopy(constraints)
     normalized = new_value.strip().upper()
     if normalized.startswith("ADD "):
-        match = re.fullmatch(r"ADD\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-6])\s*,\s*(R[1-6])\s*\)", normalized)
+        match = re.fullmatch(r"ADD\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-9]\d*)\s*,\s*(R[1-9]\d*)\s*\)", normalized)
         if not match:
             raise ValueError("Use ADD MUST_LINK(R4,R6) or ADD CANNOT_LINK(R4,R6).")
         relation, left, right = match.groups()
@@ -221,7 +222,7 @@ def apply_constraint_edit(
             raise ValueError(f"Constraint {constraint_id} was not found.")
         constraints = [c for c in constraints if c["id"] != constraint_id]
     else:
-        match = re.fullmatch(r"SET\s+(H[1-9]\d*)\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-6])\s*,\s*(R[1-6])\s*\)", normalized)
+        match = re.fullmatch(r"SET\s+(H[1-9]\d*)\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-9]\d*)\s*,\s*(R[1-9]\d*)\s*\)", normalized)
         if not match:
             raise ValueError("Supported edits: ADD MUST_LINK(...), ADD CANNOT_LINK(...), SET H3 CANNOT_LINK(...), DISABLE H3, ENABLE H3, REMOVE H4.")
         constraint_id, relation, left, right = match.groups()
@@ -367,15 +368,33 @@ def apply_evidence_relation_edit(
     predicate: str,
     object_requirement_id: str,
     source_requirement_ids: list[str],
+    subject_responsibility_id: str,
+    object_responsibility_id: str,
+    architecture_implication: str,
+    architecture_rationale: str,
     reason: str,
     source: str,
     actor: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Correct an approved evidence relation, preserving exact requirement citations and audit impact."""
-    if not all((object_id.strip(), subject_requirement_id.strip(), predicate.strip(), object_requirement_id.strip(), reason.strip(), source.strip(), actor.strip())):
-        raise ValueError("Evidence ID, endpoints, predicate, reason, source, and reviewer are required.")
+    """Revise an approved architecture candidate using registered relations and explicit role pairs."""
+    if not all((object_id.strip(), subject_requirement_id.strip(), predicate.strip(), object_requirement_id.strip(), subject_responsibility_id.strip(), object_responsibility_id.strip(), architecture_implication.strip(), architecture_rationale.strip(), reason.strip(), source.strip(), actor.strip())):
+        raise ValueError("Evidence, FR endpoints, registered predicate, responsibility pair, architectural rationale, reason, source, and reviewer are required.")
     if subject_requirement_id == object_requirement_id:
         raise ValueError("An evidence relation must connect two different requirements.")
+    predicate = predicate.strip().upper()
+    if predicate not in RELATION_PREDICATES:
+        raise ValueError(f"Relation predicate must use the P2 registry: {', '.join(sorted(RELATION_PREDICATES))}.")
+    if predicate == "BUSINESS_PRECEDES":
+        raise ValueError("Business ordering can be revised in the relation registry, but cannot be used as an optimizer evidence relation.")
+    if architecture_implication not in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}:
+        raise ValueError("Choose an explicit architectural candidate implication for an optimizer relation.")
+    if predicate == "SHARES_STATE_OR_INVARIANT" and architecture_implication != "COLOCATE_CANDIDATE":
+        raise ValueError("SHARES_STATE_OR_INVARIANT only supports a COLOCATE_CANDIDATE implication.")
+    if predicate == "REQUIRES_INDEPENDENT_CHANGE" and architecture_implication != "SEPARATE_CANDIDATE":
+        raise ValueError("REQUIRES_INDEPENDENT_CHANGE only supports a SEPARATE_CANDIDATE implication.")
+    if subject_requirement_id > object_requirement_id:
+        subject_requirement_id, object_requirement_id = object_requirement_id, subject_requirement_id
+        subject_responsibility_id, object_responsibility_id = object_responsibility_id, subject_responsibility_id
     current = next(
         (item for item in artifacts["evidence"]["items"] if item.get("id") == object_id),
         None,
@@ -384,6 +403,8 @@ def apply_evidence_relation_edit(
         raise ValueError(f"Evidence item {object_id} was not found.")
     if current.get("review_status") != "APPROVED":
         raise ValueError("Only reviewer-approved evidence can be revised as an accepted relation.")
+    if not current.get("relation_annotation_id"):
+        raise ValueError("Only evidence linked to a reviewed relation annotation can be revised through P2.")
     updated_fixture = deepcopy(fixture)
     raw = updated_fixture["raw_requirements"]
     requirements = {item["id"]: item for item in raw["requirements"]}
@@ -393,43 +414,76 @@ def apply_evidence_relation_edit(
         raise ValueError("Evidence correction needs valid source requirement IDs.")
     if not {subject_requirement_id, object_requirement_id} <= set(source_requirement_ids):
         raise ValueError("Evidence correction must cite both relationship endpoints.")
-    responsibility_by_requirement = {
-        requirement_id: responsibility["id"]
-        for responsibility in updated_fixture["responsibilities"]
-        for requirement_id in responsibility["requirement_ids"]
-    }
+    responsibilities = {item["id"]: item for item in updated_fixture["responsibilities"]}
+    if subject_responsibility_id not in responsibilities or object_responsibility_id not in responsibilities:
+        raise ValueError("Evidence correction names an unknown reviewed responsibility.")
+    if subject_requirement_id not in responsibilities[subject_responsibility_id]["requirement_ids"]:
+        raise ValueError("Subject responsibility must explicitly cover the selected subject FR.")
+    if object_requirement_id not in responsibilities[object_responsibility_id]["requirement_ids"]:
+        raise ValueError("Object responsibility must explicitly cover the selected object FR.")
     before = deepcopy(next(item for item in updated_fixture["evidence"] if item["id"] == object_id))
     after = deepcopy(before)
     after.update(
         {
-            "subject_id": responsibility_by_requirement[subject_requirement_id],
-            "predicate": predicate.strip(),
-            "object_id": responsibility_by_requirement[object_requirement_id],
+            "subject_id": subject_responsibility_id,
+            "predicate": predicate,
+            "object_id": object_responsibility_id,
             "status": "PRESENT",
             "provenance": "HUMAN_OVERRIDE",
             "review_status": "APPROVED",
             "source_refs": [requirements[item]["source_ref"] for item in source_requirement_ids],
-            "rationale": reason.strip(),
+            "rationale": f"{reason.strip()} Architectural candidate: {architecture_rationale.strip()}",
             "is_assumption": False,
+            "relation_annotation_id": current["relation_annotation_id"],
+            "subject_requirement_id": subject_requirement_id,
+            "object_requirement_id": object_requirement_id,
+            "architecture_implication": architecture_implication,
         }
     )
+    relation = next(
+        (item for item in updated_fixture.get("relation_annotations", []) if item.get("id") == current["relation_annotation_id"]),
+        None,
+    )
+    if relation is None:
+        raise ValueError("The reviewed relation annotation referenced by the evidence was not found.")
+    relation_before = deepcopy(relation)
+    relation.update(
+        {
+            "subject_requirement_id": subject_requirement_id,
+            "predicate": predicate,
+            "object_requirement_id": object_requirement_id,
+            "direction": "UNDIRECTED",
+            "status": "PRESENT",
+            "review_status": "APPROVED",
+            "provenance": "HUMAN_OVERRIDE",
+            "source_requirement_ids": source_requirement_ids,
+            "source_workflow_ids": [],
+            "source_refs": [requirements[item]["source_ref"] for item in source_requirement_ids],
+            "rationale": reason.strip(),
+            "architecture_implication": architecture_implication,
+            "architecture_rationale": architecture_rationale.strip(),
+            "responsibility_pairs": [(subject_responsibility_id, object_responsibility_id)],
+        }
+    )
+    from .models import RelationAnnotation
+    RelationAnnotation.model_validate(relation)
     if before == after:
         raise ValueError(f"The requested evidence edit leaves {object_id} unchanged.")
     target_index = next(index for index, item in enumerate(updated_fixture["evidence"]) if item["id"] == object_id)
     updated_fixture["evidence"][target_index] = after
 
-    impact = impact_preview("evidence")
+    impact = impact_preview("relation_registry")
     decision_number = len(artifacts.get("decisions", {}).get("items", [])) + 1
     revision_number = len(artifacts.get("revisions", {}).get("items", [])) + 1
     decision = {
         "decision_id": f"D{decision_number:02d}",
         "decision_type": "STRUCTURAL_REVISION",
         "target_step": "03",
-        "target_artifact": "evidence",
+        "target_artifact": "relation_registry",
         "object_id": object_id,
         "action": "CORRECT",
-        "old_value": before,
-        "new_value": after,
+        "old_value": {"relation": relation_before, "evidence": before},
+        "new_value": {"relation": relation, "evidence": after},
         "reason": reason.strip(),
         "source": source.strip(),
         "actor": actor.strip(),
@@ -441,15 +495,15 @@ def apply_evidence_relation_edit(
         "from_revision": f"v{revision_number}",
         "decision_id": decision["decision_id"],
         "target_step": "03",
-        "target_artifact": "evidence",
+        "target_artifact": "relation_registry",
         "object_id": object_id,
-        "before": before,
-        "after": after,
+        "before": {"relation": relation_before, "evidence": before},
+        "after": {"relation": relation, "evidence": after},
         "reason": reason.strip(),
         "source": source.strip(),
         "actor": actor.strip(),
         "affected_steps": impact["affected_steps"],
-        "affected_artifacts": ["evidence", *impact["stale_artifacts"], "decisions", "revisions"],
+        "affected_artifacts": ["relation_registry", *impact["stale_artifacts"], "decisions", "revisions"],
         "unaffected_artifacts": impact["unaffected_artifacts"],
         "invalidated_artifacts": impact["stale_artifacts"],
         "stale_artifacts_before_revalidation": impact["stale_artifacts"],

@@ -8,7 +8,7 @@ from typing import Any, Iterable, Iterator
 
 import networkx as nx
 
-from .models import Constraint, EvidenceConstraintPolicy, EvidenceRecord, RawRequirements, Responsibility
+from .models import Constraint, EvidenceConstraintPolicy, EvidenceRecord, RawRequirements, RelationAnnotation, Responsibility
 from .traceability import refresh_traceability_artifact
 
 
@@ -66,6 +66,25 @@ def _optimize(
     preferred_partition: list[list[str]] | None = None,
     selection_policy: str = "FIRST_OPTIMAL",
 ) -> dict[str, Any]:
+    if len(responsibility_ids) > 8:
+        raise ValueError("Exhaustive candidate enumeration is capped at eight responsibilities (Bell(8)=4140).")
+    if not responsibility_ids:
+        return {
+            "enumerated_partition_count": 0,
+            "bell_number_expected": 0,
+            "feasible_candidate_count": 0,
+            "objective_definition": "J = sum of weights for violated enabled SOFT constraints.",
+            "objective_minimum": None,
+            "optimal_candidate_count": 0,
+            "conflicts": [],
+            "feasible_candidates": [],
+            "optimal_candidates": [],
+            "selected_candidate_id": None,
+            "selected_groups": None,
+            "selection_policy": selection_policy,
+            "result_status": "REVIEW_REQUIRED",
+            "interpretation": "No responsibility survived review; no partition was generated.",
+        }
     all_partitions = list(_partitions(responsibility_ids))
     active_hard = [c for c in constraints if c.enabled and c.hardness == "HARD"]
     active_soft = [c for c in constraints if c.enabled and c.hardness == "SOFT"]
@@ -122,7 +141,7 @@ def _optimize(
         selected = optimal[0] if optimal else None
     return {
         "enumerated_partition_count": len(all_partitions),
-        "bell_number_expected": 203 if len(responsibility_ids) == 6 else None,
+        "bell_number_expected": len(all_partitions),
         "feasible_candidate_count": len(feasible),
         "objective_definition": "J = sum of weights for violated enabled SOFT constraints.",
         "objective_minimum": min_cost,
@@ -160,6 +179,16 @@ def _derive_evidence_constraints(
                 or not record.source_refs
             ):
                 continue
+            if (
+                policy.required_architecture_implication is not None
+                and record.architecture_implication != policy.required_architecture_implication
+            ):
+                continue
+            if (
+                record.architecture_implication in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}
+                and not record.relation_annotation_id
+            ):
+                continue
             left, right = record.subject_id, record.object_id
             if left == right or left not in responsibility_by_id or right not in responsibility_by_id:
                 continue
@@ -174,13 +203,29 @@ def _derive_evidence_constraints(
                 and source_texts[ref.source_id][ref.start:ref.end] == ref.quote
                 for ref in record.source_refs
             )
-            endpoint_sources = {
-                requirement.source_ref.source_id
-                for responsibility_id in (left, right)
-                for requirement_id in responsibility_by_id[responsibility_id].requirement_ids
-                for requirement in [requirement_by_id.get(requirement_id)]
-                if requirement is not None
+            endpoint_requirement_ids = {
+                value for value in (record.subject_requirement_id, record.object_requirement_id) if value
             }
+            if endpoint_requirement_ids:
+                if (
+                    len(endpoint_requirement_ids) != 2
+                    or record.subject_requirement_id not in responsibility_by_id[left].requirement_ids
+                    or record.object_requirement_id not in responsibility_by_id[right].requirement_ids
+                ):
+                    continue
+                endpoint_sources = {
+                    requirement_by_id[requirement_id].source_ref.source_id
+                    for requirement_id in endpoint_requirement_ids
+                    if requirement_id in requirement_by_id
+                }
+            else:
+                endpoint_sources = {
+                    requirement.source_ref.source_id
+                    for responsibility_id in (left, right)
+                    for requirement_id in responsibility_by_id[responsibility_id].requirement_ids
+                    for requirement in [requirement_by_id.get(requirement_id)]
+                    if requirement is not None
+                }
             cited_sources = {ref.source_id for ref in record.source_refs}
             if not source_refs_valid or not endpoint_sources or not endpoint_sources <= cited_sources:
                 continue
@@ -235,13 +280,18 @@ def _build_quanta(responsibilities: list[Responsibility], selected: list[list[st
             }
         )
     membership_counts = {rid: sum(rid in group for group in (selected or [])) for rid in by_id}
+    assignment_status = (
+        "PASS" if by_id and all(count == 1 for count in membership_counts.values())
+        else "INSUFFICIENT_EVIDENCE" if not by_id
+        else "INFEASIBLE"
+    )
     return {
         "selected_candidate_id": None,
         "quanta": quanta,
         "primary_assignment": assignment,
         "membership_counts": membership_counts,
-        "assignment_validation_status": "PASS" if all(count == 1 for count in membership_counts.values()) else "INFEASIBLE",
-        "status": "PROPOSED_NOT_VERIFIED" if all(count == 1 for count in membership_counts.values()) else "INFEASIBLE",
+        "assignment_validation_status": assignment_status,
+        "status": "PROPOSED_NOT_VERIFIED" if assignment_status == "PASS" else assignment_status,
         "verification_note": "A partition assignment is not evidence of independent deployability.",
     }
 
@@ -254,21 +304,35 @@ def _build_interactions(
     assignment = quanta["primary_assignment"]
     graph = nx.DiGraph()
     graph.add_nodes_from(item["id"] for item in quanta["quanta"])
-    requirement_to_responsibility = {
-        requirement_id: responsibility.id
-        for responsibility in responsibilities
-        for requirement_id in responsibility.requirement_ids
-    }
+    requirement_to_responsibilities: dict[str, list[str]] = defaultdict(list)
+    for responsibility in responsibilities:
+        for requirement_id in responsibility.requirement_ids:
+            requirement_to_responsibilities[requirement_id].append(responsibility.id)
     interactions = []
+    seen_interactions = set()
     for scenario in raw.scenarios:
         if len(scenario.related_requirement_ids) < 2:
             continue
-        ids = [requirement_to_responsibility[item] for item in scenario.related_requirement_ids]
-        for left, right in zip(ids, ids[1:]):
+        candidate_pairs = []
+        for left_fr, right_fr in zip(scenario.related_requirement_ids, scenario.related_requirement_ids[1:]):
+            for left in requirement_to_responsibilities.get(left_fr, []):
+                for right in requirement_to_responsibilities.get(right_fr, []):
+                    if left == right:
+                        continue
+                    candidate_pairs.append((left, right))
+        for left, right in candidate_pairs:
             left_quantum, right_quantum = assignment.get(left), assignment.get(right)
             if not left_quantum or not right_quantum:
                 continue
-            edge_id = scenario.interaction_id if len(ids) == 2 and scenario.interaction_id else f"EDGE-{scenario.id}-{left}-{right}"
+            edge_id = (
+                scenario.interaction_id
+                if len(candidate_pairs) == 1 and len(scenario.related_requirement_ids) == 2 and scenario.interaction_id
+                else f"EDGE-{scenario.id}-{left}-{right}"
+            )
+            edge_key = (scenario.id, left, right)
+            if edge_key in seen_interactions:
+                continue
+            seen_interactions.add(edge_key)
             interactions.append((scenario, left, right, left_quantum, right_quantum, edge_id))
     if not interactions:
         return {
@@ -361,18 +425,17 @@ def _build_interactions(
 
 def _build_quality(raw: RawRequirements, responsibilities: list[Responsibility], quanta: dict[str, Any]) -> dict[str, Any]:
     assignment = quanta["primary_assignment"]
-    requirement_to_responsibility = {
-        requirement_id: responsibility.id
-        for responsibility in responsibilities
-        for requirement_id in responsibility.requirement_ids
-    }
+    requirement_to_responsibilities: dict[str, list[str]] = defaultdict(list)
+    for responsibility in responsibilities:
+        for requirement_id in responsibility.requirement_ids:
+            requirement_to_responsibilities[requirement_id].append(responsibility.id)
     profiles = []
     for scenario in raw.scenarios:
-        responsibility_ids = [
-            requirement_to_responsibility[item]
-            for item in scenario.related_requirement_ids
-            if item in requirement_to_responsibility
-        ]
+        responsibility_ids = sorted({
+            responsibility_id
+            for requirement_id in scenario.related_requirement_ids
+            for responsibility_id in requirement_to_responsibilities.get(requirement_id, [])
+        })
         quantum_ids = sorted({assignment[item] for item in responsibility_ids if item in assignment})
         requirement_refs = [
             next(item for item in raw.requirements if item.id == requirement_id).source_ref.model_dump(mode="json")
@@ -533,25 +596,95 @@ def run_pipeline(
     raw = RawRequirements.model_validate(fixture["raw_requirements"])
     responsibilities = [Responsibility.model_validate(item) for item in fixture["responsibilities"]]
     evidence = [EvidenceRecord.model_validate(item) for item in fixture["evidence"]]
+    relation_annotations = [
+        RelationAnnotation.model_validate(item) for item in fixture.get("relation_annotations", [])
+    ]
+    relation_ids = [item.id for item in relation_annotations]
+    if len(relation_ids) != len(set(relation_ids)):
+        raise ValueError("Relation annotation IDs must be unique.")
+    evidence_ids = [item.id for item in evidence]
+    if len(evidence_ids) != len(set(evidence_ids)):
+        raise ValueError("Evidence IDs must be unique.")
     responsibility_ids = [item.id for item in responsibilities]
     if len(responsibility_ids) != len(set(responsibility_ids)):
         raise ValueError("Responsibility IDs must be unique.")
     known_requirement_ids = {item.id for item in raw.requirements}
+    known_workflow_ids = {item.id for item in raw.workflows}
+    known_responsibility_ids = set(responsibility_ids)
+    requirement_by_id = {item.id: item for item in raw.requirements}
+    workflow_by_id = {item.id: item for item in raw.workflows}
+    constraint_source_texts = {
+        item.source_ref.source_id: item.text for item in raw.requirements
+    }
+    constraint_source_texts.update({item.source_ref.source_id: item.text for item in raw.workflows})
+    constraint_source_texts.update(
+        {item.source_ref.source_id: item.source_ref.quote for item in raw.scenarios}
+    )
     for responsibility in responsibilities:
         unknown_requirements = set(responsibility.requirement_ids) - known_requirement_ids
         if unknown_requirements:
             raise ValueError(
                 f"{responsibility.id} references unknown requirement IDs: {sorted(unknown_requirements)}."
             )
+    for relation in relation_annotations:
+        if relation.subject_requirement_id not in known_requirement_ids or relation.object_requirement_id not in known_requirement_ids:
+            raise ValueError(f"Relation annotation {relation.id} references an unknown FR endpoint.")
+        if not set(relation.source_requirement_ids) <= known_requirement_ids or not set(relation.source_workflow_ids) <= known_workflow_ids:
+            raise ValueError(f"Relation annotation {relation.id} references an unknown source ID.")
+        if relation.status in {"PRESENT", "SCOPED_ABSENT"} and not relation.source_refs:
+            raise ValueError(f"Relation annotation {relation.id} is missing its cited source spans.")
+        if any(
+            ref.source_id not in constraint_source_texts
+            or ref.end > len(constraint_source_texts[ref.source_id])
+            or constraint_source_texts[ref.source_id][ref.start:ref.end] != ref.quote
+            for ref in relation.source_refs
+        ):
+            raise ValueError(f"Relation annotation {relation.id} contains an unresolved source span.")
+        if relation.architecture_implication in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}:
+            for left, right in relation.responsibility_pairs:
+                if left not in known_responsibility_ids or right not in known_responsibility_ids:
+                    raise ValueError(f"Relation annotation {relation.id} references an unknown responsibility pair.")
+                role_by_id = {item.id: item for item in responsibilities}
+                if relation.subject_requirement_id not in role_by_id[left].requirement_ids or relation.object_requirement_id not in role_by_id[right].requirement_ids:
+                    raise ValueError(f"Relation annotation {relation.id} pair does not match its cited FR endpoints.")
+    known_relation_ids = set(relation_ids)
+    relation_by_id = {item.id: item for item in relation_annotations}
+    evidence_by_relation: dict[str, list[EvidenceRecord]] = defaultdict(list)
+    for item in evidence:
+        if not item.relation_annotation_id:
+            continue
+        if item.relation_annotation_id not in known_relation_ids:
+            raise ValueError(f"Evidence {item.id} references unknown relation annotation {item.relation_annotation_id}.")
+        relation = relation_by_id[item.relation_annotation_id]
+        if relation.architecture_implication not in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}:
+            raise ValueError(f"Evidence {item.id} is materialized from a relation without an architecture candidate implication.")
+        if (
+            relation.review_status != "APPROVED"
+            or relation.status != "PRESENT"
+            or item.review_status != "APPROVED"
+            or item.status != "PRESENT"
+            or item.predicate != relation.predicate
+            or item.subject_requirement_id != relation.subject_requirement_id
+            or item.object_requirement_id != relation.object_requirement_id
+            or item.architecture_implication != relation.architecture_implication
+        ):
+            raise ValueError(f"Evidence {item.id} does not preserve the approved relation status and semantics.")
+        if (item.subject_id, item.object_id) not in relation.responsibility_pairs:
+            raise ValueError(f"Evidence {item.id} responsibility pair is absent from its reviewed relation annotation.")
+        if {ref.source_id for ref in item.source_refs} != {ref.source_id for ref in relation.source_refs}:
+            raise ValueError(f"Evidence {item.id} source IDs differ from its reviewed relation annotation.")
+        evidence_by_relation[item.relation_annotation_id].append(item)
+    for relation in relation_annotations:
+        if relation.architecture_implication in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}:
+            relation_evidence = evidence_by_relation.get(relation.id, [])
+            actual_pairs = [(item.subject_id, item.object_id) for item in relation_evidence]
+            expected_pairs = set(relation.responsibility_pairs)
+            if len(actual_pairs) != len(expected_pairs) or set(actual_pairs) != expected_pairs:
+                raise ValueError(
+                    f"Relation annotation {relation.id} must have exactly one evidence row per approved responsibility pair."
+                )
     selected_constraints = fixture["constraints"] if constraints_override is None else constraints_override
     if constraints_override is None:
-        constraint_source_texts = {
-            item.source_ref.source_id: item.text for item in raw.requirements
-        }
-        constraint_source_texts.update({item.source_ref.source_id: item.text for item in raw.workflows})
-        constraint_source_texts.update(
-            {item.source_ref.source_id: item.source_ref.quote for item in raw.scenarios}
-        )
         selected_constraints = [
             *selected_constraints,
             *[
@@ -566,7 +699,6 @@ def run_pipeline(
             ],
         ]
     constraints = [Constraint.model_validate(item) for item in selected_constraints]
-    known_responsibility_ids = set(responsibility_ids)
     known_scenario_ids = {item.id for item in raw.scenarios}
     known_evidence_ids = {item.id for item in evidence}
     for constraint in constraints:
@@ -691,15 +823,36 @@ def run_pipeline(
         for item in evidence
     )
     responsibility_origin = fixture.get("responsibility_provenance", fixture["fixture_label"])
+    responsibility_review_complete = bool(
+        fixture.get("responsibility_review_complete")
+        or (responsibilities and all(item.review_decision_status == "APPROVED" for item in responsibilities))
+    )
+    requirement_role_counts = {
+        requirement_id: sum(requirement_id in item.requirement_ids for item in responsibilities)
+        for requirement_id in known_requirement_ids
+    }
+    unresolved_requirement_ids = sorted(
+        fixture.get("unresolved_requirement_ids", [
+            requirement_id for requirement_id, count in requirement_role_counts.items() if count == 0
+        ])
+    )
+    derived_unresolved_requirement_ids = sorted(
+        requirement_id for requirement_id, count in requirement_role_counts.items() if count == 0
+    )
+    if unresolved_requirement_ids != derived_unresolved_requirement_ids:
+        raise ValueError("Declared unresolved FR IDs must exactly match FRs with zero reviewed responsibilities.")
+    responsibility_review_status = (
+        "PASS" if responsibility_review_complete and not unresolved_requirement_ids else "REVIEW_REQUIRED"
+    )
     report_steps = [
         _step("01", "Context Understanding", "PASS" if len(raw.requirements) >= 5 and raw_source_spans_valid else "FAIL", "Requirement IDs and source spans are present.", ["raw_requirements", "context"]),
         _step(
             "02",
             "Responsibility Identification",
-            "PASS" if all(item.review_decision_status == "APPROVED" for item in responsibilities) else "REVIEW_REQUIRED",
+            responsibility_review_status,
             (
-                "All responsibility items have an APPROVED reviewer decision; this records completion of the review gate, not semantic accuracy."
-                if all(item.review_decision_status == "APPROVED" for item in responsibilities)
+                f"Every model responsibility received an explicit disposition; zero-to-many FR mapping is preserved, with unresolved FRs {unresolved_requirement_ids}. This records gate completion, not semantic accuracy."
+                if responsibility_review_complete
                 else f"{responsibility_origin} records trace to source requirements; semantic interpretation remains review-required."
             ),
             ["responsibilities"],
@@ -726,6 +879,16 @@ def run_pipeline(
             "all_requirements_have_unique_ids": len({item.id for item in raw.requirements}) == len(raw.requirements),
             "all_raw_source_spans_valid": raw_source_spans_valid,
             "all_responsibilities_have_fr_and_source_refs": all(item.requirement_ids and item.source_refs for item in responsibilities),
+            "responsibility_review_complete": responsibility_review_complete,
+            "fr_responsibility_mapping_is_zero_to_many": (
+                requirement_role_counts
+                == {
+                    requirement_id: sum(requirement_id in item.requirement_ids for item in responsibilities)
+                    for requirement_id in known_requirement_ids
+                }
+                and set(unresolved_requirement_ids) == set(derived_unresolved_requirement_ids)
+            ),
+            "optimizer_responsibility_cap_respected": len(responsibilities) <= 8,
             "unknown_is_not_false": any(item.status == "UNKNOWN" for item in evidence),
             "bell_6_count_is_203": optimization["enumerated_partition_count"] == 203,
             "fixture_has_10_zero_cost_optima": (
@@ -738,7 +901,7 @@ def run_pipeline(
                 else None
             ),
             "hard_constraint_conflicts_reported": (not has_conflict) or all(c["constraint_ids"] for c in optimization["conflicts"]),
-            "primary_quantum_assignment_exactly_once": quanta["assignment_validation_status"] == "PASS" if optimization["selected_groups"] else False,
+            "primary_quantum_assignment_exactly_once": quanta["assignment_validation_status"] == "PASS" if responsibilities and optimization["selected_groups"] else None,
             "interaction_unresolved_without_decision": all(
                 edge["label"] == "UNRESOLVED"
                 and edge["selection_status"] == "UNRESOLVED"
@@ -776,10 +939,17 @@ def run_pipeline(
         "context": context,
         "responsibilities": {
             "items": responsibility_dicts,
-            "status": "REVIEW_REQUIRED",
+            "status": responsibility_review_status,
             "provenance": fixture.get("responsibility_provenance", fixture["fixture_label"]),
+            "coverage_by_requirement": requirement_role_counts,
+            "unresolved_requirement_ids": unresolved_requirement_ids,
+            "review_complete": responsibility_review_complete,
         },
         "evidence": {"items": evidence_dicts, "status": "PASS" if any(x.status == "UNKNOWN" for x in evidence) else "REVIEW_REQUIRED"},
+        "relation_registry": {
+            "items": [item.model_dump(mode="json") for item in relation_annotations],
+            "status": "REVIEW_REQUIRED" if relation_annotations else "INSUFFICIENT_EVIDENCE",
+        },
         "constraints": {"items": constraint_dicts, "conflicts": optimization["conflicts"], "status": constraint_status},
         "partitions": optimization,
         "quanta": quanta,
@@ -813,6 +983,12 @@ def run_pipeline(
             ["raw_requirements"],
             "REVIEW_REQUIRED",
             "Requirement/source links are checked; responsibility semantics remain review-required.",
+        ),
+        "relation_registry": (
+            "HUMAN_REVIEWED_TYPED_RELATION_ANNOTATIONS",
+            ["raw_requirements", "decisions"],
+            "REVIEW_REQUIRED" if relation_annotations else "INSUFFICIENT_EVIDENCE",
+            "Relation direction, predicate, source spans, and architecture implication are separate; unannotated pairs are not negative labels.",
         ),
         "evidence": (
             "TYPED_EVIDENCE_RECORDS",

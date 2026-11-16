@@ -49,7 +49,7 @@ ISO's official page describes the 2023 product-quality model as nine characteris
 1. **Protocol documented:** [`EVALUATION_TRACKS.md`](EVALUATION_TRACKS.md) separates PetClinic fixture behavior, Tutor independent case, and synthetic optimizer correctness; it records provenance, baselines, ablations, measures and gates without inventing run results.
 2. **Partially specified:** source-only dual-annotator/adjudication, matching, review-effort, partition-agreement and runtime methods are recorded. External source rights, independent labels, domain review and target system are not supplied.
 3. **Separated:** algorithm tests, semantic extraction, architecture review and quality measurement have distinct evidence states. There are no eligible P2 semantic or measured-quality results.
-4. **Partial:** the P2 proposal runner exports a bounded manifest/checksum bundle. Complete multi-stage artifact-bundle validation and rerun protocol remain open.
+4. **Implemented, bounded:** the app artifact ZIP now records a versioned reproducibility manifest and checksums; `scripts/validate_artifact_bundle.py` verifies member coverage, hashes and JSON structure. It does not replay the pipeline or authenticate the archive. Reproducing a live Tutor experiment remains gated on independent human input.
 5. **Implemented:** [`FINAL_RESEARCH_COMPLETION_REPORT.md`](FINAL_RESEARCH_COMPLETION_REPORT.md) records bounded technical evidence and separately marks the actual case experiment and research validation `BLOCKED_EXTERNAL`.
 
 ## External blockers and stop conditions

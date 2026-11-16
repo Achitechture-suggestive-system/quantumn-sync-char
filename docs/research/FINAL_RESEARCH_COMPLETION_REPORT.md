@@ -1,7 +1,7 @@
 # EQCR + QAME — Research Completion Status Report
 
 **Report date:** 2026-11-16
-**Code checkpoint:** `722c18245e0a7bd7f94674b2fd55c3174785613c` on `feat/p1-semantic-validation`; [GitHub Actions run 43892678200](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43892678200) passed. This report describes verified work through that checkpoint; later documentation commits only add evidence records.
+**Code checkpoint:** `fc477903cef93db892057cb94ccc71e2c27d5103` on `feat/p1-semantic-validation`; [GitHub Actions run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed. This report describes verified work through that code checkpoint; subsequent commits only update documentation.
 
 ## 1. Repository baseline and audited capabilities
 
@@ -17,6 +17,7 @@
 - **P8:** architecture graph JSON now includes an explicit UNKNOWN Integration layer; Draw.io XML export is deterministic and available from Streamlit. Interaction contracts and their Sync/Async decision table are versioned; the current mode remains UNDECIDED and the UI has no contract-approval editor.
 - **P9:** QAME profiles report all six scenario fields and citation/provenance state. Unreviewed ISO/IEC 25010:2023 characteristic IDs remain UNMAPPED. Targets do not create measurements.
 - **P10:** no measurement adapter was added because no runnable target and valid measurement conditions exist.
+- **Artifact export:** the app ZIP now includes versioned input/runtime/solver/provenance metadata and payload hashes, with a validator for checksum coverage and JSON members. It verifies archive integrity, not semantic validity or run authenticity.
 
 ## 3. Formal method and optimizer
 
@@ -55,6 +56,8 @@ At the P8/P9 code checkpoint:
 - Staged path and secret-pattern review: no secret matches; only explicit source/docs/test paths were staged.
 - Remote branch SHA matched `722c18245e0a7bd7f94674b2fd55c3174785613c`; CI run `43892678200` passed on Python 3.13, including dependency installation, regression/P1 tests and compilation.
 
+At the subsequent artifact-bundle milestone, the local full suite passed **110 tests**, compileall and `git diff --check` passed. The implementation commit `27f556d7087466ca4c97663994077362fe51e6ff` had an initial CI failure caused by a test assuming no GitHub environment metadata. Follow-up test commit `fc477903cef93db892057cb94ccc71e2c27d5103` isolates that environment and covers both local and CI metadata; [CI run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed.
+
 These checks validate bounded code behavior, not case semantics or architecture quality.
 
 ## 6. Experiment configurations and actual results
@@ -86,7 +89,7 @@ The three evaluation tracks, future baselines, ablation configurations, measure 
 - P2 review schemas cap at eight roles. CP-SAT handles larger generic inputs through a code limit of 50, but that upper range is unbenchmarked; optima are capped at 200 and feasible sets are not counted.
 - Interaction contract decisions remain unavailable through the UI; current output is UNDECIDED. Graph tiers are placeholders when unsupported.
 - ISO characteristic IDs remain unmapped; four Tutor scenario parts remain UNKNOWN. No quality measurement target system, repeat protocol or raw observation exists.
-- Draw.io XML is parsed in tests, but no GUI round-trip is recorded. The P2 model-run manifest is not a validated whole-pipeline artifact bundle.
+- Draw.io XML is parsed in tests, but no GUI round-trip is recorded. The generic app ZIP has a validated integrity manifest; the separately produced P2 proposal run has no post-lock Tutor results to combine with reviewed downstream artifacts.
 
 ## 10. Reproducibility instructions
 
@@ -99,6 +102,14 @@ Run regression/compile checks from the repository root using the commands in sec
 ```
 
 The six-part Scenario fields changed canonical raw-input serialization; any future annotation must be newly locked to the current hash. The CLI refuses to treat an absent/invalid lock as permission to call the model. Review the per-run manifest/checksums under `runs/p2-experiments/`; keep generated runs out of Git.
+
+For an app artifact ZIP, validate its manifest, JSON payloads and checksums using the [bundle protocol](REPRODUCIBILITY_BUNDLE.md):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_artifact_bundle.py "path\to\run-artifacts.zip"
+```
+
+This checks archive integrity only; it does not replay the pipeline or authenticate the bundle.
 
 ## 11. Outstanding human decisions
 
@@ -114,7 +125,7 @@ The worksheet remains unfilled. No human decision, label, model result or semant
 
 | Status dimension | Result |
 |---|---|
-| `TECHNICALLY_COMPLETE` | `PARTIAL` — bounded P7–P9 behaviors and the existing P2 runner are tested; interaction approval UI, complete artifact-bundle validation and P10 measurement remain open. |
+| `TECHNICALLY_COMPLETE` | `PARTIAL` — bounded P7–P9 behaviors, P2 runner and generic ZIP integrity validator are tested; interaction approval UI, a combined post-review Tutor replay bundle and P10 measurement remain open. |
 | `CASE_EXPERIMENT_COMPLETE` | `BLOCKED_EXTERNAL` — no source-only lock, live post-lock model run, actual review decisions or real revision comparison. |
 | `RESEARCH_VALIDATED` | `BLOCKED_EXTERNAL` — no independent labels/adjudication, independent architecture validation or measured quality data. |
 | `BLOCKED_EXTERNAL` | `TRUE` — independent reviewers, source/license decisions and a runnable target are external dependencies. |

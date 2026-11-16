@@ -1,5 +1,12 @@
 # Changelog
 
+## Versioned run artifact bundle — 2026-11-16
+
+- App ZIP exports now include an `EQCR-REPRODUCIBILITY-BUNDLE@1.0.0` manifest, SHA-256 for input/source/review artifacts and each payload, code/runtime/dependency/optimizer metadata, and provenance counts. Missing source rights, versions, reviewer identity or CI result remain unrecorded.
+- Added `scripts/validate_artifact_bundle.py` to check member paths, JSON validity, checksum coverage and hashes. The validator does not replay the pipeline or authenticate a bundle.
+- Verification: local full suite 110 passed; compileall passed. First CI run `43895817702` exposed a test assumption about absent GitHub environment variables; follow-up test commit `fc477903cef93db892057cb94ccc71e2c27d5103` covers both CI and non-CI metadata. [CI run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed on the final code checkpoint.
+- Code commits: `27f556d7087466ca4c97663994077362fe51e6ff` and `fc477903cef93db892057cb94ccc71e2c27d5103`; latest feature ref matches `fc477903cef93db892057cb94ccc71e2c27d5103`. The P2 human experiment remains blocked externally.
+
 ## P8–P9 graph, interaction contracts and QAME trace — 2026-11-16
 
 - Added graph schema 1.0.0 with an explicit UNKNOWN Integration layer, a deterministic editable Draw.io export/download, and endpoint/XML tests. Unknown layers are graph-policy placeholders, not system facts.

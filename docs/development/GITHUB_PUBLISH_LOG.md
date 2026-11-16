@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## Reproducibility bundle manifest — 16/11/2026
+
+- Branch `feat/p1-semantic-validation`; không sửa `main` hoặc P0 tag.
+- Code commit `27f556d7087466ca4c97663994077362fe51e6ff` thêm versioned manifest/checksum và CLI validator. CI `43895817702` thất bại do một test giả định GitHub không cung cấp `GITHUB_RUN_ID`; code export không hỏng.
+- Test follow-up commit `fc477903cef93db892057cb94ccc71e2c27d5103` làm test cô lập môi trường local/CI và kiểm tra cả hai trạng thái. `git ls-remote` xác nhận feature ref đúng SHA này.
+- Trước push follow-up: full suite 110 tests passed, compileall và `git diff --check` passed; chỉ stage các code/test paths tường minh; secret-pattern scan không có match.
+- GitHub Actions [run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) trên follow-up commit completed success. Bundle mới kiểm hash/JSON/member coverage; không xác nhận semantic correctness, authenticity, license, reviewer identity, hoặc live P2 run.
+
 ## P8–P9 graph, interaction contracts and QAME trace — 16/11/2026
 
 - Branch `feat/p1-semantic-validation`; `main` và P0 tag không đổi. P0 tag commit `3d517b1a39158e539239dc73d594bc0938649feb` vẫn là ancestor của remote `main`.

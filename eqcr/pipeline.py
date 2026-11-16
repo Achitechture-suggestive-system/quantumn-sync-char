@@ -8,7 +8,7 @@ from typing import Any, Iterable, Iterator
 
 import networkx as nx
 
-from .models import Constraint, EvidenceRecord, RawRequirements, Responsibility
+from .models import Constraint, EvidenceConstraintPolicy, EvidenceRecord, RawRequirements, Responsibility
 from .traceability import refresh_traceability_artifact
 
 
@@ -60,7 +60,12 @@ def _constraint_conflicts(constraints: list[Constraint]) -> list[dict[str, Any]]
     return conflicts
 
 
-def _optimize(responsibility_ids: list[str], constraints: list[Constraint]) -> dict[str, Any]:
+def _optimize(
+    responsibility_ids: list[str],
+    constraints: list[Constraint],
+    preferred_partition: list[list[str]] | None = None,
+    selection_policy: str = "FIRST_OPTIMAL",
+) -> dict[str, Any]:
     all_partitions = list(_partitions(responsibility_ids))
     active_hard = [c for c in constraints if c.enabled and c.hardness == "HARD"]
     active_soft = [c for c in constraints if c.enabled and c.hardness == "SOFT"]
@@ -101,16 +106,25 @@ def _optimize(responsibility_ids: list[str], constraints: list[Constraint]) -> d
         candidate["candidate_id"] = f"P{index:03d}"
         candidate["is_optimal"] = candidate["objective_cost"] == min_cost
 
-    preferred = _partition_signature([["R1"], ["R2", "R3"], ["R4", "R5"], ["R6"]])
-    selected = next(
-        (item for item in optimal if _partition_signature(item["groups"]) == preferred),
-        optimal[0] if optimal else None,
+    preferred = next(
+        (
+            item for item in optimal
+            if preferred_partition is not None
+            and _partition_signature(item["groups"]) == _partition_signature(preferred_partition)
+        ),
+        None,
     )
+    if preferred is not None:
+        selected = preferred
+    elif selection_policy == "MAXIMUM_GROUPS":
+        selected = max(optimal, key=lambda item: len(item["groups"])) if optimal else None
+    else:
+        selected = optimal[0] if optimal else None
     return {
         "enumerated_partition_count": len(all_partitions),
         "bell_number_expected": 203 if len(responsibility_ids) == 6 else None,
         "feasible_candidate_count": len(feasible),
-        "objective_definition": "J = sum of weights for violated enabled SOFT constraints; no soft constraints are configured in the frozen fixture.",
+        "objective_definition": "J = sum of weights for violated enabled SOFT constraints.",
         "objective_minimum": min_cost,
         "optimal_candidate_count": len(optimal),
         "conflicts": conflicts,
@@ -118,12 +132,81 @@ def _optimize(responsibility_ids: list[str], constraints: list[Constraint]) -> d
         "optimal_candidates": optimal,
         "selected_candidate_id": selected["candidate_id"] if selected else None,
         "selected_groups": selected["groups"] if selected else None,
+        "selection_policy": "PREFERRED_PARTITION" if preferred_partition else selection_policy,
         "result_status": "INFEASIBLE" if not feasible else "REVIEW_REQUIRED",
-        "interpretation": (
-            "All feasible partitions tie at J=0 because the fixture contains hard what-if policies and no soft objective evidence. "
-            "The selected candidate is a deterministic display choice, not an architecture recommendation."
-        ),
+        "interpretation": "The selected candidate is a deterministic display choice among minimum-cost partitions, not an architecture recommendation.",
     }
+
+
+def _derive_evidence_constraints(
+    raw: RawRequirements,
+    evidence: list[EvidenceRecord],
+    responsibilities: list[Responsibility],
+    policies: list[dict[str, Any]],
+    source_texts: dict[str, str],
+) -> list[Constraint]:
+    """Apply declared soft policies only to human-approved evidence and responsibilities."""
+    validated_policies = [EvidenceConstraintPolicy.model_validate(item) for item in policies]
+    responsibility_by_id = {item.id: item for item in responsibilities}
+    requirement_by_id = {item.id: item for item in raw.requirements}
+    derived = []
+    seen = set()
+    for policy in validated_policies:
+        for record in evidence:
+            if (
+                record.predicate != policy.evidence_predicate
+                or record.status != "PRESENT"
+                or record.review_status != "APPROVED"
+                or not record.source_refs
+            ):
+                continue
+            left, right = record.subject_id, record.object_id
+            if left == right or left not in responsibility_by_id or right not in responsibility_by_id:
+                continue
+            if any(
+                responsibility_by_id[rid].review_decision_status != "APPROVED"
+                for rid in (left, right)
+            ):
+                continue
+            source_refs_valid = all(
+                ref.source_id in source_texts
+                and ref.end <= len(source_texts[ref.source_id])
+                and source_texts[ref.source_id][ref.start:ref.end] == ref.quote
+                for ref in record.source_refs
+            )
+            endpoint_sources = {
+                requirement.source_ref.source_id
+                for responsibility_id in (left, right)
+                for requirement_id in responsibility_by_id[responsibility_id].requirement_ids
+                for requirement in [requirement_by_id.get(requirement_id)]
+                if requirement is not None
+            }
+            cited_sources = {ref.source_id for ref in record.source_refs}
+            if not source_refs_valid or not endpoint_sources or not endpoint_sources <= cited_sources:
+                continue
+            key = (policy.id, tuple(sorted((left, right))))
+            if key in seen:
+                continue
+            seen.add(key)
+            derived.append(
+                Constraint(
+                    id=f"D-{policy.id}-{record.id}",
+                    relation=policy.relation,
+                    left=left,
+                    right=right,
+                    hardness=policy.hardness,
+                    weight=policy.weight,
+                    evidence_ids=[record.id],
+                    origin="ARCHITECTURAL_POLICY",
+                    enabled=True,
+                    source_refs=record.source_refs,
+                    rationale=(
+                        f"Policy {policy.id}: {policy.rationale} "
+                        f"Applied to reviewer-approved evidence {record.id}."
+                    ),
+                )
+            )
+    return derived
 
 
 def _build_quanta(responsibilities: list[Responsibility], selected: list[list[str]] | None) -> dict[str, Any]:
@@ -163,70 +246,88 @@ def _build_quanta(responsibilities: list[Responsibility], selected: list[list[st
     }
 
 
-def _build_interactions(quanta: dict[str, Any], raw: RawRequirements) -> dict[str, Any]:
+def _build_interactions(
+    quanta: dict[str, Any],
+    raw: RawRequirements,
+    responsibilities: list[Responsibility],
+) -> dict[str, Any]:
     assignment = quanta["primary_assignment"]
     graph = nx.DiGraph()
     graph.add_nodes_from(item["id"] for item in quanta["quanta"])
-    pet_q = assignment.get("R4")
-    visit_q = assignment.get("R6")
-    if not pet_q or not visit_q:
+    requirement_to_responsibility = {
+        requirement_id: responsibility.id
+        for responsibility in responsibilities
+        for requirement_id in responsibility.requirement_ids
+    }
+    interactions = []
+    for scenario in raw.scenarios:
+        if len(scenario.related_requirement_ids) < 2:
+            continue
+        ids = [requirement_to_responsibility[item] for item in scenario.related_requirement_ids]
+        for left, right in zip(ids, ids[1:]):
+            left_quantum, right_quantum = assignment.get(left), assignment.get(right)
+            if not left_quantum or not right_quantum:
+                continue
+            edge_id = scenario.interaction_id if len(ids) == 2 and scenario.interaction_id else f"EDGE-{scenario.id}-{left}-{right}"
+            interactions.append((scenario, left, right, left_quantum, right_quantum, edge_id))
+    if not interactions:
         return {
             "edges": [],
             "graph_summary": {"node_count": graph.number_of_nodes(), "directed_edge_count": 0},
             "status": "INSUFFICIENT_EVIDENCE",
-            "note": "No feasible boundary is available while constraints are infeasible.",
+            "note": "No scenario links two responsibilities with a current quantum assignment.",
         }
-    same_quantum = pet_q == visit_q
-    pet_visit_scenario = next(item for item in raw.scenarios if item.id == "SC-PET-VISIT")
-    schedule_requirement = next(item for item in raw.requirements if item.id == "FR-06")
-    proposal_sources = [
-        pet_visit_scenario.source_ref.model_dump(mode="json"),
-        schedule_requirement.source_ref.model_dump(mode="json"),
-    ]
-    unresolved_decisions = [
-        "acknowledgement timing",
-        "consistency guarantee",
-        "latency budget",
-        "failure handling",
-        "retry and idempotency behavior",
-    ]
-    interaction_options = [
-        {
-            "id": "OPT-PET-VISIT-SYNC",
-            "mode": "SYNC",
-            "pattern": "Request-response",
-            "status": "PROPOSED_NOT_VERIFIED",
-            "review_status": "REVIEW_REQUIRED",
-            "provenance": "DETERMINISTIC_PATTERN_HYPOTHESIS",
-            "source_refs": proposal_sources,
-            "condition": "Consider only if scheduling must return a completed outcome in the same interaction.",
-            "rationale": "FR-06 says a visit can be scheduled, but does not say whether completion must be acknowledged before the request returns.",
-            "unresolved_decisions": unresolved_decisions,
-        },
-        {
-            "id": "OPT-PET-VISIT-ASYNC",
-            "mode": "ASYNC",
-            "pattern": "Command with later completion notification",
-            "status": "PROPOSED_NOT_VERIFIED",
-            "review_status": "REVIEW_REQUIRED",
-            "provenance": "DETERMINISTIC_PATTERN_HYPOTHESIS",
-            "source_refs": proposal_sources,
-            "condition": "Consider only if scheduling may be accepted for later completion and the caller can handle a pending result.",
-            "rationale": "The fixture does not specify a pending state, completion notification, or eventual-consistency requirement, so this remains an alternative hypothesis.",
-            "unresolved_decisions": unresolved_decisions,
-        },
-    ]
-    graph.add_edge(pet_q, visit_q, edge_id="EDGE-PET-VISIT", status="UNRESOLVED")
-    return {
-        "edges": [
+    edges = []
+    for scenario, left, right, left_quantum, right_quantum, edge_id in interactions:
+        related_refs = [
+            next(item for item in raw.requirements if item.id == requirement_id).source_ref.model_dump(mode="json")
+            for requirement_id in scenario.interaction_source_requirement_ids
+        ]
+        proposal_sources = [scenario.source_ref.model_dump(mode="json"), *related_refs]
+        unresolved_decisions = [
+            "acknowledgement timing",
+            "consistency guarantee",
+            "latency budget",
+            "failure handling",
+            "retry and idempotency behavior",
+        ]
+        interaction_options = [
             {
-                "id": "EDGE-PET-VISIT",
-                "from_quantum": pet_q,
-                "to_quantum": visit_q,
-                "responsibility_ids": ["R4", "R6"],
+                "id": f"OPT-{edge_id}-SYNC",
+                "mode": "SYNC",
+                "pattern": "Request-response",
+                "status": "PROPOSED_NOT_VERIFIED",
+                "review_status": "REVIEW_REQUIRED",
+                "provenance": "DETERMINISTIC_PATTERN_HYPOTHESIS",
+                "source_refs": proposal_sources,
+                "condition": "Consider only if the initiating request must receive a completed outcome synchronously.",
+                "rationale": f"Scenario {scenario.id} links the activities but does not specify synchronous completion.",
+                "unresolved_decisions": unresolved_decisions,
+            },
+            {
+                "id": f"OPT-{edge_id}-ASYNC",
+                "mode": "ASYNC",
+                "pattern": "Command with later completion notification",
+                "status": "PROPOSED_NOT_VERIFIED",
+                "review_status": "REVIEW_REQUIRED",
+                "provenance": "DETERMINISTIC_PATTERN_HYPOTHESIS",
+                "source_refs": proposal_sources,
+                "condition": "Consider only if the initiating request may return before the linked activity completes.",
+                "rationale": f"Scenario {scenario.id} does not establish pending-state or notification behavior.",
+                "unresolved_decisions": unresolved_decisions,
+            },
+        ]
+        same_quantum = left_quantum == right_quantum
+        graph.add_edge(left_quantum, right_quantum, edge_id=edge_id, status="UNRESOLVED")
+        edges.append(
+            {
+                "id": edge_id,
+                "from_quantum": left_quantum,
+                "to_quantum": right_quantum,
+                "responsibility_ids": [left, right],
                 "label": "UNRESOLVED",
                 "review_status": "REVIEW_REQUIRED",
-                "direction": "Pet → Visit",
+                "direction": f"{left} → {right}",
                 "same_quantum": same_quantum,
                 "source_refs": proposal_sources,
                 "options": interaction_options,
@@ -244,10 +345,12 @@ def _build_interactions(quanta: dict[str, Any], raw: RawRequirements) -> dict[st
                     "timeout_policy": "UNKNOWN",
                     "idempotency_policy": "UNKNOWN",
                 },
-                "rationale": "No consistency, latency, failure, or contract decision is present in the fixture.",
+                "rationale": f"Scenario {scenario.id} links these activities but provides no interaction contract.",
                 "status": "INSUFFICIENT_EVIDENCE",
             }
-        ],
+        )
+    return {
+        "edges": edges,
         "graph_summary": {
             "node_count": graph.number_of_nodes(),
             "directed_edge_count": graph.number_of_edges(),
@@ -257,78 +360,77 @@ def _build_interactions(quanta: dict[str, Any], raw: RawRequirements) -> dict[st
 
 
 def _build_quality(raw: RawRequirements, responsibilities: list[Responsibility], quanta: dict[str, Any]) -> dict[str, Any]:
-    owner_scenario = next(item for item in raw.scenarios if item.id == "SC-OWNER-SEARCH")
-    owner_responsibility = next(item for item in responsibilities if "FR-01" in item.requirement_ids)
-    pet_visit_scenario = next(item for item in raw.scenarios if item.id == "SC-PET-VISIT")
-    pet_responsibility = next(item for item in responsibilities if "FR-04" in item.requirement_ids)
-    visit_responsibility = next(item for item in responsibilities if "FR-06" in item.requirement_ids)
     assignment = quanta["primary_assignment"]
-    pet_visit_quantum_ids = sorted(
-        {assignment[rid] for rid in (pet_responsibility.id, visit_responsibility.id) if rid in assignment}
-    )
-    pet_visit_requirement_refs = [
-        next(item for item in raw.requirements if item.id == requirement_id).source_ref.model_dump(mode="json")
-        for requirement_id in ("FR-04", "FR-06")
-    ]
-    return {
-        "profiles": [
-            {
-                "scenario_id": owner_scenario.id,
-                "scenario_name": owner_scenario.name,
-                "scenario_source_ref": owner_scenario.source_ref.model_dump(mode="json"),
-                "responsibility_id": owner_responsibility.id,
-                "responsibility_ids": [owner_responsibility.id],
-                "quantum_id": assignment.get(owner_responsibility.id),
-                "quantum_ids": [assignment[owner_responsibility.id]] if owner_responsibility.id in assignment else [],
-                "iso_characteristic": "performance efficiency / time behaviour",
-                "target": owner_scenario.target,
-                "proposed_metric": "p95 response latency at 300 requests/s",
-                "measurement_method": "Run a representative load test at 300 requests/s; record p95 end-to-end response latency and the test environment.",
-                "measurement_plan_status": "PROPOSED",
-                "provenance": "SOURCE_BACKED_SCENARIO_TRACE",
-                "evidence": [{"kind": "TARGET_SOURCE", "source_ref": owner_scenario.source_ref.model_dump(mode="json")}],
-                "affected_interaction_edges": [],
-                "measurement_status": "NOT_MEASURED",
-                "review_status": "REVIEW_REQUIRED",
-                "measurement": None,
-                "trace_status": "PASS" if owner_responsibility.id in assignment else "INSUFFICIENT_EVIDENCE",
-                "note": "Target is supplied by the demo fixture; no benchmark has been run.",
-            },
-            {
-                "scenario_id": pet_visit_scenario.id,
-                "scenario_name": pet_visit_scenario.name,
-                "scenario_source_ref": pet_visit_scenario.source_ref.model_dump(mode="json"),
-                "responsibility_ids": [pet_responsibility.id, visit_responsibility.id],
-                "quantum_ids": pet_visit_quantum_ids,
-                "iso_characteristic": "UNKNOWN",
-                "target": pet_visit_scenario.target,
-                "proposed_metric": None,
-                "measurement_method": None,
-                "measurement_plan_status": "INSUFFICIENT_EVIDENCE",
-                "provenance": "SOURCE_BACKED_SCENARIO_TRACE_WITH_UNKNOWN_QUALITY_TARGET",
-                "evidence": [
-                    {"kind": "SCENARIO_SOURCE", "source_ref": pet_visit_scenario.source_ref.model_dump(mode="json")},
-                    *({"kind": "REQUIREMENT_SOURCE", "source_ref": ref} for ref in pet_visit_requirement_refs),
-                ],
-                "affected_interaction_edges": ["EDGE-PET-VISIT"],
-                "measurement_status": "INSUFFICIENT_EVIDENCE",
-                "review_status": "REVIEW_REQUIRED",
-                "measurement": None,
-                "trace_status": "PASS" if pet_visit_quantum_ids else "INSUFFICIENT_EVIDENCE",
-                "note": "The scenario identifies a Pet–Visit interaction but supplies no quality attribute or target; no metric or pass/fail interpretation is invented.",
-            },
-        ],
-        "status": "NOT_MEASURED",
+    requirement_to_responsibility = {
+        requirement_id: responsibility.id
+        for responsibility in responsibilities
+        for requirement_id in responsibility.requirement_ids
     }
+    profiles = []
+    for scenario in raw.scenarios:
+        responsibility_ids = [
+            requirement_to_responsibility[item]
+            for item in scenario.related_requirement_ids
+            if item in requirement_to_responsibility
+        ]
+        quantum_ids = sorted({assignment[item] for item in responsibility_ids if item in assignment})
+        requirement_refs = [
+            next(item for item in raw.requirements if item.id == requirement_id).source_ref.model_dump(mode="json")
+            for requirement_id in scenario.related_requirement_ids
+        ]
+        affected_edges = [
+            edge["id"] for edge in _build_interactions(quanta, raw, responsibilities)["edges"]
+            if set(edge["responsibility_ids"]) <= set(responsibility_ids)
+        ]
+        measured_target = scenario.target is not None and bool(scenario.proposed_metric or scenario.response_measure)
+        profiles.append(
+            {
+                "scenario_id": scenario.id,
+                "scenario_name": scenario.name,
+                "scenario_source_ref": scenario.source_ref.model_dump(mode="json"),
+                "responsibility_id": responsibility_ids[0] if len(responsibility_ids) == 1 else None,
+                "responsibility_ids": responsibility_ids,
+                "quantum_id": quantum_ids[0] if len(quantum_ids) == 1 else None,
+                "quantum_ids": quantum_ids,
+                "iso_characteristic": scenario.quality_characteristic or "UNKNOWN",
+                "target": scenario.target,
+                "proposed_metric": scenario.proposed_metric,
+                "measurement_method": scenario.measurement_method,
+                "measurement_plan_status": "PROPOSED" if measured_target and scenario.measurement_method else "INSUFFICIENT_EVIDENCE",
+                "provenance": "SOURCE_BACKED_SCENARIO_TRACE",
+                "evidence": [
+                    {
+                        "kind": "TARGET_SOURCE" if scenario.target is not None else "SCENARIO_SOURCE",
+                        "source_ref": scenario.source_ref.model_dump(mode="json"),
+                    },
+                    *({"kind": "REQUIREMENT_SOURCE", "source_ref": ref} for ref in requirement_refs),
+                ],
+                "affected_interaction_edges": affected_edges,
+                "measurement_status": "NOT_MEASURED" if measured_target else "INSUFFICIENT_EVIDENCE",
+                "review_status": "REVIEW_REQUIRED",
+                "measurement": None,
+                "trace_status": "PASS" if responsibility_ids and len(quantum_ids) >= 1 else "INSUFFICIENT_EVIDENCE",
+                "note": (
+                    "Scenario target is source-backed; no benchmark has been run."
+                    if measured_target
+                    else "Scenario provides no measurable target and method; no pass/fail result is inferred."
+                ),
+            }
+        )
+    return {"profiles": profiles, "status": "NOT_MEASURED"}
 
 
 def _build_architecture_graph(
     raw: RawRequirements,
     quanta: dict[str, Any],
     interactions: dict[str, Any],
+    evidence: list[EvidenceRecord],
 ) -> dict[str, Any]:
     """Show known and explicitly unknown layers without inventing components."""
-    actor_source = next(item for item in raw.requirements if item.id == "FR-01").source_ref
+    actor_source = raw.requirements[0].source_ref
+    runtime_evidence_ids = [
+        item.id for item in evidence if item.predicate == "independent_deployment_evidence"
+    ]
     nodes = [
         {
             "id": "ACTOR-USER",
@@ -342,7 +444,7 @@ def _build_architecture_graph(
             "layer": "PRESENTATION_APPLICATION",
             "label": "Presentation / application tier not specified",
             "status": "UNKNOWN",
-            "evidence_ids": ["EV-RUNTIME-TOPOLOGY"],
+            "evidence_ids": runtime_evidence_ids,
         },
     ]
     nodes.extend(
@@ -361,7 +463,7 @@ def _build_architecture_graph(
             "layer": "INFRASTRUCTURE_STORAGE",
             "label": "Infrastructure / storage not specified",
             "status": "UNKNOWN",
-            "evidence_ids": ["EV-RUNTIME-TOPOLOGY"],
+            "evidence_ids": runtime_evidence_ids,
         }
     )
     edges = [
@@ -442,6 +544,27 @@ def run_pipeline(
                 f"{responsibility.id} references unknown requirement IDs: {sorted(unknown_requirements)}."
             )
     selected_constraints = fixture["constraints"] if constraints_override is None else constraints_override
+    if constraints_override is None:
+        constraint_source_texts = {
+            item.source_ref.source_id: item.text for item in raw.requirements
+        }
+        constraint_source_texts.update({item.source_ref.source_id: item.text for item in raw.workflows})
+        constraint_source_texts.update(
+            {item.source_ref.source_id: item.source_ref.quote for item in raw.scenarios}
+        )
+        selected_constraints = [
+            *selected_constraints,
+            *[
+                item.model_dump(mode="json")
+                for item in _derive_evidence_constraints(
+                    raw,
+                    evidence,
+                    responsibilities,
+                    fixture.get("constraint_policies", []),
+                    constraint_source_texts,
+                )
+            ],
+        ]
     constraints = [Constraint.model_validate(item) for item in selected_constraints]
     known_responsibility_ids = set(responsibility_ids)
     known_scenario_ids = {item.id for item in raw.scenarios}
@@ -476,10 +599,15 @@ def run_pipeline(
         "status": "REVIEW_REQUIRED",
         "note": "Frozen fixture normalization; all extracted semantics remain reviewable.",
     }
-    optimization = _optimize([item.id for item in responsibilities], constraints)
+    optimization = _optimize(
+        [item.id for item in responsibilities],
+        constraints,
+        fixture.get("preferred_partition"),
+        fixture.get("candidate_selection_policy", "FIRST_OPTIMAL"),
+    )
     quanta = _build_quanta(responsibilities, optimization["selected_groups"])
     quanta["selected_candidate_id"] = optimization["selected_candidate_id"]
-    interactions = _build_interactions(quanta, raw)
+    interactions = _build_interactions(quanta, raw, responsibilities)
     evidence_by_id = {item.id: item for item in evidence}
     quantum_by_id = {item["id"]: item for item in quanta["quanta"]}
     for quantum in quanta["quanta"]:
@@ -499,10 +627,12 @@ def run_pipeline(
             "id": "DEPLOYMENT-OWNERSHIP-UNKNOWN",
             "question": "Are these proposed responsibility groups independently owned or deployable?",
             "status": "UNKNOWN",
-            "evidence_ids": ["EV-RUNTIME-TOPOLOGY"] if "EV-RUNTIME-TOPOLOGY" in evidence_by_id else [],
+            "evidence_ids": sorted(
+                item.id for item in evidence if item.predicate == "independent_deployment_evidence"
+            ),
         }
     ]
-    quanta["architecture_graph"] = _build_architecture_graph(raw, quanta, interactions)
+    quanta["architecture_graph"] = _build_architecture_graph(raw, quanta, interactions, evidence)
     quality = _build_quality(raw, responsibilities, quanta)
 
     has_conflict = bool(optimization["conflicts"]) or optimization["feasible_candidate_count"] == 0
@@ -563,7 +693,17 @@ def run_pipeline(
     responsibility_origin = fixture.get("responsibility_provenance", fixture["fixture_label"])
     report_steps = [
         _step("01", "Context Understanding", "PASS" if len(raw.requirements) >= 5 and raw_source_spans_valid else "FAIL", "Requirement IDs and source spans are present.", ["raw_requirements", "context"]),
-        _step("02", "Responsibility Identification", "REVIEW_REQUIRED", f"{responsibility_origin} proposals trace to FRs; semantic approval is pending.", ["responsibilities"]),
+        _step(
+            "02",
+            "Responsibility Identification",
+            "PASS" if all(item.review_decision_status == "APPROVED" for item in responsibilities) else "REVIEW_REQUIRED",
+            (
+                "All responsibility items have an APPROVED reviewer decision; this records completion of the review gate, not semantic accuracy."
+                if all(item.review_decision_status == "APPROVED" for item in responsibilities)
+                else f"{responsibility_origin} records trace to source requirements; semantic interpretation remains review-required."
+            ),
+            ["responsibilities"],
+        ),
         _step("03", "Evidence Modeling", "PASS" if any(item.status == "UNKNOWN" for item in evidence) else "REVIEW_REQUIRED", "Typed evidence keeps UNKNOWN distinct from false.", ["evidence"]),
         _step("04", "Constraint & Quality Reasoning", constraint_status, "Direct hard must/cannot conflicts are reported with their policy IDs.", ["constraints"]),
         _step("05", "Candidate Optimization", candidate_status, f"Enumerated {optimization['enumerated_partition_count']} partitions; {optimization['optimal_candidate_count']} optimal candidates.", ["partitions"]),
@@ -625,10 +765,10 @@ def run_pipeline(
             ),
         },
         "limitations": [
-            "H1/H2/H3 are what-if policies, not validated domain rules.",
+            "Configured constraints are policy inputs; their presence does not establish domain truth.",
             "The selected partition is a deterministic tie-break among equal-cost candidates.",
             "Runtime coupling, release independence, and deployability have not been assessed.",
-            "The Owner Search p95 target has not been measured.",
+            "Quality targets have not been measured.",
         ],
     }
     artifacts = {

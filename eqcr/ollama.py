@@ -14,7 +14,7 @@ from .models import LLMProposalBundle
 
 
 DEFAULT_HOST = "http://127.0.0.1:11434"
-PROMPT_VERSION = "petclinic-context-responsibility-evidence-boundary-v5"
+PROMPT_VERSION = "requirements-context-responsibility-evidence-boundary-v6"
 GENERATION_PARAMETERS = {"temperature": 0}
 
 
@@ -120,6 +120,9 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
     except Exception as exc:
         raise OllamaError(f"Model output did not match the proposal schema: {exc}") from exc
     checks = []
+    proposal_requirement_counts: dict[str, int] = {}
+    for proposal in parsed.proposals:
+        proposal_requirement_counts[proposal.requirement_id] = proposal_requirement_counts.get(proposal.requirement_id, 0) + 1
     used_proposal_ids: set[str] = set()
     for proposal in parsed.proposals:
         source_ref = requirement_source_refs.get(proposal.requirement_id)
@@ -141,9 +144,11 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
                 **proposal.model_dump(mode="json"),
                 "source_id": source_id,
                 "responsibility_id_valid_and_unique": id_valid,
+                "duplicate_requirement_proposal": proposal_requirement_counts.get(proposal.requirement_id, 0) > 1,
                 "requirement_id_valid": requirement_valid,
                 "source_id_valid": exact_source is not None,
                 "source_span_resolved": resolved_ref is not None,
+                "semantic_status": "NOT_ASSESSED",
                 "source_ref": resolved_ref,
                 "status": "REVIEW_REQUIRED",
                 "validation_note": "Source ID resolved to the exact input span; a human must still approve the semantic proposal."
@@ -181,6 +186,7 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
         )
     evidence_proposals = []
     evidence_proposal_ids: set[str] = set()
+    seen_evidence_relations: set[tuple[str, str, str]] = set()
     for item in parsed.evidence_proposals:
         refs = []
         for requirement_id in item.source_requirement_ids:
@@ -200,7 +206,26 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
         source_refs_valid = bool(item.source_requirement_ids) and len(refs) == len(item.source_requirement_ids)
         id_valid = bool(item.id.strip()) and item.id not in evidence_proposal_ids
         evidence_proposal_ids.add(item.id)
+        relation_key = (
+            item.subject_requirement_id,
+            item.predicate.strip().casefold(),
+            item.object_requirement_id,
+        )
+        duplicate_relation = relation_key in seen_evidence_relations
+        seen_evidence_relations.add(relation_key)
+        conflicting_status = len(
+            {
+                candidate.proposed_status
+                for candidate in parsed.evidence_proposals
+                if (
+                    candidate.subject_requirement_id,
+                    candidate.predicate.strip().casefold(),
+                    candidate.object_requirement_id,
+                ) == relation_key
+            }
+        ) > 1
         reference_valid = id_valid and subject_valid and object_valid and source_refs_valid
+        citation_covers_endpoints = {item.subject_requirement_id, item.object_requirement_id} <= set(item.source_requirement_ids)
         evidence_proposals.append(
             {
                 **item.model_dump(mode="json"),
@@ -209,6 +234,12 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
                 "subject_requirement_id_valid": subject_valid,
                 "object_requirement_id_valid": object_valid,
                 "source_refs_valid": source_refs_valid,
+                "duplicate_relation": duplicate_relation,
+                "conflicting_status": conflicting_status,
+                "self_relation": item.subject_requirement_id == item.object_requirement_id,
+                "citation_covers_endpoints": citation_covers_endpoints,
+                "citation_status": "RESOLVED" if reference_valid else "INVALID",
+                "semantic_status": "NOT_ASSESSED",
                 "source_refs": refs,
                 "review_status": "REVIEW_REQUIRED",
                 "provenance": "LOCAL_OLLAMA_UNVERIFIED",
@@ -243,6 +274,7 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
         id_valid = bool(item.id.strip()) and item.id not in boundary_hypothesis_ids
         boundary_hypothesis_ids.add(item.id)
         reference_valid = id_valid and requirement_ids_valid and source_refs_valid
+        source_covers_hypothesis = set(item.requirement_ids) <= set(item.source_requirement_ids)
         boundary_hypotheses.append(
             {
                 **item.model_dump(mode="json"),
@@ -250,6 +282,7 @@ def propose_responsibilities(raw: dict[str, Any], model: str) -> dict[str, Any]:
                 "id_valid_and_unique": id_valid,
                 "requirement_ids_valid": requirement_ids_valid,
                 "source_refs_valid": source_refs_valid,
+                "source_covers_hypothesis": source_covers_hypothesis,
                 "source_refs": refs,
                 "review_status": "REVIEW_REQUIRED",
                 "provenance": "LOCAL_OLLAMA_UNVERIFIED",

@@ -11,6 +11,7 @@ Tài liệu này hướng dẫn đọc những gì checkout hiện thực sự t
 5. [Human-in-the-loop](06_HUMAN_IN_THE_LOOP.md) và [giải thích PetClinic](07_CURRENT_SYSTEM_EXPLAINED_VI.md)
 6. [Kịch bản demo offline năm phút](08_MVP_DEMO_SCRIPT.md)
 7. [Roadmap](09_ROADMAP_AND_BACKLOG.md), [P0 verification](verification/P0_BASELINE_VERIFICATION.md), [P1 semantic evaluation](verification/P1_SEMANTIC_EVALUATION.md), changelog và publish log.
+8. [P2 Tutor Support case, Ollama-to-optimizer trace, review worksheet and limitations](p2/NEW_CASE_STUDY.md) — trạng thái case thật và checklist nằm trong [P2 validation report](p2/P2_VALIDATION_REPORT.md).
 
 ## Chạy luồng xác định
 

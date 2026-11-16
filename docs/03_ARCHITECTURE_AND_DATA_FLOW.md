@@ -27,6 +27,7 @@ flowchart LR
 - eqcr/models.py: schema Pydantic chặt; từ chối trường ngoài schema.
 - eqcr/fixture.py: PETCLINIC-MINI-WHAT-IF; requirements minh họa/precomputed, không lấy từ source code PetClinic.
 - eqcr/ollama.py: HTTP local tại OLLAMA_HOST hoặc 127.0.0.1:11434; prompt có version, JSON schema, ánh xạ FR ID sang source ID/span.
+- eqcr/tutor_support.py: case P2 Tutor Support nguyên bản; proposal cần `apply_tutor_human_review` trước khi evidence policy có thể sinh constraint.
 - eqcr/pipeline.py: mười bước, liệt kê Bell partitions, tính cost/conflicts, tạo quanta/interactions/quality artifacts và assertions.
 - eqcr/project_io.py: giải mã UTF-8/JSON package và trả lỗi đầu vào rõ ràng.
 - eqcr/traceability.py: dựng graph provenance/dependency, giữ nguồn ngoài scope và unresolved links tường minh; kiểm tra cấu trúc chứ không đánh giá nghĩa.
@@ -49,6 +50,8 @@ flowchart LR
 6. Tải JSON/ZIP qua ứng dụng local, bao gồm traceability artifact.
 
 Ollama không chạy validators và không xác nhận ý nghĩa. Chế độ offline chạy khi thiếu daemon/model. MVP không phải dịch vụ đa người dùng.
+
+Ở đường P2, relationship proposal được giữ riêng cho tới khi reviewer approve/correct. Constraint policy có thể chuyển typed evidence đã được review thành soft optimizer input nếu source span hợp lệ, citation bao phủ hai endpoints và cả hai responsibility được duyệt. Interaction/quality allocation đọc requirement links từ mỗi scenario; không mặc định FR PetClinic. Xem [P2 input-to-Quantum trace](p2/INPUT_TO_QUANTUM_TRACE.md).
 
 ## Chạy và lưu dữ liệu
 

@@ -20,11 +20,13 @@ from eqcr.project_io import load_project_json
 from eqcr.review import (
     apply_artifact_review,
     apply_constraint_edit,
+    apply_evidence_relation_edit,
     apply_responsibility_edit,
     artifact_diff,
     replay_artifact_review_decisions,
 )
 from eqcr.traceability import refresh_traceability_artifact
+from eqcr.tutor_support import apply_tutor_human_review, get_tutor_support_fixture
 from eqcr.storage import (
     list_snapshots,
     load_snapshot,
@@ -91,14 +93,13 @@ st.markdown(
         *, *::before, *::after { transition-duration: .01ms !important; scroll-behavior: auto !important; }
       }
     </style>
-    <div class="workbench-mark"><span>Requirements lab · PetClinic mini-case</span><span>Local / evidence-led / reviewable</span></div>
+    <div class="workbench-mark"><span>Requirements lab · case study</span><span>Local / evidence-led / reviewable</span></div>
     """,
     unsafe_allow_html=True,
 )
 st.title("EQCR + QAME — Architecture Quantum Review")
 st.caption(
-    "Requirements-only PetClinic mini-case. Candidate groups and H1/H2/H3 are demonstrative proposals; "
-    "runtime deployability is not verified and the Owner Search target is not measured."
+    "Requirements-based case studies. Candidate groups are reviewable proposals; runtime deployability is not verified and quality targets are not measured."
 )
 
 for key, value in {
@@ -167,7 +168,7 @@ def _attach_ollama_proposals(artifacts: dict, proposal_data: dict) -> None:
     proposal_artifact["artifact_metadata"] = {
         "provenance": {
             "kind": proposal_data.get("provenance", "LOCAL_OLLAMA_UNVERIFIED"),
-            "execution_mode": "OLLAMA_ASSISTED",
+            "execution_mode": artifacts["metadata"]["execution_mode"],
             "source_artifacts": ["raw_requirements"],
             "model": proposal_data.get("model"),
             "prompt_version": proposal_data.get("prompt_version"),
@@ -227,10 +228,9 @@ def _prepare_responsibility_revision(artifacts: dict, fixture: dict, **edit: str
 
 
 with input_tab:
-    st.subheader("Start from the frozen demo input")
+    st.subheader("Choose a requirements-based case")
     st.write(
-        "Load the source fixture first, then run its deterministic local pipeline. "
-        "The offline fixture is tagged PRECOMPUTED so the walkthrough does not depend on model availability."
+        "Load PetClinic for the frozen baseline or Tutor Support for the P2 case, then inspect sources and proposals before review."
     )
     structured_template = get_fixture()
     structured_template["fixture_label"] = "USER_SUPPLIED"
@@ -263,7 +263,7 @@ with input_tab:
             st.session_state.notice = "Structured project JSON passed schema and reference checks; semantic decisions remain review-required."
         except (UnicodeDecodeError, json.JSONDecodeError, KeyError, ValueError) as exc:
             st.error(f"Could not load structured project JSON: {exc}")
-    load_col, run_col, ollama_col = st.columns(3)
+    load_col, tutor_col, run_col, ollama_col = st.columns(4)
     if load_col.button("Load PetClinic demo data", width="stretch"):
         st.session_state.fixture = get_fixture()
         st.session_state.run_fixture = None
@@ -276,7 +276,28 @@ with input_tab:
         st.session_state.review_preview = None
         st.session_state.responsibility_preview = None
         st.session_state.notice = "Loaded the PRECOMPUTED PetClinic mini-case input."
-    if run_col.button("Run offline fixture", type="primary", width="stretch"):
+    if tutor_col.button("Load Tutor Support P2 case", width="stretch"):
+        st.session_state.fixture = get_tutor_support_fixture()
+        st.session_state.run_fixture = None
+        st.session_state.pending_model_fixture = None
+        st.session_state.artifacts = None
+        st.session_state.run_id = None
+        st.session_state.run_dir = None
+        st.session_state.snapshot_version = 0
+        st.session_state.ollama_proposals = None
+        st.session_state.review_preview = None
+        st.session_state.responsibility_preview = None
+        st.session_state.notice = "Loaded the original Tutor Support P2 requirements case."
+    is_tutor_case = bool(
+        st.session_state.fixture
+        and st.session_state.fixture.get("raw_requirements", {}).get("case_id") == "TUTOR-SUPPORT-P2-01"
+    )
+    if run_col.button(
+        "Run offline fixture",
+        type="primary",
+        width="stretch",
+        disabled=is_tutor_case,
+    ):
         if st.session_state.fixture is None:
             st.session_state.fixture = get_fixture()
         execution_mode = "OFFLINE_FIXTURE" if st.session_state.fixture.get("fixture_label") == "PRECOMPUTED" else "STRUCTURED_INPUT"
@@ -295,14 +316,17 @@ with input_tab:
     if st.session_state.notice:
         st.info(st.session_state.notice)
     if st.session_state.fixture is not None:
-        st.markdown("**Fixture status:** `PRECOMPUTED` · requirements-only · no source code supplied")
+        st.markdown(
+            f"**Input status:** `{st.session_state.fixture.get('fixture_label', 'USER_SUPPLIED')}` · "
+            "requirements-only · no source code supplied"
+        )
         _show_json("Raw requirements, workflow, and scenarios", st.session_state.fixture["raw_requirements"])
     else:
-        st.info("Choose **Load PetClinic demo data** to inspect the source input.")
+        st.info("Choose PetClinic demo data, the Tutor Support P2 case, or a structured JSON package to inspect an input.")
 
     if st.session_state.ollama_models:
         preferred = next(
-            (m for m in ("qwen3.5:4b", "qwen3.5:9b") if m in st.session_state.ollama_models),
+            (m for m in ("qwen3:4b", "qwen3.5:4b", "qwen3.5:9b") if m in st.session_state.ollama_models),
             st.session_state.ollama_models[0],
         )
         model = st.selectbox(
@@ -382,13 +406,27 @@ with input_tab:
                         st.error(str(exc))
             else:
                 st.warning("The model output did not provide complete, source-checked coverage of all six FRs, so it cannot be sent to optimization.")
+                if is_tutor_case and st.button("Prepare Tutor case for human corrections"):
+                    st.session_state.pending_model_fixture = deepcopy(st.session_state.fixture)
+                    st.session_state.notice = (
+                        "The model set is incomplete or ambiguous. Prepared placeholders remain unchanged; "
+                        "a reviewer must correct every missing/invalid responsibility before using this candidate."
+                    )
+                    st.rerun()
     if st.session_state.pending_model_fixture is not None:
-        st.success(
-            "Source-checked responsibility set ready for a candidate run. Evidence and boundary proposals remain "
-            "separate; every model-derived semantic decision stays REVIEW_REQUIRED."
-        )
+        if st.session_state.pending_model_fixture.get("responsibility_provenance") == "LOCAL_OLLAMA_UNVERIFIED":
+            st.success(
+                "Source-checked responsibility set ready for a candidate run. Evidence and boundary proposals remain "
+                "separate; every model-derived semantic decision stays REVIEW_REQUIRED."
+            )
+        else:
+            st.warning(
+                "This review run still contains prepared placeholders, not model responsibilities. "
+                "Use Human Review to correct missing or ambiguous rows before interpretation."
+            )
         if st.button("Run with these LLM proposals"):
-            _start_run(st.session_state.pending_model_fixture, "OLLAMA_ASSISTED")
+            execution_mode = "P2_LOCAL_LLM" if is_tutor_case else "OLLAMA_ASSISTED"
+            _start_run(st.session_state.pending_model_fixture, execution_mode)
             st.rerun()
     if not st.session_state.ollama_models and st.session_state.fixture is not None:
         st.caption("Optional: install and start Ollama, then check for models. Offline fixture does not require it.")
@@ -505,6 +543,103 @@ with quantum_tab:
 
 with review_tab:
     artifacts = st.session_state.artifacts
+    is_tutor_run = bool(
+        artifacts
+        and artifacts.get("raw_requirements", {}).get("case_id") == "TUTOR-SUPPORT-P2-01"
+        and st.session_state.ollama_proposals
+    )
+    has_p2_review = bool(
+        artifacts
+        and any(
+            item.get("decision_type") in {"HUMAN_SEMANTIC_REVIEW", "HUMAN_HYPOTHESIS_REVIEW"}
+            for item in artifacts.get("decisions", {}).get("items", [])
+        )
+    )
+    if is_tutor_run and not has_p2_review:
+        proposal_data = st.session_state.ollama_proposals
+        review_template = {
+            "responsibilities": [
+                {
+                    "requirement_id": item["id"],
+                    "proposal_id": next(
+                        (proposal["id"] for proposal in proposal_data["proposals"] if proposal["requirement_id"] == item["id"]),
+                        "",
+                    ),
+                    "action": "",
+                    "reason": "",
+                    "source": "",
+                    "actor": "",
+                    "workflow_activity_ids": [],
+                }
+                for item in artifacts["raw_requirements"]["requirements"]
+            ],
+            "evidence": [
+                {
+                    "proposal_id": item["id"],
+                    "action": "",
+                    "reason": "",
+                    "source": "",
+                    "actor": "",
+                }
+                for item in proposal_data["evidence_proposals"]
+            ],
+            "boundaries": [
+                {
+                    "proposal_id": item["id"],
+                    "action": "",
+                    "reason": "",
+                    "source": "",
+                    "actor": "",
+                }
+                for item in proposal_data["boundary_hypotheses"]
+            ],
+        }
+        review_input_key = f"tutor_review_json_{proposal_data['input_sha256'][:12]}"
+        with st.expander("Review Tutor Support proposals before evidence can affect optimization", expanded=False):
+            st.caption(
+                "Enter APPROVE or CORRECT for each responsibility and APPROVE/CORRECT/REJECT for every evidence proposal. "
+                "Unreviewed or citation-invalid proposals cannot create optimizer constraints."
+            )
+            review_payload_text = st.text_area(
+                "Human review decisions (JSON)",
+                value=json.dumps(review_template, ensure_ascii=False, indent=2),
+                height=360,
+                key=review_input_key,
+            )
+            if st.button("Apply human review & recompute P2 case", type="primary"):
+                try:
+                    review_payload = json.loads(review_payload_text)
+                    current_fixture = st.session_state.run_fixture or st.session_state.fixture
+                    reviewed_fixture, review_decisions = apply_tutor_human_review(
+                        current_fixture,
+                        proposal_data,
+                        review_payload,
+                    )
+                    previous = st.session_state.artifacts
+                    reviewed_artifacts = run_pipeline(
+                        reviewed_fixture,
+                        decisions=review_decisions,
+                        execution_mode="P2_REVIEWED_LOCAL_LLM",
+                    )
+                    _attach_ollama_proposals(reviewed_artifacts, proposal_data)
+                    run_id = st.session_state.run_id or new_run_id()
+                    reviewed_artifacts["metadata"]["run_id"] = run_id
+                    st.session_state.fixture = reviewed_fixture
+                    st.session_state.run_fixture = reviewed_fixture
+                    st.session_state.artifacts = reviewed_artifacts
+                    st.session_state.run_id = run_id
+                    st.session_state.snapshot_version += 1
+                    version = st.session_state.snapshot_version
+                    run_dir = save_run(run_id, reviewed_artifacts)
+                    save_snapshot(run_id, f"v{version}", reviewed_artifacts)
+                    st.session_state.run_dir = str(run_dir)
+                    st.session_state.notice = (
+                        "Recorded the supplied human decisions and recomputed all ten pipeline stages. "
+                        "APPROVED remains a review record; quality measurements are still not measured."
+                    )
+                    st.rerun()
+                except (json.JSONDecodeError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                    st.error(f"Could not apply P2 review decisions: {exc}")
     if artifacts:
         with st.expander("Traceability graph — structural links and unresolved decisions"):
             st.write(
@@ -514,6 +649,115 @@ with review_tab:
             )
             st.caption(artifacts["traceability"]["note"])
             st.json(artifacts["traceability"], expanded=False)
+        if is_tutor_run:
+            responsibility_to_requirement = {
+                item["id"]: item["requirement_ids"][0]
+                for item in artifacts["responsibilities"]["items"]
+                if len(item["requirement_ids"]) == 1
+            }
+            known_responsibility_ids = set(responsibility_to_requirement)
+            accepted_relations = [
+                item
+                for item in artifacts["evidence"]["items"]
+                if item.get("review_status") == "APPROVED"
+                and item.get("status") == "PRESENT"
+                and item.get("subject_id") in known_responsibility_ids
+                and item.get("object_id") in known_responsibility_ids
+            ]
+            st.subheader("Revise an approved evidence relation")
+            if accepted_relations:
+                requirement_ids = [item["id"] for item in artifacts["raw_requirements"]["requirements"]]
+                with st.form("p2_evidence_revision_form"):
+                    evidence_id = st.selectbox("Approved evidence relation", [item["id"] for item in accepted_relations])
+                    current_evidence = next(item for item in accepted_relations if item["id"] == evidence_id)
+                    default_subject = responsibility_to_requirement[current_evidence["subject_id"]]
+                    default_object = responsibility_to_requirement[current_evidence["object_id"]]
+                    subject_requirement_id = st.selectbox(
+                        "Subject requirement",
+                        requirement_ids,
+                        index=requirement_ids.index(default_subject),
+                    )
+                    relation_predicate = st.text_input("Predicate", value=current_evidence["predicate"])
+                    object_requirement_id = st.selectbox(
+                        "Object requirement",
+                        requirement_ids,
+                        index=requirement_ids.index(default_object),
+                    )
+                    source_requirement_ids = st.multiselect(
+                        "Source requirements cited",
+                        requirement_ids,
+                        default=[subject_requirement_id, object_requirement_id],
+                    )
+                    evidence_edit_reason = st.text_area(
+                        "Correction reason",
+                        value="Correct the accepted relation against the cited requirements.",
+                    )
+                    evidence_edit_source = st.text_input("Review source", value="P2-HUMAN-REVIEW")
+                    evidence_edit_actor = st.text_input("Reviewer identifier", value="reviewer")
+                    apply_evidence_edit = st.form_submit_button("Apply correction & Revalidate", type="primary")
+                if apply_evidence_edit:
+                    try:
+                        previous = artifacts
+                        base_fixture = st.session_state.run_fixture or st.session_state.fixture
+                        revised_fixture, decision, revision = apply_evidence_relation_edit(
+                            base_fixture,
+                            previous,
+                            object_id=evidence_id,
+                            subject_requirement_id=subject_requirement_id,
+                            predicate=relation_predicate,
+                            object_requirement_id=object_requirement_id,
+                            source_requirement_ids=source_requirement_ids,
+                            reason=evidence_edit_reason,
+                            source=evidence_edit_source,
+                            actor=evidence_edit_actor,
+                        )
+                        updated = run_pipeline(
+                            revised_fixture,
+                            decisions=previous["decisions"]["items"] + [decision],
+                            revisions=previous["revisions"]["items"] + [revision],
+                            execution_mode=previous["metadata"]["execution_mode"],
+                        )
+                        updated["metadata"].update(previous["metadata"])
+                        updated["metadata"]["responsibility_provenance"] = revised_fixture.get(
+                            "responsibility_provenance", "LOCAL_OLLAMA_HUMAN_REVIEWED"
+                        )
+                        _attach_ollama_proposals(updated, st.session_state.ollama_proposals)
+                        diff = artifact_diff(previous, updated, exclude={"decisions", "revisions"})
+                        revision_record = updated["revisions"]["items"][-1]
+                        revision_record["changed_artifacts"] = sorted(
+                            set(diff["changed_artifacts"]) | {"decisions", "revisions"}
+                        )
+                        revision_record["artifact_diff"] = diff["changes"]
+                        revision_record["recomputed_artifacts"] = revision_record["invalidated_artifacts"]
+                        revision_record["stale_artifacts_after_revalidation"] = []
+                        revision_record["revalidation_status"] = updated["validation_report"]["status"]
+                        updated["decisions"]["items"][-1]["created_at_utc"] = datetime.now(timezone.utc).isoformat()
+                        updated["decisions"]["items"][-1]["result"] = "APPLIED_AND_REVALIDATED"
+                        revision_record["created_at_utc"] = datetime.now(timezone.utc).isoformat()
+                        unchanged = all(previous.get(key) == updated.get(key) for key in revision_record["unaffected_artifacts"])
+                        updated["validation_report"]["assertions"]["unaffected_artifacts_unchanged"] = unchanged
+                        updated["validation_report"]["regression_check"] = {
+                            "status": "PASS" if unchanged else "FAIL",
+                            "checked_artifacts": revision_record["unaffected_artifacts"],
+                            "note": "Evidence-only correction leaves unrelated source and responsibility artifacts unchanged.",
+                        }
+                        st.session_state.fixture = revised_fixture
+                        st.session_state.run_fixture = revised_fixture
+                        st.session_state.artifacts = updated
+                        st.session_state.snapshot_version += 1
+                        version = st.session_state.snapshot_version
+                        run_dir = save_run(st.session_state.run_id, updated)
+                        save_snapshot(st.session_state.run_id, f"v{version}", updated)
+                        st.session_state.run_dir = str(run_dir)
+                        st.session_state.notice = (
+                            f"Saved v{version}; the reviewed evidence change recomputed optimizer and downstream outputs. "
+                            f"Unchanged artifacts: {'PASS' if unchanged else 'FAIL'}."
+                        )
+                        st.rerun()
+                    except (ValueError, KeyError) as exc:
+                        st.error(str(exc))
+            else:
+                st.info("Approve or correct a PRESENT evidence proposal first. Only approved relations can be revised here.")
         st.subheader("Revise a responsibility proposal")
         responsibility_by_id = {item["id"]: item for item in artifacts["responsibilities"]["items"]}
         with st.expander("Edit name, activity, or operation and preview downstream impact"):

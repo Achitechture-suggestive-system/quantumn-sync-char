@@ -42,6 +42,12 @@ class Scenario(StrictModel):
     stimulus: str
     response_measure: str
     target: str | None = None
+    interaction_id: str | None = None
+    related_requirement_ids: list[str] = Field(default_factory=list)
+    interaction_source_requirement_ids: list[str] = Field(default_factory=list)
+    quality_characteristic: str | None = None
+    proposed_metric: str | None = None
+    measurement_method: str | None = None
     status: ValidationStatus = "REVIEW_REQUIRED"
     source_ref: SourceRef
 
@@ -68,6 +74,19 @@ class RawRequirements(StrictModel):
         duplicates = [name for name, values in groups.items() if len(values) != len(set(values))]
         if duplicates:
             raise ValueError(f"Duplicate identifiers found in: {', '.join(duplicates)}.")
+        requirement_ids = set(groups["requirement"])
+        for scenario in self.scenarios:
+            unknown_related = set(scenario.related_requirement_ids) - requirement_ids
+            unknown_interaction = set(scenario.interaction_source_requirement_ids) - requirement_ids
+            if unknown_related or unknown_interaction:
+                raise ValueError(
+                    f"Scenario {scenario.id} references unknown requirements: "
+                    f"{sorted(unknown_related | unknown_interaction)}."
+                )
+            if not set(scenario.interaction_source_requirement_ids) <= set(scenario.related_requirement_ids):
+                raise ValueError(
+                    f"Scenario {scenario.id} interaction citation requirements must be related requirements."
+                )
         return self
 
 
@@ -116,10 +135,19 @@ class Constraint(StrictModel):
     weight: float = Field(default=1.0, ge=0)
     quality_scenario_ids: list[str] = Field(default_factory=list)
     evidence_ids: list[str] = Field(default_factory=list)
-    origin: Literal["SOURCE_BACKED", "WHAT_IF_POLICY", "HUMAN_OVERRIDE"]
+    origin: Literal["SOURCE_BACKED", "WHAT_IF_POLICY", "ARCHITECTURAL_POLICY", "HUMAN_OVERRIDE"]
     enabled: bool = True
     source_refs: list[SourceRef] = Field(default_factory=list)
     rationale: str
+
+
+class EvidenceConstraintPolicy(StrictModel):
+    id: str = Field(min_length=1)
+    evidence_predicate: str = Field(min_length=1)
+    relation: Literal["MUST_LINK", "CANNOT_LINK"]
+    hardness: Literal["HARD", "SOFT"] = "SOFT"
+    weight: float = Field(default=1.0, ge=0)
+    rationale: str = Field(min_length=1)
 
 
 class LLMProposal(StrictModel):

@@ -13,7 +13,7 @@
 
 P0 hoàn tất nghĩa là luồng phần mềm cục bộ có thể chạy lại trong scope đã nêu, không phải kiến trúc được duyệt.
 
-## P1 — semantic validation và truy vết (đã hoàn tất trên feature branch; chờ CI)
+## P1 — semantic validation và truy vết (đã hoàn tất trên feature branch)
 
 Làm ở feat/p1-semantic-validation để giữ main ổn định:
 
@@ -24,7 +24,15 @@ Làm ở feat/p1-semantic-validation để giữ main ổn định:
 5. Worksheet hướng dẫn annotation cho nghiên cứu tương lai; chưa có nhãn chuyên gia hay precision/recall.
 6. Human correction làm mới traceability và impact preview; pipeline vẫn tính lại toàn bộ, chưa có incremental execution.
 
-Exit gate: 44 tests pass; compileall và AppTest pass; Ollama run có exact-span validation nhưng proposals vẫn review-required. Chi tiết trong docs/verification/P1_SEMANTIC_EVALUATION.md. Việc push/CI vẫn là milestone kế tiếp; không tự merge.
+Exit gate: 44 tests pass; compileall và AppTest pass; Ollama run có exact-span validation nhưng proposals vẫn review-required. Chi tiết trong docs/verification/P1_SEMANTIC_EVALUATION.md. Push và CI đã xác minh; nhánh chưa merge.
+
+## P2 — unseen end-to-end semantic validation (đang thực hiện)
+
+- Thêm ca Tutor Support mới, mappings generic từ scenario tới interaction/quality và policy-gated evidence constraint.
+- Chạy local `qwen3:4b`; citation spans resolve nhưng semantics chưa được reviewer duyệt. Hai lần gọi cùng input/prompt cho output khác nhau.
+- Code/test path cho review, evidence-to-policy optimizer và revision đã chạy trong unit tests; review case thật và revision sau review còn chờ worksheet.
+- P2 validation chưa đạt gate cuối cho tới khi có human decisions trên evidence/responsibilities và run/correct/rerun thực tế.
+- Báo cáo: [P2 validation](p2/P2_VALIDATION_REPORT.md); giới hạn: [research limitations](p2/P2_RESEARCH_LIMITATIONS.md).
 
 ## CI và sau demo
 

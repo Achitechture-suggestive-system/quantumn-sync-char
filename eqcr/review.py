@@ -358,6 +358,108 @@ def apply_responsibility_edit(
     return updated_fixture, decision, revision
 
 
+def apply_evidence_relation_edit(
+    fixture: dict[str, Any],
+    artifacts: dict[str, Any],
+    *,
+    object_id: str,
+    subject_requirement_id: str,
+    predicate: str,
+    object_requirement_id: str,
+    source_requirement_ids: list[str],
+    reason: str,
+    source: str,
+    actor: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Correct an approved evidence relation, preserving exact requirement citations and audit impact."""
+    if not all((object_id.strip(), subject_requirement_id.strip(), predicate.strip(), object_requirement_id.strip(), reason.strip(), source.strip(), actor.strip())):
+        raise ValueError("Evidence ID, endpoints, predicate, reason, source, and reviewer are required.")
+    if subject_requirement_id == object_requirement_id:
+        raise ValueError("An evidence relation must connect two different requirements.")
+    current = next(
+        (item for item in artifacts["evidence"]["items"] if item.get("id") == object_id),
+        None,
+    )
+    if current is None:
+        raise ValueError(f"Evidence item {object_id} was not found.")
+    if current.get("review_status") != "APPROVED":
+        raise ValueError("Only reviewer-approved evidence can be revised as an accepted relation.")
+    updated_fixture = deepcopy(fixture)
+    raw = updated_fixture["raw_requirements"]
+    requirements = {item["id"]: item for item in raw["requirements"]}
+    if subject_requirement_id not in requirements or object_requirement_id not in requirements:
+        raise ValueError("Evidence correction references an unknown requirement.")
+    if not source_requirement_ids or not set(source_requirement_ids) <= set(requirements):
+        raise ValueError("Evidence correction needs valid source requirement IDs.")
+    if not {subject_requirement_id, object_requirement_id} <= set(source_requirement_ids):
+        raise ValueError("Evidence correction must cite both relationship endpoints.")
+    responsibility_by_requirement = {
+        requirement_id: responsibility["id"]
+        for responsibility in updated_fixture["responsibilities"]
+        for requirement_id in responsibility["requirement_ids"]
+    }
+    before = deepcopy(next(item for item in updated_fixture["evidence"] if item["id"] == object_id))
+    after = deepcopy(before)
+    after.update(
+        {
+            "subject_id": responsibility_by_requirement[subject_requirement_id],
+            "predicate": predicate.strip(),
+            "object_id": responsibility_by_requirement[object_requirement_id],
+            "status": "PRESENT",
+            "provenance": "HUMAN_OVERRIDE",
+            "review_status": "APPROVED",
+            "source_refs": [requirements[item]["source_ref"] for item in source_requirement_ids],
+            "rationale": reason.strip(),
+            "is_assumption": False,
+        }
+    )
+    if before == after:
+        raise ValueError(f"The requested evidence edit leaves {object_id} unchanged.")
+    target_index = next(index for index, item in enumerate(updated_fixture["evidence"]) if item["id"] == object_id)
+    updated_fixture["evidence"][target_index] = after
+
+    impact = impact_preview("evidence")
+    decision_number = len(artifacts.get("decisions", {}).get("items", [])) + 1
+    revision_number = len(artifacts.get("revisions", {}).get("items", [])) + 1
+    decision = {
+        "decision_id": f"D{decision_number:02d}",
+        "decision_type": "STRUCTURAL_REVISION",
+        "target_step": "03",
+        "target_artifact": "evidence",
+        "object_id": object_id,
+        "action": "CORRECT",
+        "old_value": before,
+        "new_value": after,
+        "reason": reason.strip(),
+        "source": source.strip(),
+        "actor": actor.strip(),
+        "created_at_utc": None,
+        "result": "APPLIED_PENDING_REVALIDATION",
+    }
+    revision = {
+        "revision_id": f"v{revision_number + 1}",
+        "from_revision": f"v{revision_number}",
+        "decision_id": decision["decision_id"],
+        "target_step": "03",
+        "target_artifact": "evidence",
+        "object_id": object_id,
+        "before": before,
+        "after": after,
+        "reason": reason.strip(),
+        "source": source.strip(),
+        "actor": actor.strip(),
+        "affected_steps": impact["affected_steps"],
+        "affected_artifacts": ["evidence", *impact["stale_artifacts"], "decisions", "revisions"],
+        "unaffected_artifacts": impact["unaffected_artifacts"],
+        "invalidated_artifacts": impact["stale_artifacts"],
+        "stale_artifacts_before_revalidation": impact["stale_artifacts"],
+        "recomputed_artifacts": [],
+        "stale_artifacts_after_revalidation": impact["stale_artifacts"],
+        "revalidation_status": "PENDING",
+    }
+    return updated_fixture, decision, revision
+
+
 def artifact_diff(
     before: dict[str, Any],
     after: dict[str, Any],

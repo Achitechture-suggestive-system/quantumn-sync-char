@@ -575,7 +575,7 @@ def test_invalid_llm_source_reference_stays_review_required(monkeypatch):
     assert result["proposals"][0]["requirement_id_valid"] is False
     assert result["proposals"][0]["source_id_valid"] is False
     assert isinstance(request_capture["format"], dict)
-    assert result["prompt_version"] == "petclinic-context-responsibility-evidence-boundary-v5"
+    assert result["prompt_version"] == "requirements-context-responsibility-evidence-boundary-v6"
     assert len(result["input_sha256"]) == 64
     prompt = request_capture["messages"][0]["content"]
     assert "ADDITIONAL CONTEXT FOR SUMMARY ONLY" in prompt

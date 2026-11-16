@@ -56,8 +56,8 @@ Structural evaluation của runner đếm proposal coverage/unresolved FRs, exac
 | Evidence policy vào optimizer cho case thật | Test-only path đã xác minh; actual case pending. |
 | 10 pipeline stages với model-reviewed case thật | Chưa đạt; chỉ synthetic test path đã chạy. |
 | Human revision before/after case thật | Chưa đạt; chỉ synthetic test path đã kiểm causal propagation. |
-| Regression tests | 72 local tests passed; last CI run 43841700612 verified the prior 63-test code commit. CI for the current runner milestone is pending. |
-| GitHub milestone / CI | Protocol/code-wiring commit `1ec2c1b649901873a12cb43dba703bf7a723a411` đã xác minh trên branch và Actions thành công; actual case experiment vẫn pending. |
+| Regression tests | 72 local tests passed; [GitHub Actions run 43849233685](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43849233685) also passed on the experiment-runner commit. |
+| GitHub milestone / CI | Experiment-runner commit `1fe23ed7886e02b02e44e5ebb850e1b1e6dd6628` đã xác minh trên branch và Actions thành công; actual case experiment vẫn pending. |
 
 ### Checklist chạy P2 khi reviewer độc lập sẵn sàng
 

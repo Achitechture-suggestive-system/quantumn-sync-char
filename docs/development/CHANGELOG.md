@@ -1,5 +1,12 @@
 # Changelog
 
+## P2 reproducible experiment runner — 2026-11-16
+
+- Bổ sung protocol lock v2 với timestamp timezone-aware và hash integrity cho metadata; ghi rõ identity và việc chưa tiếp xúc model là tự khai báo, không xác minh bên ngoài.
+- Thêm CLI preflight để chỉ gọi Ollama khi có source-only lock hợp lệ, checkout sạch, đúng `qwen3:4b`, prompt/schema và metadata model; xuất proposal, structural audit, manifest, checksums và ZIP vào thư mục run mới.
+- Structural audit chỉ kiểm tra ID/span, coverage, duplicate và lỗi định dạng; semantic correctness vẫn `NOT_MEASURED` khi thiếu nhãn độc lập. Không chạy inference vì chưa có annotator đủ điều kiện cung cấp lock.
+- Verification: 72 tests pass; compileall và `git diff --check` pass; secret scan staged không có match; [GitHub Actions run 43849233685](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43849233685) success. Commit `1fe23ed7886e02b02e44e5ebb850e1b1e6dd6628` đã push và khớp remote branch SHA.
+
 ## Research completion capability audit — 2026-11-16
 
 - Audited the actual feature-branch modules, schemas, docs, tests, CI and P0 tag against the research-completion prompt. Added a P0–P11 capability audit, implementation gap matrix and staged implementation plan under `docs/research/`.

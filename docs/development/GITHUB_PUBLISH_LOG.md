@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## P2 experiment reproducibility — 16/11/2026
+
+- Branch `feat/p1-semantic-validation`; không sửa `main`, P0 baseline, tag, runs hoặc snapshots.
+- Commit `1fe23ed7886e02b02e44e5ebb850e1b1e6dd6628` (`feat(p2): add reproducible proposal experiment runner`) đã push; `git ls-remote origin refs/heads/feat/p1-semantic-validation` trả đúng SHA đầy đủ.
+- Trước commit: 72 tests passed; `compileall -q app.py eqcr tests scripts` và `git diff --cached --check` pass; staged secret-pattern scan không có match; không stage generated/private paths.
+- GitHub Actions [run 43849233685](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43849233685) hoàn tất success, gồm regression/P1 tests và compile.
+- Đây chỉ là hạ tầng reproducibility. Không có source-only annotation độc lập, inference hậu-lock, model-review decision, semantic score hoặc revision case thật; trạng thái vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
 ## Research completion capability audit — 16/11/2026
 
 - Branch: `feat/p1-semantic-validation`; P0 tag/main were not modified.

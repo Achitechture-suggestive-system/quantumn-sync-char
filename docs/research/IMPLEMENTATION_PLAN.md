@@ -2,12 +2,13 @@
 
 This plan follows the repository audit. It preserves the existing P0 baseline and keeps semantic claims separate from implementation checks. Work proceeds in small commits on `feat/p1-semantic-validation`; no change to `main` is included.
 
-## Milestone A — P2 experiment reproducibility (next)
+## Milestone A — P2 experiment reproducibility (implemented; CI verified; case experiment blocked externally)
 
 1. **Infrastructure implemented:** `scripts/run_p2_experiment.py` accepts the prepared case and a verified source-only lock; checks protocol/source/timestamps/model/schema/prompt versions and clean Git state before local Ollama.
 2. **Infrastructure implemented:** export raw proposal and structural-evaluation JSON, manifest with code/package/input/annotation/model/prompt/timestamp metadata, per-file hashes, and a ZIP under a unique ignored run directory. Existing run directories are never overwritten.
 3. **Infrastructure implemented, metrics gated:** deterministic report counts exact citation resolution, FR proposal coverage/unresolved cases, relation statuses, duplicates and structural error types. Semantic relation/responsibility metrics remain unavailable until an independently prepared adjudication file and explicit match decisions exist.
-4. **Current state:** `P2_BLOCKED_INDEPENDENT_ANNOTATION`; no qualified, unexposed reviewer has supplied a lock. The CLI returns this blocker before model discovery or inference. Do not fabricate decisions.
+4. **Verification:** 72 tests pass locally; commit `1fe23ed7886e02b02e44e5ebb850e1b1e6dd6628` is pushed; [CI run 43849233685](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43849233685) passed.
+5. **Current state:** `P2_BLOCKED_INDEPENDENT_ANNOTATION`; no qualified, unexposed reviewer has supplied a lock. The CLI returns this blocker before model discovery or inference. Do not fabricate decisions.
 
 ## Milestone B — P4–P6 evidence and policy rules
 

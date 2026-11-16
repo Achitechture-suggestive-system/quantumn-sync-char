@@ -12,6 +12,7 @@ Tài liệu này hướng dẫn đọc những gì checkout hiện thực sự t
 6. [Kịch bản demo offline năm phút](08_MVP_DEMO_SCRIPT.md)
 7. [Roadmap](09_ROADMAP_AND_BACKLOG.md), [P0 verification](verification/P0_BASELINE_VERIFICATION.md), [P1 semantic evaluation](verification/P1_SEMANTIC_EVALUATION.md), changelog và publish log.
 8. [P2 Tutor Support case](p2/NEW_CASE_STUDY.md), [source-only blind annotation](p2/P2_BLIND_ANNOTATION.md), [post-lock model review](p2/P2_MODEL_REVIEW.md), [Ollama-to-Quantum audit](p2/INPUT_TO_QUANTUM_TRACE.md) và [giới hạn](p2/P2_RESEARCH_LIMITATIONS.md) — các link worksheet tương thích nằm ở [HUMAN_REVIEW_WORKSHEET.md](p2/HUMAN_REVIEW_WORKSHEET.md) và [P2_MODEL_REVIEW_WORKSHEET.md](p2/P2_MODEL_REVIEW_WORKSHEET.md); trạng thái case thật nằm trong [P2 validation report](p2/P2_VALIDATION_REPORT.md).
+9. [Repository capability audit](research/REPOSITORY_CAPABILITY_AUDIT.md), [pipeline gap matrix](research/PIPELINE_GAP_MATRIX.md) và [research-grade implementation plan](research/IMPLEMENTATION_PLAN.md) ghi trạng thái đã kiểm tra cho P0–P11; đây là audit snapshot, không phải claim hoàn tất research.
 
 ## Chạy luồng xác định
 

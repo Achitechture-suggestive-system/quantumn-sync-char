@@ -198,6 +198,20 @@ def test_app_can_load_the_tutor_support_case_without_streamlit_exceptions():
     assert app.session_state["p2_blind_annotation_lock"] is None
 
 
+def test_app_renders_interaction_contract_review_for_a_computed_case():
+    fixture = get_tutor_support_fixture()
+    artifacts = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30)
+    app.session_state["fixture"] = fixture
+    app.session_state["run_fixture"] = fixture
+    app.session_state["artifacts"] = artifacts
+    app.session_state["run_id"] = "run-interaction-contract-ui-test"
+    app.session_state["snapshot_version"] = 0
+    app.run()
+
+    assert not app.exception
+
+
 def test_unreviewed_proposals_do_not_create_optimizer_constraints():
     fixture = get_tutor_support_fixture()
     proposal_data = _proposal_data(fixture)

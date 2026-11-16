@@ -7,6 +7,7 @@ from copy import deepcopy
 from typing import Any
 
 from .impact import STEP_BY_ARTIFACT, impact_preview
+from .models import InteractionContract
 from .p2_protocol import RELATION_PREDICATES
 from .traceability import refresh_traceability_artifact
 
@@ -504,6 +505,76 @@ def apply_evidence_relation_edit(
         "actor": actor.strip(),
         "affected_steps": impact["affected_steps"],
         "affected_artifacts": ["relation_registry", *impact["stale_artifacts"], "decisions", "revisions"],
+        "unaffected_artifacts": impact["unaffected_artifacts"],
+        "invalidated_artifacts": impact["stale_artifacts"],
+        "stale_artifacts_before_revalidation": impact["stale_artifacts"],
+        "recomputed_artifacts": [],
+        "stale_artifacts_after_revalidation": impact["stale_artifacts"],
+        "revalidation_status": "PENDING",
+    }
+    return updated_fixture, decision, revision
+
+
+def apply_interaction_contract_edit(
+    fixture: dict[str, Any],
+    artifacts: dict[str, Any],
+    contract_payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Record an explicit human Sync/Async contract decision and its recomputation impact."""
+    contract = InteractionContract.model_validate(contract_payload)
+    if contract.selected_mode not in {"SYNC", "ASYNC"}:
+        raise ValueError("An interaction review must select SYNC or ASYNC; unresolved contracts remain unchanged.")
+    edge = next(
+        (item for item in artifacts.get("interactions", {}).get("edges", []) if item.get("id") == contract.contract_id),
+        None,
+    )
+    if edge is None:
+        raise ValueError(f"Interaction candidate {contract.contract_id} was not found in the current run.")
+    updated_fixture = deepcopy(fixture)
+    overrides = list(updated_fixture.get("interaction_contracts_override", []))
+    contract_data = contract.model_dump(mode="json")
+    if edge.get("contract", {}) == contract_data:
+        raise ValueError(f"Interaction candidate {contract.contract_id} already has this reviewed contract.")
+    overrides = [item for item in overrides if item.get("contract_id") != contract.contract_id]
+    overrides.append(contract_data)
+    updated_fixture["interaction_contracts_override"] = overrides
+
+    decision_number = len(artifacts.get("decisions", {}).get("items", [])) + 1
+    revision_number = len(artifacts.get("revisions", {}).get("items", [])) + 1
+    impact = impact_preview("interactions")
+    source_ids = sorted({item.source_id for item in contract.source_refs})
+    before = deepcopy(edge.get("contract", {}))
+    decision = {
+        "decision_id": f"D{decision_number:02d}",
+        "decision_type": "HUMAN_INTERACTION_CONTRACT_DECISION",
+        "target_step": "07",
+        "target_artifact": "interactions",
+        "object_id": contract.contract_id,
+        "action": "APPROVE",
+        "old_value": before.get("selected_mode", "UNDECIDED"),
+        "new_value": contract_data["selected_mode"],
+        "before": before,
+        "after": contract_data,
+        "reason": contract.decision_rationale,
+        "source": ", ".join(source_ids),
+        "actor": contract.reviewer_id,
+        "created_at_utc": contract.reviewed_at.isoformat(),
+        "result": "RECOMPUTE_REQUIRED",
+    }
+    revision = {
+        "revision_id": f"v{revision_number + 1}",
+        "from_revision": f"v{revision_number}",
+        "decision_id": decision["decision_id"],
+        "target_step": "07",
+        "target_artifact": "interactions",
+        "object_id": contract.contract_id,
+        "before": before,
+        "after": contract_data,
+        "reason": contract.decision_rationale,
+        "source": ", ".join(source_ids),
+        "actor": contract.reviewer_id,
+        "affected_steps": impact["affected_steps"],
+        "affected_artifacts": ["interactions", *impact["stale_artifacts"], "decisions", "revisions"],
         "unaffected_artifacts": impact["unaffected_artifacts"],
         "invalidated_artifacts": impact["stale_artifacts"],
         "stale_artifacts_before_revalidation": impact["stale_artifacts"],

@@ -143,7 +143,13 @@ def _provenance_summary(artifacts: dict[str, Any]) -> dict[str, Any]:
         "constraints": counts(artifacts.get("constraints", {}).get("items"), "origin"),
         "partitions": "DETERMINISTIC_TRANSFORMATION",
         "quanta": "DETERMINISTIC_TRANSFORMATION",
-        "interactions": "DETERMINISTIC_TRANSFORMATION_AND_ARCHITECTURAL_POLICY",
+        "interactions": {
+            "contract_provenance": counts(
+                [edge.get("contract", {}) for edge in artifacts.get("interactions", {}).get("edges", [])],
+                "provenance",
+            ),
+            "decision_table": "ARCHITECTURAL_POLICY",
+        },
         "quality_profiles": "DETERMINISTIC_TRANSFORMATION_WITH_FIELD_LEVEL_PROVENANCE",
         "decisions": counts(artifacts.get("decisions", {}).get("items"), "decision_type"),
         "revisions": counts(artifacts.get("revisions", {}).get("items"), "decision_type"),

@@ -18,7 +18,11 @@ from .models import (
     Responsibility,
 )
 from .cpsat_optimizer import optimize_with_cpsat
-from .interaction_contracts import INTERACTION_DECISION_TABLE, make_unresolved_contract
+from .interaction_contracts import (
+    INTERACTION_DECISION_TABLE,
+    apply_interaction_contract_overrides,
+    make_unresolved_contract,
+)
 from .traceability import refresh_traceability_artifact
 
 
@@ -915,6 +919,11 @@ def run_pipeline(
     quanta = _build_quanta(responsibilities, optimization["selected_groups"])
     quanta["selected_candidate_id"] = optimization["selected_candidate_id"]
     interactions = _build_interactions(quanta, raw, responsibilities)
+    interactions = apply_interaction_contract_overrides(
+        interactions,
+        fixture.get("interaction_contracts_override", []),
+        constraint_source_texts,
+    )
     evidence_by_id = {item.id: item for item in evidence}
     quantum_by_id = {item["id"]: item for item in quanta["quanta"]}
     for quantum in quanta["quanta"]:
@@ -1100,10 +1109,19 @@ def run_pipeline(
             ),
             "hard_constraint_conflicts_reported": (not has_conflict) or all(c["constraint_ids"] for c in optimization["conflicts"]),
             "primary_quantum_assignment_exactly_once": quanta["assignment_validation_status"] == "PASS" if responsibilities and optimization["selected_groups"] else None,
-            "interaction_unresolved_without_decision": all(
-                edge["label"] == "UNRESOLVED"
-                and edge["selection_status"] == "UNRESOLVED"
-                and all(option["status"] == "PROPOSED_NOT_VERIFIED" for option in edge["options"])
+            "interaction_decisions_match_contract_state": all(
+                (
+                    edge["contract"]["selected_mode"] == "UNDECIDED"
+                    and edge["label"] == "UNRESOLVED"
+                    and edge["selection_status"] == "UNRESOLVED"
+                    and all(option["status"] == "PROPOSED_NOT_VERIFIED" for option in edge["options"])
+                )
+                or (
+                    edge["contract"]["selected_mode"] in {"SYNC", "ASYNC"}
+                    and edge["label"] == edge["contract"]["selected_mode"]
+                    and edge["selection_status"] == "APPROVED"
+                    and edge["review_status"] == "APPROVED"
+                )
                 for edge in interactions["edges"]
             ) if interactions["edges"] else not optimization["feasible_candidate_count"],
             "interaction_option_sources_well_formed": interaction_option_sources_valid,

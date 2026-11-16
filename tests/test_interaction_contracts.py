@@ -1,9 +1,15 @@
 """Versioned interaction-contract defaults and human-decision guards."""
 
+from copy import deepcopy
+
 import pytest
 
+from eqcr.pipeline import run_pipeline
+from eqcr.review import apply_interaction_contract_edit
 from eqcr.interaction_contracts import make_unresolved_contract
 from eqcr.models import InteractionContract
+from eqcr.storage import make_export_zip, verify_export_zip
+from eqcr.tutor_support import get_tutor_support_fixture
 
 
 def _source_ref():
@@ -107,4 +113,93 @@ def test_approved_interaction_mode_requires_timezone_aware_review_timestamp():
             retry_policy="bounded retries",
             timeout_policy="bounded timeout",
             idempotency_policy="request ID",
+        )
+
+
+def _approved_contract(edge, mode="ASYNC"):
+    contract = deepcopy(edge["contract"])
+    contract.update(
+        selected_mode=mode,
+        selection_status="APPROVED",
+        decision_basis_status="HUMAN_DECISION",
+        provenance="HUMAN_DECISION",
+        reviewer_id="human-reviewer-test",
+        reviewed_at="2026-11-16T08:00:00Z",
+        decision_rationale="Test-only human decision; the exact cited spans are preserved for structural validation.",
+        request_must_wait_for_completion=mode == "SYNC",
+        request_may_return_before_completion=mode == "ASYNC",
+        operation="submit a tutoring request and deliver its later decision",
+        data_dependency="session request decision state",
+        request_fields="learner, tutor, and session slot identifiers",
+        response_fields="request accepted for review or a final decision notice",
+        versioning="versioned session request contract v1",
+        consistency="decision status is read after the reviewer transition",
+        latency_budget="reviewed timing budget for request acceptance",
+        failure_handling="record delivery failure and retain request state",
+        retry_policy="bounded retry after transient notification failure",
+        timeout_policy="expire a delivery attempt and record its result",
+        idempotency_policy="deduplicate by session request identifier",
+        unresolved_decisions=[],
+    )
+    return contract
+
+
+def test_human_contract_decision_recomputes_interactions_without_changing_constraints():
+    fixture = get_tutor_support_fixture()
+    before = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
+    edge = before["interactions"]["edges"][0]
+    contract = _approved_contract(edge)
+    revised_fixture, decision, revision = apply_interaction_contract_edit(fixture, before, contract)
+
+    after = run_pipeline(
+        revised_fixture,
+        decisions=[decision],
+        revisions=[revision],
+        execution_mode="P2_TEST_ONLY",
+    )
+    revised_edge = next(item for item in after["interactions"]["edges"] if item["id"] == edge["id"])
+
+    assert revised_edge["label"] == "ASYNC"
+    assert revised_edge["review_status"] == "APPROVED"
+    assert revised_edge["contract"]["provenance"] == "HUMAN_DECISION"
+    assert after["partitions"] == before["partitions"]
+    assert after["quality_profiles"] == before["quality_profiles"]
+    assert after["traceability"] != before["traceability"]
+    assert after["decisions"]["items"][-1]["decision_type"] == "HUMAN_INTERACTION_CONTRACT_DECISION"
+    assert after["validation_report"]["assertions"]["interaction_decisions_match_contract_state"] is True
+    assert revision["target_step"] == "07"
+    assert "quality_profiles" in revision["invalidated_artifacts"]
+    manifest = verify_export_zip(make_export_zip(after))["manifest"]
+    assert manifest["provenance_summary"]["interactions"]["contract_provenance"]["HUMAN_DECISION"] == 1
+
+
+def test_interaction_contract_review_rejects_unresolved_or_wrong_edge_contract():
+    fixture = get_tutor_support_fixture()
+    artifacts = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
+    edge = artifacts["interactions"]["edges"][0]
+    unresolved = deepcopy(edge["contract"])
+    with pytest.raises(ValueError, match="must select SYNC or ASYNC"):
+        apply_interaction_contract_edit(fixture, artifacts, unresolved)
+
+    wrong_id = _approved_contract(edge)
+    wrong_id["contract_id"] = "EDGE-UNKNOWN"
+    with pytest.raises(ValueError, match="was not found"):
+        apply_interaction_contract_edit(fixture, artifacts, wrong_id)
+
+
+def test_interaction_contract_recompute_rejects_nonmatching_source_span():
+    fixture = get_tutor_support_fixture()
+    before = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
+    edge = before["interactions"]["edges"][0]
+    contract = _approved_contract(edge)
+    contract["source_refs"][0]["quote"] = "fabricated source quote"
+    contract["source_refs"][0]["end"] = contract["source_refs"][0]["start"] + len("fabricated source quote")
+    revised_fixture, decision, revision = apply_interaction_contract_edit(fixture, before, contract)
+
+    with pytest.raises(ValueError, match="unresolved source span"):
+        run_pipeline(
+            revised_fixture,
+            decisions=[decision],
+            revisions=[revision],
+            execution_mode="P2_TEST_ONLY",
         )

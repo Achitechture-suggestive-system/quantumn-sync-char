@@ -22,6 +22,7 @@ from eqcr.review import (
     apply_artifact_review,
     apply_constraint_edit,
     apply_evidence_relation_edit,
+    apply_interaction_contract_edit,
     apply_responsibility_edit,
     artifact_diff,
     replay_artifact_review_decisions,
@@ -601,7 +602,7 @@ with quantum_tab:
             interaction_edges = artifacts["interactions"]["edges"]
             interaction_options = [option for edge in interaction_edges for option in edge.get("options", [])]
             if interaction_options:
-                st.subheader("Sync / Async options — hypotheses, no protocol selected")
+                st.subheader("Sync / Async pattern hypotheses")
                 st.dataframe(
                     [
                         {
@@ -617,8 +618,8 @@ with quantum_tab:
                     hide_index=True,
                 )
                 st.caption(
-                    "Both alternatives cite the supplied Pet–Visit scenario and scheduling requirement. "
-                    "Their source does not establish the missing timing, consistency, failure, or retry decisions."
+                    "These deterministic patterns remain hypotheses. Inspect the interaction edge's selected mode and its separate "
+                    "contract before treating any behavior as a human decision; source-span checks do not establish semantic entailment."
                 )
         with lower_right:
             _show_json("QAME quality profiles", artifacts["quality_profiles"])
@@ -734,6 +735,86 @@ with review_tab:
             )
             st.caption(artifacts["traceability"]["note"])
             st.json(artifacts["traceability"], expanded=False)
+        interaction_edges = artifacts.get("interactions", {}).get("edges", [])
+        if interaction_edges:
+            with st.expander("Review a Sync / Async interaction contract", expanded=False):
+                st.caption(
+                    "Edit the selected contract JSON only after reviewing its cited source spans. "
+                    "The app checks schema and exact span mapping; it cannot decide whether the cited text semantically requires the mode. "
+                    "Business ordering alone is not a mode decision."
+                )
+                with st.form("interaction_contract_review_form"):
+                    interaction_edge_id = st.selectbox(
+                        "Interaction candidate",
+                        [item["id"] for item in interaction_edges],
+                        key="interaction_contract_candidate",
+                    )
+                    current_edge = next(item for item in interaction_edges if item["id"] == interaction_edge_id)
+                    interaction_contract_json = st.text_area(
+                        "Reviewed interaction contract (JSON)",
+                        value=json.dumps(current_edge["contract"], ensure_ascii=False, indent=2),
+                        height=360,
+                        key=f"interaction_contract_json_{interaction_edge_id}",
+                    )
+                    apply_interaction_contract = st.form_submit_button(
+                        "Approve contract & recompute downstream outputs",
+                        type="primary",
+                    )
+                if apply_interaction_contract:
+                    try:
+                        contract_payload = json.loads(interaction_contract_json)
+                        current_fixture = st.session_state.run_fixture or st.session_state.fixture
+                        revised_fixture, decision, revision = apply_interaction_contract_edit(
+                            current_fixture,
+                            artifacts,
+                            contract_payload,
+                        )
+                        previous = artifacts
+                        decisions = [*artifacts["decisions"]["items"], decision]
+                        revisions = [*artifacts["revisions"]["items"], revision]
+                        updated = run_pipeline(
+                            revised_fixture,
+                            decisions=decisions,
+                            revisions=revisions,
+                            execution_mode=artifacts["validation_report"]["execution_mode"],
+                        )
+                        if st.session_state.ollama_proposals:
+                            _attach_ollama_proposals(updated, st.session_state.ollama_proposals)
+                        updated = replay_artifact_review_decisions(updated)
+                        run_id = st.session_state.run_id or new_run_id()
+                        updated["metadata"].update(artifacts["metadata"])
+                        updated["metadata"]["run_id"] = run_id
+                        revision_record = updated["revisions"]["items"][-1]
+                        diff = artifact_diff(previous, updated, exclude={"decisions", "revisions"})
+                        revision_record["changed_artifacts"] = sorted(
+                            set(diff["changed_artifacts"]) | {"decisions", "revisions"}
+                        )
+                        revision_record["artifact_diff"] = diff["changes"]
+                        revision_record["recomputed_artifacts"] = revision_record["invalidated_artifacts"]
+                        revision_record["stale_artifacts_after_revalidation"] = []
+                        revision_record["revalidation_status"] = updated["validation_report"]["status"]
+                        updated["decisions"]["items"][-1]["result"] = "RECOMPUTED"
+                        timestamp = datetime.now(timezone.utc).isoformat()
+                        revision_record["created_at_utc"] = timestamp
+                        st.session_state.fixture = revised_fixture
+                        st.session_state.run_fixture = revised_fixture
+                        st.session_state.artifacts = updated
+                        st.session_state.run_id = run_id
+                        st.session_state.snapshot_version += 1
+                        version = st.session_state.snapshot_version
+                        run_dir = save_run(run_id, updated)
+                        save_snapshot(run_id, f"v{version}", updated)
+                        st.session_state.run_dir = str(run_dir)
+                        partitions_unchanged = previous["partitions"] == updated["partitions"]
+                        quality_unchanged = previous["quality_profiles"] == updated["quality_profiles"]
+                        st.session_state.notice = (
+                            f"Saved interaction contract v{version}; refreshed interaction, quality and traceability outputs. "
+                            f"Partition unchanged: {partitions_unchanged}; quality allocation unchanged: {quality_unchanged}. "
+                            "Interaction mode is a human decision and does not create an optimizer constraint."
+                        )
+                        st.rerun()
+                    except (json.JSONDecodeError, ValueError, KeyError, TypeError, AttributeError) as exc:
+                        st.error(f"Could not apply interaction contract review: {exc}")
         if is_tutor_run:
             role_by_id = {item["id"]: item for item in artifacts["responsibilities"]["items"]}
             accepted_relations = [

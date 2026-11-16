@@ -1,5 +1,12 @@
 # Changelog
 
+## Research completion capability audit — 2026-11-16
+
+- Audited the actual feature-branch modules, schemas, docs, tests, CI and P0 tag against the research-completion prompt. Added a P0–P11 capability audit, implementation gap matrix and staged implementation plan under `docs/research/`.
+- Confirmed the bounded current strengths: P0/P1 local flow and six-role partition oracle; P2 protocol/wiring tests; exhaustive optimizer up to R8; graph JSON, interaction hypotheses, QAME allocation and snapshot ZIP exports.
+- Recorded gaps without relabeling them complete: actual independent Tutor experiment, versioned tactic catalog, CP-SAT path, six-part ISO-mapped scenario validation, measurement adapters, integration-layer graph, editable Draw.io, and full reproducibility manifest.
+- Verification: relative links in the audit docs resolve; staged diff and secret/path checks pass. Commit `93c7edc06c25d9fd39cdf48355ca31377d5ec8d1` is on `feat/p1-semantic-validation`; [GitHub Actions run 43846206356](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43846206356) passed.
+
 ## P2 blind annotation and causal review protocol — 2026-11-16
 
 - Tách source-only annotation khỏi post-lock model review, thêm checkpoint hash/thời gian trước inference, cardinality 0..N cho FR-role mapping, relation registry cố định và action `APPROVE/CORRECT/REJECT/DEFER`.

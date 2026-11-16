@@ -1,5 +1,12 @@
 # Changelog
 
+## P6 versioned experimental policy evaluation — 2026-11-16
+
+- Thay hai policy rời bằng catalog Tutor Support có catalog/rule version, provenance nội bộ, quality driver, assumptions, điều kiện abstain và chỉ cho phép soft constraints.
+- Thêm rule-evaluation trace cho từng policy/evidence pair: `APPLIED`, `NOT_APPLICABLE`, hoặc `ABSTAINED` kèm lý do, source IDs, responsibility endpoints, versions và constraint ID. Explicit constraint override được ghi là catalog bị bypass; P0 không nhận field P2-only.
+- Catalog được đánh dấu `NOT_INDEPENDENTLY_VALIDATED`; đây là rule nội bộ thử nghiệm, không phải tactic được xác nhận. UNKNOWN evidence và citation sai có test abstain.
+- Verification: 78 tests pass; compileall và staged diff check pass; secret scan không có match; [GitHub Actions run 43882340244](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43882340244) success. Commit `ab26975b3bf9b8f2f8635ac825211a2a7a972ff6` đã push, remote SHA khớp.
+
 ## P2 reproducible experiment runner — 2026-11-16
 
 - Bổ sung protocol lock v2 với timestamp timezone-aware và hash integrity cho metadata; ghi rõ identity và việc chưa tiếp xúc model là tự khai báo, không xác minh bên ngoài.

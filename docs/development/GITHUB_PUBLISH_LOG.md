@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## P6 versioned experimental policy evaluation — 16/11/2026
+
+- Branch `feat/p1-semantic-validation`; giữ nguyên `main`, P0 tag, runs và snapshots.
+- Commit `ab26975b3bf9b8f2f8635ac825211a2a7a972ff6` (`feat(p6): add versioned policy evaluation`) đã push; `git ls-remote origin refs/heads/feat/p1-semantic-validation` trả cùng SHA.
+- Trước push: 78 tests passed; `compileall -q app.py eqcr tests scripts`, `git diff --cached --check` pass; secret-pattern scan không có match; không stage generated/private paths.
+- GitHub Actions [run 43882340244](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43882340244) success, gồm regression/P1 tests và compile.
+- Kết quả này xác minh policy rule code path, không xác minh tính đúng semantic/architectural của catalog. Tutor case thật vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
 ## P2 experiment reproducibility — 16/11/2026
 
 - Branch `feat/p1-semantic-validation`; không sửa `main`, P0 baseline, tag, runs hoặc snapshots.

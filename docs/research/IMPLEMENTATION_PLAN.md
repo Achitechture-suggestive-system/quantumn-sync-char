@@ -16,7 +16,7 @@ This plan follows the repository audit. It preserves the existing P0 baseline an
 2. **Implemented for Tutor as an experimental case catalog:** `EvidenceConstraintPolicyCatalog` binds catalog/entry versions, internal source-basis status, quality driver, evidence preconditions, assumptions, named output relation, and abstention conditions. Per-evidence rule evaluation records APPLIED/NOT_APPLICABLE/ABSTAINED and the derived constraint ID. The catalog is explicitly not independently validated and is not presented as a general tactic catalog.
 3. Keep evidence observation, interpretation, architectural decision and optimizer constraint as separate records. Unregistered predicates and ambiguous evidence abstain.
 4. **Test coverage:** catalog version/uniqueness/hard-rule rejection, explicit override bypass, and UNKNOWN-evidence abstention are covered; existing citation, reflexive, endpoint, and unsupported-promotion tests remain in place.
-5. **Local verification:** 78 full-suite tests pass; compileall and `git diff --check` pass. The current policy-catalog commit and CI have not yet been published.
+5. **Verification:** 78 full-suite tests pass; compileall and `git diff --check` pass. Commit `ab26975b3bf9b8f2f8635ac825211a2a7a972ff6` is pushed and [CI run 43882340244](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43882340244) passed.
 
 Catalog entries must be reviewed and tied to a source before being treated as architectural tactics. The current P2 test catalog is internal and experimental. CMU/SEI defines tactics in relation to quality-attribute response and analysis models; generic co-location/separation heuristics must not be relabeled as validated tactics.
 

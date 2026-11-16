@@ -25,7 +25,7 @@ Pasted methodology review đã dẫn tới thay đổi protocol: source-only lab
 | Optimizer causal wiring | Test-only accepted relation → versioned policy evaluation → soft constraint → optimizer → interactions/quality mapping; evaluation trace links policy/evidence/source/R endpoints. Đây là kiểm code path, không phải case evidence. |
 | Versioned policy evaluation | Catalog `EQCR-P2-TUTOR-EXPERIMENTAL-POLICIES@1.0.0` records each evidence/policy outcome and abstention reason. Internal experimental rules are not independently reviewed tactics. |
 | P7 optimizer code path | Exhaustive backend remains for R1–R8; CP-SAT is selected for R9–R50. Its output reports only proven optima, with a default cap of 200 and explicit completeness status. Tutor has six roles, so the new optimizer does not drive this blocked case yet. |
-| P7 algorithm tests (current uncommitted working tree) | `tests/test_cpsat_optimizer.py` — 19 passed; full suite — 97 passed; compileall and `git diff --check` passed. Tests include 12 seeded four-role comparisons with an independent oracle, separate exhaustive comparison, nine-role Bell(9) fixture, transitivity, infeasibility explanation, cap, sensitivity, traceability and bad-parameter checks. They are synthetic algorithm tests, not Tutor model results. Push/CI for this code milestone is pending. |
+| P7 algorithm tests and CI | `tests/test_cpsat_optimizer.py` — 19 passed; full suite — 97 passed; compileall and staged `git diff --check` passed. Tests include 12 seeded four-role comparisons with an independent oracle, separate exhaustive comparison, nine-role Bell(9) fixture, transitivity, infeasibility explanation, cap, sensitivity, traceability and bad-parameter checks. They are synthetic algorithm tests, not Tutor model results. Commit `91b6b2e733bf7aa8ac36a400bda0123c9377cd44` is pushed; [CI run 43887720769](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43887720769) passed. |
 | Hard constraints | Test kiểm mỗi feasible candidate đối chiếu hard constraints đang bật. Tutor fixture hiện không khai báo hard domain constraint. |
 | Human decisions / revision case thật | Chưa có; worksheet vẫn trống. Không tự thêm approvals, corrections hoặc scores. |
 | Quality results | Hai scenario profiles có thể được tạo deterministic; measurement tiếp tục `NOT_MEASURED`. |
@@ -59,7 +59,7 @@ Structural evaluation của runner đếm proposal coverage/unresolved FRs, exac
 | Evidence policy vào optimizer cho case thật | Test-only path đã xác minh; actual case pending. |
 | 10 pipeline stages với model-reviewed case thật | Chưa đạt; chỉ synthetic test path đã chạy. |
 | Human revision before/after case thật | Chưa đạt; chỉ synthetic test path đã kiểm causal propagation. |
-| Regression tests | P6 commit passed 78 tests; [GitHub Actions run 43882340244](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43882340244). Current uncommitted P7 work passes 97 tests locally; its CI is pending. |
+| Regression tests | P6 commit passed 78 tests; [GitHub Actions run 43882340244](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43882340244). P7 commit passes 97 tests locally and in CI; [run 43887720769](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43887720769). |
 | GitHub milestone / CI | Policy-catalog commit `ab26975b3bf9b8f2f8635ac825211a2a7a972ff6` đã xác minh trên branch và Actions thành công; actual case experiment vẫn pending. |
 
 ### Checklist chạy P2 khi reviewer độc lập sẵn sàng

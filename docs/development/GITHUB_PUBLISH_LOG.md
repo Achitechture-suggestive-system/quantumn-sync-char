@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## P7 CP-SAT partition optimizer — 16/11/2026
+
+- Branch `feat/p1-semantic-validation`; `main`, P0 tag, runs và snapshots không bị thay đổi.
+- Commit code/docs/tests `91b6b2e733bf7aa8ac36a400bda0123c9377cd44` (`feat(p7): add bounded CP-SAT partition optimizer`) đã push. `git ls-remote origin refs/heads/feat/p1-semantic-validation` và local `HEAD` cùng trả SHA này.
+- Trước push: 19 focused CP-SAT tests, 97 regression tests passed; `compileall -q app.py eqcr tests scripts`, staged diff check pass; staged secret-pattern scan không có match; chỉ stage 13 đường dẫn được review.
+- GitHub Actions [run 43887720769](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43887720769) completed success trên Python 3.13, gồm dependency install, regression/P1 tests và compile.
+- Bằng chứng này xác minh optimizer mechanics trong phạm vi test. Không có benchmark 50-role, domain-validated weights, semantic labels, live Tutor review hoặc architecture validation. Tutor sáu role vẫn chạy exhaustive; P2 external blocker giữ nguyên.
+
 ## P6 versioned experimental policy evaluation — 16/11/2026
 
 - Branch `feat/p1-semantic-validation`; giữ nguyên `main`, P0 tag, runs và snapshots.

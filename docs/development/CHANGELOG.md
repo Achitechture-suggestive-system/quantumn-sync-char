@@ -1,5 +1,11 @@
 # Changelog
 
+## P7 CP-SAT partition optimizer — 2026-11-16
+
+- Added a classical CP-SAT backend for 9–50 responsibility IDs while retaining exhaustive enumeration through R8. The backend proves the objective minimum, reports a capped optimal subset, and marks whether optimum enumeration completed; it does not enumerate/count every feasible partition.
+- Added oracle, transitivity, infeasibility explanation, deterministic setting, sensitivity, truncation and pipeline traceability tests. Added a Vietnamese mathematical description and updated capability/limitation reports. No runtime/quality benchmark or Tutor human decision is claimed.
+- Verification: 19 focused optimizer tests and 97 full-suite tests pass; compileall, staged whitespace check and staged secret-pattern scan pass. [GitHub Actions run 43887720769](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43887720769) passed. Code commit `91b6b2e733bf7aa8ac36a400bda0123c9377cd44` is pushed and matches the remote branch ref.
+
 ## P6 versioned experimental policy evaluation — 2026-11-16
 
 - Thay hai policy rời bằng catalog Tutor Support có catalog/rule version, provenance nội bộ, quality driver, assumptions, điều kiện abstain và chỉ cho phép soft constraints.

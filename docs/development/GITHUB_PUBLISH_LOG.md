@@ -45,3 +45,12 @@
 - After push, `git ls-remote origin refs/heads/feat/p1-semantic-validation` returned the same full SHA.
 - GitHub Actions [run 43818037929](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43818037929) on the implementation commit completed successfully; regression/P1 tests and compile steps passed.
 - The run and docs do not claim completion of actual human review. The model's self-referential evidence candidate remains unapproved, so the live run has zero evidence-derived constraints pending reviewer input.
+
+## P2 blind annotation and causal review protocol — 16/11/2026
+
+- Branch: `feat/p1-semantic-validation`; repository remains private; P0 `main` was not changed.
+- Commit pushed: `1ec2c1b649901873a12cb43dba703bf7a723a411` (`feat(p2): add blind review gate for Tutor Support pipeline`).
+- Remote check: `git ls-remote` returned the same full SHA for `refs/heads/feat/p1-semantic-validation`.
+- Local checks before push: 63 tests passed; `compileall -q app.py eqcr tests` passed; staged diff whitespace check passed; staged secret-pattern scan found no matches; no runs/snapshots/environment paths were staged.
+- GitHub Actions [run 43841700612](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43841700612) on the commit completed successfully. Regression/P1 tests and compile steps passed.
+- This is a protocol/code-wiring milestone only. It does not include a real source-only annotation, post-lock `qwen3:4b` inference, real proposal dispositions, a case revision experiment, or semantic metrics. Those remain pending human input.

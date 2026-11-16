@@ -23,7 +23,7 @@ Pasted methodology review đã dẫn tới thay đổi protocol: source-only lab
 | Human decisions / revision case thật | Chưa có; worksheet vẫn trống. Không tự thêm approvals, corrections hoặc scores. |
 | Quality results | Hai scenario profiles có thể được tạo deterministic; measurement tiếp tục `NOT_MEASURED`. |
 | Semantic score | Không có; thiếu independent reviewers và adjudicated gold labels. |
-| Push/CI cho milestone mới | Chưa xác minh cho code/doc thay đổi chưa commit hiện tại. Chỉ cập nhật sau commit/push thực tế. |
+| Push/CI cho protocol milestone | Commit `1ec2c1b649901873a12cb43dba703bf7a723a411` đã được push; remote branch SHA khớp. [GitHub Actions run 43841700612](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43841700612) success. |
 
 ## Evidence provenance
 
@@ -50,7 +50,7 @@ Pasted methodology review đã dẫn tới thay đổi protocol: source-only lab
 | Evidence policy vào optimizer cho case thật | Test-only path đã xác minh; actual case pending. |
 | 10 pipeline stages với model-reviewed case thật | Chưa đạt; chỉ synthetic test path đã chạy. |
 | Human revision before/after case thật | Chưa đạt; chỉ synthetic test path đã kiểm causal propagation. |
-| Regression tests | 63 local tests passed; CI của milestone mới chưa xác minh. |
-| GitHub milestone / CI | Xác minh và ghi commit SHA, branch ref, CI URL trong docs sau push; không điền trước. |
+| Regression tests | 63 local tests passed; CI run 43841700612 cũng passed tests và compile. |
+| GitHub milestone / CI | Protocol/code-wiring commit `1ec2c1b649901873a12cb43dba703bf7a723a411` đã xác minh trên branch và Actions thành công; actual case experiment vẫn pending. |
 
 Để tiếp tục phần thực nghiệm: một reviewer cần hoàn thành source-only worksheet trong [P2_BLIND_ANNOTATION.md](P2_BLIND_ANNOTATION.md), khóa JSON trong app; sau đó gọi `qwen3:4b`, rồi cung cấp review riêng theo [P2_MODEL_REVIEW.md](P2_MODEL_REVIEW.md). Thực nghiệm này vẫn không tạo gold labels nếu thiếu reviewer thứ hai và adjudication.

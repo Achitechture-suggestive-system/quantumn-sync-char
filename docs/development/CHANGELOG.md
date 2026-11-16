@@ -1,11 +1,19 @@
 # Changelog
 
-## P2 unseen Tutor Support validation — 2026-11-16
+## P2 blind annotation and causal review protocol — 2026-11-16
+
+- Tách source-only annotation khỏi post-lock model review, thêm checkpoint hash/thời gian trước inference, cardinality 0..N cho FR-role mapping, relation registry cố định và action `APPROVE/CORRECT/REJECT/DEFER`.
+- Chỉ evidence relation đã qua human review, có implication kiến trúc riêng và responsibility pairs tường minh mới được policy đã khai báo chuyển thành soft optimizer constraint. Business ordering không tự sinh constraint.
+- Thêm exact-citation checks, unknown-relation rationale gate, regression coverage, và hai artifact canonical `P2_BLIND_ANNOTATION.md` / `P2_MODEL_REVIEW.md`; giữ `HUMAN_REVIEW_WORKSHEET.md` là lối vào tương thích.
+- Verification: 63 tests pass; compileall và staged diff/secret/path checks pass. Commit `1ec2c1b649901873a12cb43dba703bf7a723a411` được push lên `feat/p1-semantic-validation`; [GitHub Actions run 43841700612](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43841700612) success.
+- Case study thật vẫn chờ source-only annotation do người review cung cấp, inference `qwen3:4b` sau lock, model-review decisions và revision experiment. Test-only wiring không được trình bày như kết quả LLM; chưa có semantic metric.
+
+## P2 Tutor Support initial prototype (pre-blind protocol) — 2026-11-16
 
 - Added a new source-backed Tutor Support case, live local `qwen3:4b` extraction path, explicit review gate, policy-based evidence constraint derivation, optimizer input tracing, and downstream interaction/quality generation.
 - Added the independent human-review worksheet and documented the actual live run, proposal limitations, provenance, and test-only before/after revision path. The actual case still awaits human decisions; no semantic metric is claimed.
 - Verification before publish: 54 tests pass; compileall and staged diff checks pass. Commit `4bbdb03d419ab6b556e3447de0b2130dd3f95fdb` was pushed to `feat/p1-semantic-validation`; GitHub Actions run `43818037929` passed tests and compile.
-- The live candidate reached all ten stages, but its evidence proposal was unreviewed and self-referential. The actual case therefore produced zero accepted evidence-derived constraints; see the [P2 validation report](../p2/P2_VALIDATION_REPORT.md) and [review worksheet](../p2/HUMAN_REVIEW_WORKSHEET.md).
+- Historical v6 model output was unblinded and pre-protocol; its self-referential evidence was not accepted and the run produced zero accepted evidence-derived constraints. It is preserved as `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`, not as a blind experiment. See the [P2 validation report](../p2/P2_VALIDATION_REPORT.md) and [source-only blind annotation](../p2/P2_BLIND_ANNOTATION.md).
 
 ## P1 semantic-validation branch — 2026-11-14
 

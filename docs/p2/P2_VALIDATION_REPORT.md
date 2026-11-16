@@ -16,7 +16,7 @@
 | Test-only reviewed policy path | Constraint được tạo đúng evidence ID; 203 enumerated; 52 soft-optimal; correction đổi selected group và interaction mapping |
 | Hard constraint feasibility | Test-only path không khai báo hard constraint; exhaustive partitions thỏa các hard constraints đang bật |
 | Semantic metric | Không báo cáo; chưa có independent reference labels/adjudication |
-| GitHub push/CI | Chưa được xác nhận ở bản báo cáo này; ghi SHA/ref và CI trong publish log sau khi push. |
+| GitHub push/CI | Đạt cho milestone code/docs này; branch ref khớp SHA `4bbdb03d419ab6b556e3447de0b2130dd3f95fdb`; GitHub Actions run `43818037929` thành công, test và compile đều pass. Chi tiết tại `docs/development/GITHUB_PUBLISH_LOG.md`. |
 
 ## Acceptance matrix
 

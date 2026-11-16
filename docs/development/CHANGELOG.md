@@ -1,5 +1,12 @@
 # Changelog
 
+## P2 unseen Tutor Support validation — 2026-11-16
+
+- Added a new source-backed Tutor Support case, live local `qwen3:4b` extraction path, explicit review gate, policy-based evidence constraint derivation, optimizer input tracing, and downstream interaction/quality generation.
+- Added the independent human-review worksheet and documented the actual live run, proposal limitations, provenance, and test-only before/after revision path. The actual case still awaits human decisions; no semantic metric is claimed.
+- Verification before publish: 54 tests pass; compileall and staged diff checks pass. Commit `4bbdb03d419ab6b556e3447de0b2130dd3f95fdb` was pushed to `feat/p1-semantic-validation`; GitHub Actions run `43818037929` passed tests and compile.
+- The live candidate reached all ten stages, but its evidence proposal was unreviewed and self-referential. The actual case therefore produced zero accepted evidence-derived constraints; see the [P2 validation report](../p2/P2_VALIDATION_REPORT.md) and [review worksheet](../p2/HUMAN_REVIEW_WORKSHEET.md).
+
 ## P1 semantic-validation branch — 2026-11-14
 
 - Added an independent six-item partition oracle and negative validation tests for citation spans, evidence support, unknown references, and malformed project JSON.

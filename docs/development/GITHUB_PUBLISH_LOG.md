@@ -36,3 +36,12 @@
 - UI status correction commit `06234bd00ee176e4ec3f48afc78ff19131b9f322`: confirmation now states that the full pipeline is recomputed; browser walkthrough verified the H4 conflict, H3 correction, graph refresh, and JSON/ZIP downloads.
 - GitHub Actions [run 43610739439](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43610739439) on that commit: success on Ubuntu 24.04; 44 tests pass in 0.76s; compileall pass.
 - GitHub branch API and `git ls-remote` confirm that commit SHA; repo visibility remains private.
+
+## P2 unseen Tutor Support validation — 16/11/2026
+
+- Branch: `feat/p1-semantic-validation`; repository remains private.
+- Implementation commit pushed: `4bbdb03d419ab6b556e3447de0b2130dd3f95fdb` (`feat: add P2 Tutor Support validation path`). It adds the Tutor Support case path, provenance-aware review and constraint flow, P2 tests, and required Vietnamese documentation.
+- Local verification before push: 54 tests passed; `compileall -q app.py eqcr tests` and `git diff --cached --check` passed. Staged secret-pattern scan had no matches.
+- After push, `git ls-remote origin refs/heads/feat/p1-semantic-validation` returned the same full SHA.
+- GitHub Actions [run 43818037929](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43818037929) on the implementation commit completed successfully; regression/P1 tests and compile steps passed.
+- The run and docs do not claim completion of actual human review. The model's self-referential evidence candidate remains unapproved, so the live run has zero evidence-derived constraints pending reviewer input.

@@ -16,7 +16,9 @@ from eqcr.storage import make_export_zip, verify_export_zip
 from eqcr.tutor_support import get_tutor_support_fixture
 
 
-def test_artifact_bundle_records_provenance_hashes_and_solver_inputs():
+def test_artifact_bundle_records_provenance_hashes_and_solver_inputs(monkeypatch):
+    monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
+    monkeypatch.delenv("GITHUB_RUN_ATTEMPT", raising=False)
     fixture = get_tutor_support_fixture()
     artifacts = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
     artifacts["metadata"]["run_id"] = "run-p2-manifest-test"
@@ -81,3 +83,13 @@ def test_artifact_bundle_validation_script_reports_verified_bundle(tmp_path):
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["status"] == "PASS"
+
+
+def test_artifact_bundle_records_ci_run_without_claiming_ci_outcome(monkeypatch):
+    monkeypatch.setenv("GITHUB_RUN_ID", "123456")
+    monkeypatch.setenv("GITHUB_RUN_ATTEMPT", "2")
+    result = verify_export_zip(make_export_zip({"validation_report": {"status": "REVIEW_REQUIRED"}}))
+
+    assert result["manifest"]["ci_run_id"] == "123456"
+    assert result["manifest"]["ci_run_attempt"] == "2"
+    assert result["manifest"]["ci_status"] == "EXTERNAL_STATUS_NOT_QUERIED"

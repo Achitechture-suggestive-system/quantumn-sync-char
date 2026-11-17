@@ -1,13 +1,14 @@
 # EQCR + QAME — Research Completion Status Report
 
-**Report date:** 2026-11-16
-**Code checkpoint:** `8707334310dcd8fb7520b9d519a6023b753143a3` on `feat/p1-semantic-validation`; [GitHub Actions run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. This report describes verified work through that code checkpoint; subsequent commits only update documentation.
+**Report date:** 2026-11-17
+**Code checkpoint:** `8707334310dcd8fb7520b9d519a6023b753143a3` on `feat/p1-semantic-validation`; [GitHub Actions run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. Latest documentation checkpoint is `377caa9a96efeb10bdfbacc34d19e83ffa80a9a5`; [CI run 43899554943](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43899554943) passed.
 
 ## 1. Repository baseline and audited capabilities
 
 - Development stayed on `feat/p1-semantic-validation`. At audit, remote `main` was `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag `p0-demo-2026-11-14` resolves to `3d517b1a39158e539239dc73d594bc0938649feb`, an ancestor of `main`. No P0/main change was included in this work.
 - The repository audit covers P0–P11 in [`REPOSITORY_CAPABILITY_AUDIT.md`](REPOSITORY_CAPABILITY_AUDIT.md), with outstanding gaps in [`PIPELINE_GAP_MATRIX.md`](PIPELINE_GAP_MATRIX.md).
 - Local `runs/`, snapshots and prior review history were not staged or rewritten.
+- A 2026-11-17 recheck found no P2 annotation lock or `runs/p2-experiments/` output. Local `ollama list` showed `qwen3:4b` installed; no inference was run without the required independent lock. `main` remains `5ece0157bf2372fb879f694cee9f5f0846fcbe1a` and the P0 tag remains its ancestor.
 
 ## 2. Implementation changes
 

@@ -8,6 +8,16 @@
 
 **P2 case thật chưa hoàn tất.** Branch đã có Tutor Support, protocol source-only blind, review decisions và code path relation → policy constraint → exhaustive partitioner → downstream outputs. Chưa có source-only annotation thật, inference qwen hậu-lock, model review thật hoặc revision experiment thật. Không gọi test harness là kết quả model/case study.
 
+## Recheck trạng thái hiện tại — 2026-11-17
+
+| Bằng chứng | Kết quả |
+|---|---|
+| Checkout / remote feature ref | `feat/p1-semantic-validation`, clean; local HEAD và remote ref cùng `377caa9a96efeb10bdfbacc34d19e83ffa80a9a5`. Documentation-only commit mới nhất có [CI run 43899554943](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43899554943) success. Code milestone `8707334310dcd8fb7520b9d519a6023b753143a3` có [CI run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) success; 114 tests locally. |
+| P0 / `main` | Remote `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag vẫn là ancestor của `main`. |
+| Annotation lock / model run | Không tìm thấy lock JSON trong checkout; `runs/p2-experiments/` chưa tồn tại. Không có post-lock inference hoặc reviewer decisions mới. |
+| Local model availability | `ollama list` trả về tag `qwen3:4b` (ID prefix `359d7dd4bcda`). Đây chỉ là availability check; không gọi inference và không tạo model output. |
+| Kết luận | `P2_BLOCKED_INDEPENDENT_ANNOTATION` vẫn giữ nguyên. Model chỉ được chạy sau khi nhận source-only annotation lock hợp lệ từ annotator chưa từng xem proposal Tutor. |
+
 Pasted methodology review đã dẫn tới thay đổi protocol: source-only labels được tách khỏi review output, 0..N responsibilities cho mỗi FR, relation universe có registry cố định và status riêng, `APPROVE/CORRECT/REJECT/DEFER` được hỗ trợ, và adjudication/gold-label protocol được ghi rõ. Những thay đổi này làm cho inference v6 trước đó không đủ điều kiện làm blind experiment.
 
 ## Kiểm tra cục bộ của milestone hiện tại

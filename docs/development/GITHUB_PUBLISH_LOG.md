@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## P2/research status recheck — 17/11/2026
+
+- Before this documentation follow-up, local branch `feat/p1-semantic-validation` and remote feature ref matched `dbe4a5f417535d11aab9696ff60e593be19b6e1a`. Remote `main` remained `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag `3d517b1a39158e539239dc73d594bc0938649feb` remained its ancestor.
+- Commit `dbe4a5f417535d11aab9696ff60e593be19b6e1a` passed [GitHub Actions run 44005282683](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44005282683). A fresh local rerun passed 114 tests and compileall.
+- `ollama list` confirmed installed tag `qwen3:4b`; this check did not invoke the model. No source-only lock or `runs/p2-experiments/` bundle was present, so P2 remains `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+- No generated run/snapshot was staged or modified. This status/audit follow-up does not establish semantic correctness, human approval, or research validation.
+
 ## Human-reviewed interaction contracts — 16/11/2026
 
 - Branch `feat/p1-semantic-validation`; P0 `main` không thay đổi.

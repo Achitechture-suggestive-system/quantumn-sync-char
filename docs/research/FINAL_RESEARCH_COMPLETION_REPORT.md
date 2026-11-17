@@ -1,7 +1,7 @@
 # EQCR + QAME — Research Completion Status Report
 
 **Report date:** 2026-11-17
-**Code checkpoint:** `8707334310dcd8fb7520b9d519a6023b753143a3` on `feat/p1-semantic-validation`; [GitHub Actions run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. Latest documentation checkpoint is `377caa9a96efeb10bdfbacc34d19e83ffa80a9a5`; [CI run 43899554943](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43899554943) passed.
+**Current feature checkpoint:** `dbe4a5f417535d11aab9696ff60e593be19b6e1a` on `feat/p1-semantic-validation`; [GitHub Actions run 44005282683](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44005282683) passed. This documentation checkpoint was rechecked locally with 114 passing tests and successful compilation.
 
 ## 1. Repository baseline and audited capabilities
 
@@ -90,7 +90,7 @@ The three evaluation tracks, future baselines, ablation configurations, measure 
 - No post-lock Ollama run and no human decisions mean that the main causal research question remains unanswered on actual Tutor inputs.
 - Literal citation/span matches do not establish semantic entailment; review approval does not create an experiment or gold label.
 - P2 review schemas cap at eight roles. CP-SAT handles larger generic inputs through a code limit of 50, but that upper range is unbenchmarked; optima are capped at 200 and feasible sets are not counted.
-- Interaction contract decisions remain unavailable through the UI; current output is UNDECIDED. Graph tiers are placeholders when unsupported.
+- The Human Review UI can record a complete, cited interaction-contract decision and recompute downstream artifacts; no real Tutor decision exists, and contract review does not change optimizer constraints. Graph tiers remain placeholders when unsupported.
 - ISO characteristic IDs remain unmapped; four Tutor scenario parts remain UNKNOWN. No quality measurement target system, repeat protocol or raw observation exists.
 - Draw.io XML is parsed in tests, but no GUI round-trip is recorded. The generic app ZIP has a validated integrity manifest; the separately produced P2 proposal run has no post-lock Tutor results to combine with reviewed downstream artifacts.
 

@@ -1,4 +1,6 @@
-# Pipeline gap matrix — 2026-11-16
+# Pipeline gap matrix — 2026-11-17
+
+Rechecked against feature-branch commit `dbe4a5f417535d11aab9696ff60e593be19b6e1a`. The local regression suite passed 114 tests and compilation passed; GitHub Actions run [44005282683](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44005282683) passed. This verifies bounded software behavior only. The actual Tutor experiment remains `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
 
 | Flow / requirement | Existing path | Status | Gap against completion prompt | Safe next work | External evidence needed |
 |---|---|---|---|---|---|

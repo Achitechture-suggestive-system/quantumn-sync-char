@@ -1,5 +1,11 @@
 # Changelog
 
+## P2/research status recheck — 2026-11-17
+
+- Rechecked the feature branch and remote `main`/P0 ancestry; refreshed the P0–P11 audit, gap matrix, implementation plan, final status report and Ollama-to-optimizer dependency trace. Corrected the prior report's stale statement that interaction-contract review was unavailable in the UI.
+- Current checkout before this documentation follow-up was `dbe4a5f417535d11aab9696ff60e593be19b6e1a`; [CI run 44005282683](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44005282683) passed. Fresh local verification: 114 tests passed and compileall passed.
+- Local `qwen3:4b` is installed, but no eligible source-only lock or P2 run bundle exists. No inference, review decision, semantic score or real case revision was created; status remains `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
 ## Human-reviewed interaction contracts — 2026-11-16
 
 - Added a Human Review JSON editor for complete Sync/Async contracts, exact source-span checks, explicit reviewer/rationale/timestamp, decision/revision records and versioned snapshots. Recomputes interaction, QAME and traceability outputs; the mode does not create optimizer constraints, so partitions remain unchanged by design.

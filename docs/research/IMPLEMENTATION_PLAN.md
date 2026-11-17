@@ -1,6 +1,13 @@
-# Research-grade implementation plan — 2026-11-16
+# Research-grade implementation plan — 2026-11-17
 
 This plan follows the repository audit. It preserves the existing P0 baseline and keeps semantic claims separate from implementation checks. Work proceeds in small commits on `feat/p1-semantic-validation`; no change to `main` is included.
+
+## Current audit checkpoint
+
+- Feature commit inspected: `dbe4a5f417535d11aab9696ff60e593be19b6e1a`; remote feature ref matched. Remote `main` remains `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`, and the P0 tag remains an ancestor.
+- Local verification on this checkpoint: 114 tests passed; `compileall` passed. GitHub Actions run [44005282683](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44005282683) passed.
+- Ollama reports the local `qwen3:4b` tag installed. No source-only lock or P2 run bundle exists, and no new inference was made. The case experiment remains `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+- The Human Review interaction-contract editor is implemented and tested; no real Tutor contract decision exists. These reviews do not directly alter optimizer constraints.
 
 ## Milestone A — P2 experiment reproducibility (implemented; CI verified; case experiment blocked externally)
 

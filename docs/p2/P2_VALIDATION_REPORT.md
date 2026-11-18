@@ -8,6 +8,16 @@
 
 **P2 case thật chưa hoàn tất.** Branch đã có Tutor Support, protocol source-only blind, review decisions và code path relation → policy constraint → exhaustive partitioner → downstream outputs. Chưa có source-only annotation thật, inference qwen hậu-lock, model review thật hoặc revision experiment thật. Không gọi test harness là kết quả model/case study.
 
+## Browser smoke trên ứng dụng hiện tại — 2026-11-19
+
+Streamlit UI được mở cục bộ và chạy **PetClinic `PRECOMPUTED` fixture** qua nút offline; các tab Input, Evidence & Constraints, Quantum & Contracts và Human Review & Validation đều mở được. Trang optimizer hiển thị 203 partitions, 10 feasible candidates và 10 optimum có J=0; graph, interaction, QAME và validation panels hiện diện. Không submit bất kỳ review/constraint action nào. App tạo run local ignored `runs/run-20261118T232503Z-357cfb32/`; đã để nguyên.
+
+Sau đó load Tutor: source-only data được hiển thị, P1/P6 proposal IDs không xuất hiện, `Run offline fixture` bị disable trước lock. Không nhập hoặc khóa annotation; không gọi Ollama và không chạy model review. Trang hiện tại ghi zero console errors và một non-blocking GraphViz worker fallback warning. Đây là manual browser smoke cho UI gating và fixture flow, không phải automated browser suite, Tutor experiment hay bằng chứng ngữ nghĩa.
+
+## Automated UI regression — 2026-11-19
+
+Code/test commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` thêm Streamlit `AppTest` từ thao tác load PetClinic đến assertion đủ 10 pipeline stages, QAME trace-chain allocations, 203 partitions, 10 feasible/optimal candidates và trạng thái đo chất lượng `NOT_MEASURED`/`INSUFFICIENT_EVIDENCE`. Test monkeypatch persistence để không ghi file vào `runs/`. Local full suite: **130 passed**; compileall và diff check passed; [CI 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) passed trên đúng SHA. Đây là regression UI của PetClinic `PRECOMPUTED`, không kiểm tra end-to-end Tutor inference/review hoặc semantic validity. `main` và P0 baseline không đổi.
+
 ## Cập nhật deterministic evidence audit — 2026-11-19
 
 Code milestone `a334fac8b4193c469ed0a1499a1383db4164bdf1` thêm audit claim evidence tổng quát cho exact duplicate claim+citation, `PRESENT` đối nghịch `SCOPED_ABSENT`, và known state đi cùng `UNKNOWN`. Các evidence IDs bị trùng hoặc mơ hồ được liệt kê trong `artifacts.evidence.audit.blocked_evidence_ids`; `_derive_evidence_constraints` ghi `ABSTAINED` thay vì tạo constraint. Undirected endpoint canonicalization chỉ dùng khi direction được khai báo trong relation annotation. Predicate equivalence, entailment, thời gian/context và ý nghĩa nguồn không được suy diễn.

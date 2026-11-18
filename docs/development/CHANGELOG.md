@@ -1,5 +1,27 @@
 # Changelog
 
+## Automated UI regression — 2026-11-19
+
+- Thêm Streamlit `AppTest` chạy PetClinic offline flow từ load đến đủ 10 pipeline stages, kiểm tra trạng thái fixture, QAME trace chain và `NOT_MEASURED`/`INSUFFICIENT_EVIDENCE`.
+- Test cô lập `save_run` và `save_snapshot`, không ghi đè hoặc tạo dữ liệu trong `runs/`.
+- Verification: full suite **130 passed**, compileall và diff check passed. Code commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` đã push; [CI 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) success.
+- Đây là UI regression cho PetClinic `PRECOMPUTED` fixture; không phải Tutor model inference, reviewer decision, hay bằng chứng semantic correctness.
+
+## QAME allocation edge validation — 2026-11-19
+
+- Tăng `qame_allocations_resolve` từ kiểm tra node sang tính lại liên kết requirement/scenario/responsibility/quantum/interaction mong đợi và kiểm tra từng cạnh, gồm source/target quantum của interaction.
+- Thêm adversarial test dùng quantum endpoint không tồn tại; traceability trả `FAIL` thay vì pass khi tham chiếu sai.
+- Verification: 129 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `172856cfa718971aa83e0f09986e53ce11534e2b` đã push; [CI 44421428402](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44421428402) success.
+- Không thay đổi semantic status, ISO characteristic mapping hoặc measurement; Tutor vẫn thiếu annotation lock/model review thật.
+
+## QAME traceability chain — 2026-11-19
+
+- Traceability graph bổ sung liên kết FR→scenario→responsibility→quantum/interaction→characteristic mapping→measurement state, gồm cả các cạnh endpoint quantum cho interaction.
+- Thêm assertions kiểm tra allocations và cạnh QAME; trạng thái `UNMAPPED`, `NOT_MEASURED`, `null` và `NOT_RECORDED` được giữ nguyên khi thiếu human classification/measurement.
+- Verification: full suite 129 tests passed; compileall, `git diff --check` passed. Deterministic Tutor fixture replay bằng nhau qua hai lần; in-memory bundle validator `PASS`, 18 members. Code commit `c1e96767f38b6a04083789f630d5d7d9e07b4b25` đã push; [CI 44419855480](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44419855480) success.
+- Đây là `PREPARED_FIXTURE` + `DETERMINISTIC_TRANSFORMATION` trong `P2_TEST_ONLY`, không phải LLM output, reviewer decision, ISO classification hay đo lường.
+- Manual UI smoke: PetClinic fixture render/run và cả bốn tab hoạt động; Tutor trước lock chỉ hiển thị source-only, P1/P6 ẩn, offline run disabled. Không nhập review hoặc gọi Ollama; local ignored run `runs/run-20261118T232503Z-357cfb32/` được giữ nguyên. Một GraphViz worker fallback warning, không có console error trên trang hiện tại.
+
 ## P2 structural evaluator payload guards — 2026-11-19
 
 - Kiểm tra raw requirements, proposal arrays và object rows trước khi evaluator truy cập trường; ID/endpoint/source ID sai kiểu trở thành structural error được nêu tên hoặc dừng bằng `P2ExperimentError` có kiểm soát.

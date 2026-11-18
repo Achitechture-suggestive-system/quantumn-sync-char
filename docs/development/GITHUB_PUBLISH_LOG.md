@@ -1,5 +1,27 @@
 # Nhật ký publish GitHub
 
+## Automated UI regression — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; test commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` (`test(ui): cover ten-stage offline flow`) đã push; `git ls-remote` xác nhận feature ref đúng SHA.
+- Trước push: full suite **130 tests passed**, compileall và `git diff --check` passed; staged diff chỉ có `tests/test_ui_pipeline_e2e.py`, secret-pattern scan không có kết quả.
+- GitHub Actions [run 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) completed success trên đúng SHA.
+- `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag vẫn là ancestor. UI test chạy PetClinic fixture và cô lập persistence; không tạo P2 annotation, Ollama output hay semantic result.
+
+## QAME allocation edge validation — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `172856cfa718971aa83e0f09986e53ce11534e2b` (`fix(qame): verify allocation edge chain`) đã push; remote feature ref xác nhận đúng SHA.
+- Trước push: full suite 129 tests passed; `compileall -q app.py eqcr tests scripts`, staged `git diff --check` và secret-pattern scan passed; chỉ stage `eqcr/traceability.py` và `tests/test_traceability.py`.
+- GitHub Actions [run 44421428402](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44421428402) completed success trên đúng SHA.
+- Test adversarial xác nhận unknown interaction quantum endpoint làm structural graph FAIL. Không có human review, model inference hoặc quality measurement.
+
+## QAME traceability chain — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `c1e96767f38b6a04083789f630d5d7d9e07b4b25` (`feat(qame): expose quality trace chain`) đã push; remote feature ref xác nhận đúng SHA.
+- Trước push: full suite 129 tests passed; `compileall -q app.py eqcr tests scripts`, staged `git diff --check` và secret-pattern scan passed; chỉ stage `eqcr/traceability.py` và `tests/test_traceability.py`.
+- GitHub Actions [run 44419855480](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44419855480) completed success trên đúng SHA.
+- Recheck sau push: remote `main` ở `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag là ancestor. Replay/ZIP dùng prepared Tutor fixture, không có Ollama inference hay human review.
+- Manual browser smoke sau code push: PetClinic fixture được load/run qua UI, 4 tab hoạt động; Tutor source-only pre-lock không lộ P1/P6 và không cho chạy offline. Không submit review hoặc gọi model. Run local ignored được giữ lại; có một GraphViz worker fallback warning và zero console errors hiện hành.
+
 ## P2 structural evaluator payload guards — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; code commit `00be77f5486023d3ad88e1f602b20167d30c710c` (`fix(p2): guard malformed extraction payloads`) đã push; remote feature ref xác nhận SHA.

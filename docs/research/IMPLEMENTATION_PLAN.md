@@ -1,5 +1,27 @@
 # Research-grade implementation plan — 2026-11-17
 
+## Automated UI regression — 2026-11-19
+
+Test commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` is pushed on `feat/p1-semantic-validation`; [CI 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) passed. The complete local suite passed **130 tests**; compileall and `git diff --check` passed.
+
+The Streamlit `AppTest` exercises the PetClinic offline UI flow through all ten stages and asserts QAME graph allocations, expected partition counts and unmeasured statuses. It isolates storage writes from `runs/`. This closes the automated PetClinic UI regression gap; P2 Tutor remains blocked on independent source-only annotation and subsequent real inference/review.
+
+## QAME traceability edge validation — 2026-11-19
+
+Follow-up code commit `172856cfa718971aa83e0f09986e53ce11534e2b` is pushed on `feat/p1-semantic-validation`; [CI 44421428402](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44421428402) passed. The full local suite remains **129 passed**; compileall and `git diff --check` passed.
+
+The allocation assertion now recomputes responsibility and quantum allocations from the scenario inputs and current assignment, then verifies those exact graph edges and both interaction quantum endpoints. A deliberately invalid endpoint fails traceability. These checks support structural lineage only; semantic meaning, taxonomy, and measured quality remain unresolved.
+
+## QAME traceability chain — 2026-11-19
+
+Code commit `c1e96767f38b6a04083789f630d5d7d9e07b4b25` is pushed on `feat/p1-semantic-validation`; [CI 44419855480](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44419855480) passed. Local full suite: 129 tests; compileall and `git diff --check` passed.
+
+Traceability now represents requirement→scenario→responsibility→quantum→interaction and quality-profile→quantum/interaction→ISO mapping state→measurement state. New assertions check allocated IDs and actual graph edges. The implementation preserves unreviewed labels as `UNMAPPED`/`UNSPECIFIED` and values as `NOT_MEASURED`/`NOT_RECORDED`; it adds no ISO classification or measurement.
+
+A deterministic Tutor prepared-fixture rerun produced identical artifact trees twice; the in-memory bundle validator returned `PASS` for 18 members. This is prepared fixture plus deterministic transformation in `P2_TEST_ONLY`, not model inference or human review. Tutor source-only lock, fresh Ollama proposal, review decisions and actual revision experiment remain blocked externally.
+
+Manual Streamlit smoke loaded and ran the frozen PetClinic offline fixture, showed outputs on all four UI tabs, and reported 203 partitions/10 feasible/10 zero-cost candidates. Loading Tutor afterward showed only its source-only projection with offline run disabled and no P1/P6 proposal IDs. No review submission or model call was made. Local ignored run `runs/run-20261118T232503Z-357cfb32/` was left intact. This is a browser smoke of the existing app, not an automated E2E test for the P2 model/review experiment.
+
 ## P2 evaluator payload guards — 2026-11-19
 
 Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` is pushed on `feat/p1-semantic-validation` and verified by [CI 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751). Local validation: 128 tests, compileall, and diff check passed. The P2 structural evaluator now handles non-object rows and malformed identifier types with controlled errors. This validates input handling only; it does not add semantic accuracy metrics or unblock the actual Tutor experiment.

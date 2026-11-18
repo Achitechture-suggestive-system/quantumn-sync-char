@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from eqcr.fixture import get_fixture
 from eqcr.ollama import apply_proposals_to_fixture
 from eqcr.pipeline import run_pipeline
@@ -26,6 +28,17 @@ def test_traceability_records_source_proposal_evidence_constraint_and_partition_
         and relation == "SATISFIED_BY"
         for source, target, relation in edges
     )
+    interaction = artifacts["interactions"]["edges"][0]
+    assert (
+        f"quantum:{interaction['from_quantum']}",
+        f"interaction:{interaction['id']}",
+        "SOURCE_QUANTUM_FOR_INTERACTION",
+    ) in edges
+    assert (
+        f"interaction:{interaction['id']}",
+        f"quantum:{interaction['to_quantum']}",
+        "TARGET_QUANTUM_OF_INTERACTION",
+    ) in edges
     assert nodes["evidence:EV-R1-01"]["review_status"] == "REVIEW_REQUIRED"
     assert {item["constraint_id"] for item in graph["constraints_without_evidence_links"]} == {
         "H1", "H2", "H3"
@@ -112,6 +125,16 @@ def test_qame_traceability_links_requirements_to_characteristic_and_measurement_
     assert measurement["measurement_status"] == "NOT_MEASURED"
     assert measurement["measurement"] is None
     assert measurement["value_status"] == "NOT_RECORDED"
+
+    broken = deepcopy(artifacts)
+    broken["interactions"]["edges"][0]["from_quantum"] = "Q-MISSING"
+    broken_graph = refresh_traceability_artifact(broken)["traceability"]
+    assert broken_graph["status"] == "FAIL"
+    assert broken_graph["assertions"]["qame_allocations_resolve"] is False
+    assert any(
+        issue["kind"] == "UNKNOWN_INTERACTION_QUANTUM"
+        for issue in broken_graph["unresolved_issues"]
+    )
 
 
 def test_ollama_proposal_lineage_is_visible_and_stays_review_required():

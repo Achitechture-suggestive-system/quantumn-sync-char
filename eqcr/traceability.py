@@ -5,6 +5,107 @@ from __future__ import annotations
 from typing import Any
 
 
+def _qame_profile_allocation_resolves(
+    profile: dict[str, Any],
+    *,
+    raw_scenarios_by_id: dict[str, dict[str, Any]],
+    responsibility_by_id: dict[str, dict[str, Any]],
+    primary_assignment: dict[str, str],
+    interaction_edges: list[dict[str, Any]],
+    node_ids: set[str],
+    has_edge: Any,
+) -> bool:
+    scenario_id = profile.get("scenario_id")
+    scenario = raw_scenarios_by_id.get(scenario_id)
+    if not scenario:
+        return False
+    scenario_node = f"scenario:{scenario_id}"
+    profile_node = f"quality-profile:{scenario_id}"
+    related_requirements = set(scenario.get("related_requirement_ids", []))
+    expected_responsibilities = sorted(
+        responsibility_id
+        for responsibility_id, responsibility in responsibility_by_id.items()
+        if related_requirements.intersection(responsibility.get("requirement_ids", []))
+    )
+    actual_responsibilities = profile.get("responsibility_ids", [])
+    if actual_responsibilities != expected_responsibilities:
+        return False
+    if not has_edge(scenario_node, profile_node, "ALLOCATED_AS_QUALITY_PROFILE"):
+        return False
+    if any(
+        not has_edge(
+            f"requirement:{requirement_id}",
+            scenario_node,
+            "QUALITY_SCENARIO_CONTEXT",
+        )
+        for requirement_id in related_requirements
+    ):
+        return False
+    expected_quanta = sorted(
+        {
+            primary_assignment[responsibility_id]
+            for responsibility_id in expected_responsibilities
+            if responsibility_id in primary_assignment
+        }
+    )
+    if profile.get("quantum_ids", []) != expected_quanta:
+        return False
+    for responsibility_id in expected_responsibilities:
+        responsibility_node = f"responsibility:{responsibility_id}"
+        if responsibility_node not in node_ids or not has_edge(
+            scenario_node,
+            responsibility_node,
+            "ALLOCATED_TO_RESPONSIBILITY",
+        ):
+            return False
+        quantum_id = primary_assignment.get(responsibility_id)
+        if quantum_id and not has_edge(
+            responsibility_node,
+            f"quantum:{quantum_id}",
+            "ASSIGNED_TO_QUANTUM_CANDIDATE",
+        ):
+            return False
+    for quantum_id in expected_quanta:
+        if f"quantum:{quantum_id}" not in node_ids or not has_edge(
+            profile_node,
+            f"quantum:{quantum_id}",
+            "ALLOCATED_TO_QUANTUM_CANDIDATE",
+        ):
+            return False
+
+    interaction_by_id = {item["id"]: item for item in interaction_edges}
+    expected_interaction_ids = sorted(
+        item["id"]
+        for item in interaction_edges
+        if set(item.get("responsibility_ids", [])) <= set(expected_responsibilities)
+    )
+    if profile.get("affected_interaction_edges", []) != expected_interaction_ids:
+        return False
+    for interaction_id in expected_interaction_ids:
+        interaction = interaction_by_id[interaction_id]
+        interaction_node = f"interaction:{interaction_id}"
+        source_quantum = interaction.get("from_quantum")
+        target_quantum = interaction.get("to_quantum")
+        if (
+            interaction_node not in node_ids
+            or not isinstance(source_quantum, str)
+            or not isinstance(target_quantum, str)
+            or not has_edge(profile_node, interaction_node, "QUALITY_INTERACTION_CONTEXT")
+            or not has_edge(
+                f"quantum:{source_quantum}",
+                interaction_node,
+                "SOURCE_QUANTUM_FOR_INTERACTION",
+            )
+            or not has_edge(
+                interaction_node,
+                f"quantum:{target_quantum}",
+                "TARGET_QUANTUM_OF_INTERACTION",
+            )
+        ):
+            return False
+    return True
+
+
 def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
     raw = artifacts["raw_requirements"]
     sources: dict[str, dict[str, Any]] = {}
@@ -958,43 +1059,14 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             for profile in artifacts["quality_profiles"]["profiles"]
         ),
         "qame_allocations_resolve": all(
-            profile["scenario_id"] in raw_scenarios_by_id
-            and all(
-                f"responsibility:{responsibility_id}" in node_ids
-                and has_edge(
-                    f"scenario:{profile['scenario_id']}",
-                    f"responsibility:{responsibility_id}",
-                    "ALLOCATED_TO_RESPONSIBILITY",
-                )
-                for responsibility_id in profile.get("responsibility_ids", [])
-            )
-            and all(
-                f"quantum:{quantum_id}" in node_ids
-                and has_edge(
-                    f"quality-profile:{profile['scenario_id']}",
-                    f"quantum:{quantum_id}",
-                    "ALLOCATED_TO_QUANTUM_CANDIDATE",
-                )
-                for quantum_id in profile.get("quantum_ids", [])
-            )
-            and all(
-                f"interaction:{interaction_id}" in node_ids
-                and has_edge(
-                    f"quality-profile:{profile['scenario_id']}",
-                    f"interaction:{interaction_id}",
-                    "QUALITY_INTERACTION_CONTEXT",
-                )
-                for interaction_id in profile.get("affected_interaction_edges", [])
-            )
-            and all(
-                has_edge(
-                    f"requirement:{requirement_id}",
-                    f"scenario:{profile['scenario_id']}",
-                    "QUALITY_SCENARIO_CONTEXT",
-                )
-                for requirement_id in raw_scenarios_by_id.get(profile["scenario_id"], {}).get(
-                    "related_requirement_ids", []
-                )
+            _qame_profile_allocation_resolves(
+                profile,
+                raw_scenarios_by_id=raw_scenarios_by_id,
+                responsibility_by_id=responsibility_by_id,
+                primary_assignment=artifacts["quanta"].get("primary_assignment", {}),
+                interaction_edges=artifacts["interactions"]["edges"],
+                node_ids=node_ids,
+                has_edge=has_edge,
             )
             for profile in artifacts["quality_profiles"]["profiles"]
         ),

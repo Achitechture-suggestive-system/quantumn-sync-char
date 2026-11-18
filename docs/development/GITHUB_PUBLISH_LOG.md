@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## Deterministic evidence-claim audit — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1` (`feat: audit duplicate and conflicting evidence`) đã push; `git ls-remote` xác nhận feature ref đúng SHA.
+- Trước push: local full suite 124 tests passed; `compileall -q app.py eqcr scripts tests`, staged `git diff --check` và staged secret-pattern scan passed; chỉ stage 4 file code/test tường minh.
+- GitHub Actions [run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) completed success trên đúng SHA.
+- `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag ancestry không đổi. Tests về conflict/duplicate dùng `P2_TEST_ONLY`; không tạo actual Tutor run, human decision hoặc metric semantic.
+
 ## P2.1 browser smoke documentation — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; report commit `5a2ed9e10b03860037afacdec73818d97370a393` đã push và remote ref được xác minh cùng SHA.

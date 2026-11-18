@@ -1,5 +1,12 @@
 # Changelog
 
+## Deterministic evidence-claim audit — 2026-11-19
+
+- Thêm `eqcr.evidence_audit.audit_evidence_records` để báo cáo exact duplicate claim/citation, direct `PRESENT`/`SCOPED_ABSENT` conflict và mixed-with-`UNKNOWN`, đồng thời canonicalize endpoint chỉ khi relation direction khai báo là undirected.
+- Constraint policy abstain với mọi evidence ID bị duplicate hoặc conflict; artifact `evidence.audit` lưu nhóm, IDs, trạng thái và giới hạn structural. Không suy ra semantic contradiction, entailment, thời gian/context hay đổi `UNKNOWN` thành vắng mặt.
+- Verification: 124 tests passed; `compileall -q app.py eqcr scripts tests`, `git diff --check` và staged secret-pattern scan passed. Code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1` đã push và remote-verified; [CI 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) success.
+- Test dùng `P2_TEST_ONLY`; không có reviewer label, case inference hoặc semantic metric mới. `main` và P0 không thay đổi.
+
 ## P2.1 browser smoke record — 2026-11-19
 
 - Chạy app Streamlit local và nạp Tutor case; DOM trước lock chỉ hiển thị source-only data, không có helper mappings hay mã proposal P1–P6/E1/B1.

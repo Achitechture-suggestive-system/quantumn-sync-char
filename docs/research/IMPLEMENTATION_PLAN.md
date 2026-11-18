@@ -1,5 +1,9 @@
 # Research-grade implementation plan — 2026-11-17
 
+## Deterministic evidence-claim audit milestone — 2026-11-19
+
+Code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1` is pushed on `feat/p1-semantic-validation` and verified by [CI 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706). Local validation: 124 tests, compileall, and diff check passed. Duplicate exact claim/citation rows and direct status-conflict or known/UNKNOWN groups are now recorded; their evidence IDs abstain from policy-derived constraints. This does not resolve semantic or context/time conflicts. The actual Tutor experiment remains blocked on an independent source-only annotation lock.
+
 ## P2.1 milestone recheck — 2026-11-19
 
 The prior sections are the historical plan/status recorded at the 2026-11-17 checkpoint. Since then, feature commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` added and pushed the source-only package, pinned lock validation and pre-lock source-only UI boundary; [CI 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed, with 121 local tests and compileall passing. Remote `main` remains at the P0 baseline.

@@ -8,6 +8,12 @@
 
 **P2 case thật chưa hoàn tất.** Branch đã có Tutor Support, protocol source-only blind, review decisions và code path relation → policy constraint → exhaustive partitioner → downstream outputs. Chưa có source-only annotation thật, inference qwen hậu-lock, model review thật hoặc revision experiment thật. Không gọi test harness là kết quả model/case study.
 
+## Cập nhật deterministic evidence audit — 2026-11-19
+
+Code milestone `a334fac8b4193c469ed0a1499a1383db4164bdf1` thêm audit claim evidence tổng quát cho exact duplicate claim+citation, `PRESENT` đối nghịch `SCOPED_ABSENT`, và known state đi cùng `UNKNOWN`. Các evidence IDs bị trùng hoặc mơ hồ được liệt kê trong `artifacts.evidence.audit.blocked_evidence_ids`; `_derive_evidence_constraints` ghi `ABSTAINED` thay vì tạo constraint. Undirected endpoint canonicalization chỉ dùng khi direction được khai báo trong relation annotation. Predicate equivalence, entailment, thời gian/context và ý nghĩa nguồn không được suy diễn.
+
+Verification là test code với `P2_TEST_ONLY`: **124 tests passed**, `compileall` và `git diff --check` passed; [CI run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) passed trên SHA trên. Đây không phải reviewer decision hoặc kết quả semantic evaluation; trạng thái case vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
 ## Recheck trạng thái hiện tại — 2026-11-17
 
 | Bằng chứng | Kết quả |

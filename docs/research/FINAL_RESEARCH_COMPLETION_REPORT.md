@@ -1,7 +1,7 @@
 # EQCR + QAME — Research Completion Status Report
 
 **Report date:** 2026-11-19
-**Current verified code checkpoint:** `931dea62472ea459eacd33b1fbe6196eb4e619ce` on `feat/p1-semantic-validation`; [GitHub Actions run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed. The full local suite passed 121 tests and compilation succeeded. The research reports below were updated after that code commit; they do not claim an actual Tutor experiment.
+**Current verified code checkpoint:** `a334fac8b4193c469ed0a1499a1383db4164bdf1` on `feat/p1-semantic-validation`; [GitHub Actions run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) passed. The full local suite passed 124 tests; compilation and diff checks succeeded. This report does not claim an actual Tutor experiment.
 
 ## 1. Repository baseline and audited capabilities
 
@@ -14,6 +14,7 @@
 ## 2. Implementation changes
 
 - **P2 infrastructure:** a five-file source-only package, per-file/source hash manifest, v3 lock validation, source-only pre-lock UI gate, reproducible local proposal runner, structural citation/duplicate checks, review dispositions and test-only causal wiring exist. The actual post-lock Tutor experiment remains blocked.
+- **Typed evidence screening:** exact duplicate claim/citation rows, direct `PRESENT`/`SCOPED_ABSENT` conflicts, and known/`UNKNOWN` mixtures are reported deterministically. Conflicted or duplicated rows are explicitly blocked from evidence-derived policy constraints. This structural audit does not evaluate entailment, context/time scope or semantic truth.
 - **P6:** a versioned experimental Tutor policy catalog emits soft candidate constraints only after accepted evidence, separate human architectural implication, approved responsibility endpoints and citations. The catalog is not independently validated as an architecture tactic.
 - **P7:** exhaustive enumeration remains through R8; CP-SAT is dispatched for R9–R50. It proves the declared objective before reporting capped optima; it does not enumerate or count the full feasible set. See [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md).
 - **P8:** architecture graph JSON now includes an explicit UNKNOWN Integration layer; Draw.io XML export is deterministic and available from Streamlit. The Human Review editor can store a complete, cited Sync/Async contract and recompute downstream artifacts. The Tutor mode remains UNDECIDED; exact citations do not establish semantic entailment.
@@ -35,6 +36,7 @@ CP-SAT uses binary same-group variables for responsibility pairs and transitivit
 | Fresh Tutor LLM proposals | Would be `LOCAL_OLLAMA_PROPOSAL` after a valid source-only lock and actual local inference | No post-lock proposal run exists. Historical qwen v6 is unblinded pre-protocol and excluded. |
 | P1–P6, E1, B1 decisions | `HUMAN_DECISION` only if supplied by a real reviewer; no such Tutor decisions are present | No approval, correction, rejection or score is inferred here. |
 | Evidence-to-constraint output | Deterministic policy transformation of approved human evidence, separate architecture implication and approved endpoints | The Tutor rules are internal experimental policies; unit fixtures use `P2_TEST_ONLY`. |
+| Evidence conflict handling | Deterministic exact-claim/citation audit; conflict and duplicate IDs block policy application | Structural consistency only; no domain adjudication or independent label. |
 | Partitions and quantum groups | Deterministic optimizer transformation of responsibilities and constraints | Candidate partitions are not reviewed architecture or deployability claims. |
 | Integration placeholder | `ARCHITECTURAL_POLICY` required graph layer; explicitly `UNKNOWN` | It does not assert that an Integration component exists in the Tutor system. |
 | Interaction options and contracts | Deterministic hypotheses, cited to scenario/requirement inputs; contract defaults to `UNDECIDED` | No mode or production protocol is selected. |
@@ -61,6 +63,8 @@ At the P8/P9 code checkpoint:
 At the subsequent artifact-bundle milestone, the local full suite passed **110 tests**, compileall and `git diff --check` passed. The implementation commit `27f556d7087466ca4c97663994077362fe51e6ff` had an initial CI failure caused by a test assuming no GitHub environment metadata. Follow-up test commit `fc477903cef93db892057cb94ccc71e2c27d5103` isolates that environment and covers both local and CI metadata; [CI run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed.
 
 At the 2026-11-19 P2.1 reviewer-package milestone, the full local suite passed **121 tests**, `compileall -q app.py eqcr scripts tests` passed, and staged diff/credential-pattern checks passed. Commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` matches the remote feature ref; [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed. `main` remained unchanged. This verifies package/validator/UI behavior, not independent annotation or semantics.
+
+At evidence-audit code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1`, the full local suite passed **124 tests**, compilation and `git diff --check` passed, the staged secret-pattern scan found no matches, and [CI run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) passed on the same SHA. Tests include direct-conflict and duplicate audit behavior plus optimizer abstention using `P2_TEST_ONLY`; they do not represent human Tutor decisions or semantic accuracy.
 
 A separate manual browser smoke loaded the Tutor case in the running Streamlit app, confirmed the pre-lock DOM exposed only source-only content, and confirmed the Ollama proposal action remained disabled even though the local model was detected. No model inference or pipeline execution occurred. The report commit `5a2ed9e10b03860037afacdec73818d97370a393` also passed [CI run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466). This is a UI smoke check, not an automated browser E2E suite or case experiment.
 

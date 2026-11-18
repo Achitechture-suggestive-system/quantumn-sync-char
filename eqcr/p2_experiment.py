@@ -159,10 +159,14 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
         refs = proposal.get("source_refs", [])
         expected_refs = _expected_fr_refs(raw, ids)
         citation_total += len(ids) if isinstance(ids, list) else 0
+        if isinstance(ids, list):
+            valid_requirement_ids = {
+                value for value in ids if isinstance(value, str) and value in requirements
+            }
+            for requirement_id in valid_requirement_ids:
+                coverage[requirement_id] += 1
         if expected_refs is not None and refs == expected_refs:
             citation_resolved += len(ids)
-            for requirement_id in ids:
-                coverage[requirement_id] += 1
         else:
             errors.append({"type": "RESPONSIBILITY_CITATION_INVALID", "proposal_id": proposal_id})
         if not isinstance(ids, list) or not ids:
@@ -278,6 +282,10 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
             "coverage_by_requirement": coverage,
             "proposal_uncovered_requirement_ids": uncovered,
             "source_only_unresolved_requirement_ids": source_only_unresolved,
+            "interpretation": (
+                "Counts structurally valid FR IDs in responsibility proposals independently of citation validity; "
+                "this is not a semantic correctness measure."
+            ),
         },
         "citation_audit": {
             "requirement_citations_resolved_to_exact_source_ref": citation_resolved,

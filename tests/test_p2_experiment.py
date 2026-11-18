@@ -189,6 +189,29 @@ def test_structural_evaluation_reports_exact_spans_and_errors_without_semantic_m
     assert report["semantic_evaluation"]["metrics"] is None
 
 
+def test_responsibility_mapping_coverage_is_independent_of_citation_validity():
+    raw = get_tutor_support_fixture()["raw_requirements"]
+    bundle = _test_bundle(raw, _locked_annotation(raw))
+    bundle["proposals"] = [
+        {
+            "id": "P-FR04",
+            "model_proposal_id": "test-proposal-04",
+            "name": "Test responsibility",
+            "activity": "Test activity",
+            "operation": "Test operation",
+            "requirement_ids": ["FR-04"],
+            "source_refs": [],
+        }
+    ]
+
+    report = evaluate_p2_structure(raw, bundle)
+
+    assert report["responsibility_mapping"]["coverage_by_requirement"]["FR-04"] == 1
+    assert "FR-04" not in report["responsibility_mapping"]["proposal_uncovered_requirement_ids"]
+    assert "independently of citation validity" in report["responsibility_mapping"]["interpretation"]
+    assert report["error_counts_by_type"]["RESPONSIBILITY_CITATION_INVALID"] == 1
+
+
 def test_reproducibility_export_contains_hash_manifest_and_test_only_provenance(tmp_path):
     raw = get_tutor_support_fixture()["raw_requirements"]
     lock = _locked_annotation(raw)

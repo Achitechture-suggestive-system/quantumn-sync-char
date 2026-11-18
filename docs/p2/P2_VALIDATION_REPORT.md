@@ -20,6 +20,12 @@ Tại code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af`, evaluator tính pr
 
 Local full suite: **126 tests passed**; compileall và diff check passed. [CI run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) passed trên code SHA. Test chỉ dùng dữ liệu `P2_TEST_ONLY`; semantic precision/recall/F1 vẫn `NOT_MEASURED_NO_ADJUDICATED_REFERENCE` và actual Tutor case vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
 
+## Cập nhật adversarial payload validation — 2026-11-19
+
+Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` bổ sung validation với malformed JSON row và ID/source/endpoint sai kiểu. Hàng không phải JSON object bị dừng với `P2ExperimentError`; malformed IDs được ghi thành error type thay vì làm evaluator crash. Đây chỉ là tính bền vững của structural evaluator.
+
+Full suite: **128 tests passed**; compileall và diff check passed; [CI run 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) passed trên code SHA. Chưa có inference hậu-lock, annotator, adjudication hoặc semantic metric thật.
+
 ## Recheck trạng thái hiện tại — 2026-11-17
 
 | Bằng chứng | Kết quả |

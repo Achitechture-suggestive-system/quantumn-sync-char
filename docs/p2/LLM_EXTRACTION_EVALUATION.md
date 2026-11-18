@@ -46,3 +46,9 @@ Các bước trên là protocol draft, chưa được thực hiện. Không có 
 Code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` tách FR mapping coverage khỏi kiểm tra citation: `coverage_by_requirement` đếm các FR ID đã biết mà proposal nêu, còn `citation_audit` ghi exact source-ref resolution độc lập. Citation lỗi không còn làm một FR bị báo cáo nhầm là chưa được map. Trường diễn giải nêu rõ đây là coverage cấu trúc, không phải trách nhiệm ngữ nghĩa đúng.
 
 Test dùng `P2_TEST_ONLY`: **126 tests passed**, compileall và diff check passed; [CI run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) passed trên code SHA trên. Không có annotation/adjudication độc lập nên precision/recall/F1 tiếp tục `NOT_MEASURED_NO_ADJUDICATED_REFERENCE`.
+
+## Cập nhật kiểm tra payload malformed — 2026-11-19
+
+Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` bổ sung cổng kiểu JSON cho requirements và các hàng proposal/relation/boundary/normalized requirements. ID sai kiểu được ghi như structural error; hàng không phải object hoặc raw requirements sai schema dừng bằng `P2ExperimentError` thay vì exception Python thô. Mapping FR vẫn được đếm độc lập với citation.
+
+Verification: **128 tests passed**, compileall và diff check passed; [CI run 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) passed. Adversarial records đều `P2_TEST_ONLY`; không phải LLM output thật hay semantic evaluation.

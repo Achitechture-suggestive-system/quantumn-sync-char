@@ -1,5 +1,9 @@
 # Research-grade implementation plan — 2026-11-17
 
+## P2 evaluator payload guards — 2026-11-19
+
+Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` is pushed on `feat/p1-semantic-validation` and verified by [CI 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751). Local validation: 128 tests, compileall, and diff check passed. The P2 structural evaluator now handles non-object rows and malformed identifier types with controlled errors. This validates input handling only; it does not add semantic accuracy metrics or unblock the actual Tutor experiment.
+
 ## P2 mapping/citation metric separation — 2026-11-19
 
 Code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` is pushed on `feat/p1-semantic-validation` and verified by [CI 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052). Local validation: 126 tests, compileall, and diff check passed. Structural responsibility mapping now counts known FR IDs regardless of citation validity, while citation resolution and errors remain separate. This does not assess semantic responsibility correctness; the actual P2 experiment remains blocked on an independent source-only annotation lock.

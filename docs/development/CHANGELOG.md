@@ -1,5 +1,11 @@
 # Changelog
 
+## P2 structural evaluator payload guards — 2026-11-19
+
+- Kiểm tra raw requirements, proposal arrays và object rows trước khi evaluator truy cập trường; ID/endpoint/source ID sai kiểu trở thành structural error được nêu tên hoặc dừng bằng `P2ExperimentError` có kiểm soát.
+- Thêm adversarial tests cho list/object sai kiểu; không sinh semantic score và không thay `P2_TEST_ONLY` thành model output.
+- Verification: 128 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` đã push; [CI 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) success.
+
 ## P2 mapping and citation coverage separation — 2026-11-19
 
 - Sửa `evaluate_p2_structure`: `coverage_by_requirement` đếm FR IDs đã biết độc lập với exact citation resolution; citation invalid vẫn tạo lỗi riêng. FR bị map hợp lệ không còn bị báo nhầm là uncovered chỉ vì citation sai.

@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## P2 structural evaluator payload guards — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `00be77f5486023d3ad88e1f602b20167d30c710c` (`fix(p2): guard malformed extraction payloads`) đã push; remote feature ref xác nhận SHA.
+- Trước push: local full suite 128 tests passed; `compileall -q app.py eqcr scripts tests`, staged `git diff --check` và secret-pattern scan passed; chỉ stage 2 file code/test cụ thể.
+- GitHub Actions [run 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) completed success trên đúng SHA.
+- `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag ancestry không đổi. P2 inference và human review thật vẫn cần lock/decision ngoài repository.
+
 ## P2 mapping and citation coverage separation — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` (`fix(p2): separate mapping and citation coverage`) đã push; remote feature ref xác nhận SHA.

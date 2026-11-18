@@ -1,5 +1,11 @@
 # Changelog
 
+## Exhaustive hard-conflict explanations — 2026-11-19
+
+- Khi exhaustive optimizer R1–R8 không có partition khả thi và không có conflict cùng cặp được báo riêng, giảm hard-rule set theo thứ tự ID ổn định để tạo `DELETION_MINIMAL_HARD_CONSTRAINT_CORE`.
+- Output nói rõ bỏ từng constraint trong core sẽ khôi phục ít nhất một partition. Không gọi đây là minimum-cardinality core hoặc bằng chứng rằng constraint có justification kiến trúc.
+- Verification: 125 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3` đã push; [CI 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744) success.
+
 ## Deterministic evidence-claim audit — 2026-11-19
 
 - Thêm `eqcr.evidence_audit.audit_evidence_records` để báo cáo exact duplicate claim/citation, direct `PRESENT`/`SCOPED_ABSENT` conflict và mixed-with-`UNKNOWN`, đồng thời canonicalize endpoint chỉ khi relation direction khai báo là undirected.

@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## Exhaustive hard-conflict explanations — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3` (`feat(p7): explain minimal hard constraint cores`) đã push; remote feature ref xác nhận SHA.
+- Trước push: local full suite 125 tests passed; `compileall -q app.py eqcr scripts tests`, staged `git diff --check` và secret-pattern scan passed; chỉ stage 2 file code/test cụ thể.
+- GitHub Actions [run 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744) completed success trên đúng SHA.
+- `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag ancestry không đổi. Không có human Tutor review hoặc kết luận về kiến trúc.
+
 ## Deterministic evidence-claim audit — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1` (`feat: audit duplicate and conflicting evidence`) đã push; `git ls-remote` xác nhận feature ref đúng SHA.

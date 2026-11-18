@@ -1,5 +1,9 @@
 # Research-grade implementation plan — 2026-11-17
 
+## Exhaustive hard-conflict explanation milestone — 2026-11-19
+
+Code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3` is pushed on `feat/p1-semantic-validation` and verified by [CI 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744). Local validation: 125 tests, compileall, and diff check passed. For exhaustive R1–R8 optimization, transitive infeasibility now reports a deterministic deletion-minimal set of hard constraint IDs, with a test confirming each listed rule is necessary and an irrelevant rule is excluded. The core is not guaranteed minimum-cardinality and does not justify the architecture decision.
+
 ## Deterministic evidence-claim audit milestone — 2026-11-19
 
 Code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1` is pushed on `feat/p1-semantic-validation` and verified by [CI 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706). Local validation: 124 tests, compileall, and diff check passed. Duplicate exact claim/citation rows and direct status-conflict or known/UNKNOWN groups are now recorded; their evidence IDs abstain from policy-derived constraints. This does not resolve semantic or context/time conflicts. The actual Tutor experiment remains blocked on an independent source-only annotation lock.

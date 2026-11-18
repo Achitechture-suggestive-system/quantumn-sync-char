@@ -341,6 +341,46 @@ def test_catalog_evaluation_records_unknown_evidence_abstention():
     assert not any("EV-UNKNOWN-SHARED-STATE" in item["evidence_ids"] for item in artifacts["constraints"]["items"])
 
 
+def test_directly_conflicting_evidence_statuses_block_policy_constraint():
+    fixture = get_tutor_support_fixture()
+    proposal_data = _proposal_data(fixture)
+    reviewed_fixture, decisions = apply_tutor_human_review(
+        fixture,
+        proposal_data,
+        _human_review(fixture, proposal_data),
+    )
+    accepted = next(item for item in reviewed_fixture["evidence"] if item["id"] == "EV-E01-PAIR-01")
+    conflict = dict(accepted)
+    conflict.update(
+        {
+            "id": "EV-CONFLICT-TEST-ONLY",
+            "status": "SCOPED_ABSENT",
+            "provenance": "P2_TEST_ONLY",
+        }
+    )
+    conflict.pop("relation_annotation_id", None)
+    reviewed_fixture["evidence"].append(conflict)
+
+    artifacts = run_pipeline(reviewed_fixture, decisions=decisions, execution_mode="P2_TEST_ONLY")
+
+    assert artifacts["evidence"]["audit"]["status"] == "REVIEW_REQUIRED"
+    conflict_group = artifacts["evidence"]["audit"]["ambiguous_claims"][0]
+    assert conflict_group["classification"] == "CONTRADICTORY_PRESENT_AND_SCOPED_ABSENT"
+    assert not any(
+        item["origin"] == "ARCHITECTURAL_POLICY"
+        and "EV-E01-PAIR-01" in item["evidence_ids"]
+        for item in artifacts["constraints"]["items"]
+    )
+    evaluation = next(
+        item
+        for item in artifacts["constraints"]["policy_evaluation"]["results"]
+        if item["evidence_id"] == "EV-E01-PAIR-01"
+        and item["policy_id"] == "P2-SOFT-SHARED-INVARIANT-COLOCATION"
+    )
+    assert evaluation["status"] == "ABSTAINED"
+    assert "mixed/contradictory status" in evaluation["reason"]
+
+
 def test_explicit_constraint_override_records_that_catalog_was_bypassed():
     artifacts = run_pipeline(
         get_tutor_support_fixture(),

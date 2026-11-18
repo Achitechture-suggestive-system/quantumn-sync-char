@@ -17,6 +17,7 @@ from .models import (
     RelationAnnotation,
     Responsibility,
 )
+from .evidence_audit import audit_evidence_records
 from .cpsat_optimizer import optimize_with_cpsat
 from .interaction_contracts import (
     INTERACTION_DECISION_TABLE,
@@ -186,6 +187,7 @@ def _derive_evidence_constraints(
     responsibilities: list[Responsibility],
     policy_catalog_data: dict[str, Any],
     source_texts: dict[str, str],
+    blocked_evidence_ids: set[str] | None = None,
 ) -> tuple[list[Constraint], dict[str, Any]]:
     """Evaluate a versioned experimental catalog and explain every application or abstention."""
     catalog = EvidenceConstraintPolicyCatalog.model_validate(policy_catalog_data)
@@ -194,6 +196,7 @@ def _derive_evidence_constraints(
     derived = []
     seen = set()
     evaluations: list[dict[str, Any]] = []
+    blocked_evidence_ids = blocked_evidence_ids or set()
     for policy in catalog.entries:
         for record in evidence:
             result = {
@@ -211,6 +214,10 @@ def _derive_evidence_constraints(
             }
             if record.predicate != policy.evidence_predicate:
                 result.update(status="NOT_APPLICABLE", reason="Evidence predicate does not match this catalog entry.")
+                evaluations.append(result)
+                continue
+            if record.id in blocked_evidence_ids:
+                result["reason"] = "Evidence claim is duplicated or has mixed/contradictory status; reviewer resolution is required."
                 evaluations.append(result)
                 continue
             if record.status != "PRESENT":
@@ -763,6 +770,7 @@ def run_pipeline(
     relation_annotations = [
         RelationAnnotation.model_validate(item) for item in fixture.get("relation_annotations", [])
     ]
+    evidence_audit = audit_evidence_records(evidence, relation_annotations)
     relation_ids = [item.id for item in relation_annotations]
     if len(relation_ids) != len(set(relation_ids)):
         raise ValueError("Relation annotation IDs must be unique.")
@@ -859,6 +867,7 @@ def run_pipeline(
                 responsibilities,
                 policy_catalog_data,
                 constraint_source_texts,
+                set(evidence_audit["blocked_evidence_ids"]),
             )
         selected_constraints = [
             *selected_constraints,
@@ -1161,6 +1170,7 @@ def run_pipeline(
             "responsibility_sources_well_formed": trace_valid,
             "evidence_sources_well_formed": evidence_sources_valid,
             "present_evidence_has_source_or_assumption": present_evidence_has_source,
+            "evidence_claim_audit_clear": evidence_audit["status"] == "NO_FINDINGS",
         },
         "assertion_applicability": {
             "fixture_has_10_zero_cost_optima": (
@@ -1192,7 +1202,11 @@ def run_pipeline(
             "unresolved_requirement_ids": unresolved_requirement_ids,
             "review_complete": responsibility_review_complete,
         },
-        "evidence": {"items": evidence_dicts, "status": "PASS" if any(x.status == "UNKNOWN" for x in evidence) else "REVIEW_REQUIRED"},
+        "evidence": {
+            "items": evidence_dicts,
+            "audit": evidence_audit,
+            "status": "PASS" if any(x.status == "UNKNOWN" for x in evidence) else "REVIEW_REQUIRED",
+        },
         "relation_registry": {
             "items": [item.model_dump(mode="json") for item in relation_annotations],
             "status": "REVIEW_REQUIRED" if relation_annotations else "INSUFFICIENT_EVIDENCE",
@@ -1242,7 +1256,7 @@ def run_pipeline(
             "TYPED_EVIDENCE_RECORDS",
             ["raw_requirements", "responsibilities"],
             "PASS" if evidence_sources_valid and present_evidence_has_source else "FAIL",
-            "Typed states and source references are checked; runtime relations are not verified.",
+            "Typed states, source references, exact duplicate citations, and direct status conflicts are checked structurally; semantics remain unverified.",
         ),
         "constraints": (
             "EXPLICIT_POLICY_AND_REVIEW_RECORDS",

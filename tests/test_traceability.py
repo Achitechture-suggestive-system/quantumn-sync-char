@@ -3,6 +3,7 @@ from eqcr.ollama import apply_proposals_to_fixture
 from eqcr.pipeline import run_pipeline
 from eqcr.review import apply_artifact_review
 from eqcr.traceability import refresh_traceability_artifact
+from eqcr.tutor_support import get_tutor_support_fixture
 
 
 def test_traceability_records_source_proposal_evidence_constraint_and_partition_edges():
@@ -56,6 +57,61 @@ def test_human_evidence_review_updates_traceability_without_claiming_measurement
     )
     assert reviewed["validation_report"]["status"] == "REVIEW_REQUIRED"
     assert reviewed["quality_profiles"]["profiles"][0]["measurement_status"] == "NOT_MEASURED"
+
+
+def test_qame_traceability_links_requirements_to_characteristic_and_measurement_state():
+    fixture = get_tutor_support_fixture()
+    artifacts = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
+    graph = artifacts["traceability"]
+    nodes = {item["id"]: item for item in graph["nodes"]}
+    edges = {
+        (item["from"], item["to"], item["relation"])
+        for item in graph["edges"]
+    }
+
+    assert graph["status"] == "PASS"
+    assert graph["assertions"]["qame_trace_chain_resolves"] is True
+    assert graph["assertions"]["qame_allocations_resolve"] is True
+    assert (
+        "requirement:FR-04",
+        "scenario:SC-REQUEST-ACK",
+        "QUALITY_SCENARIO_CONTEXT",
+    ) in edges
+    assert (
+        "scenario:SC-REQUEST-ACK",
+        "responsibility:R4",
+        "ALLOCATED_TO_RESPONSIBILITY",
+    ) in edges
+    assert (
+        "responsibility:R4",
+        f"quantum:{artifacts['quanta']['primary_assignment']['R4']}",
+        "ASSIGNED_TO_QUANTUM_CANDIDATE",
+    ) in edges
+    assert any(
+        source == "quality-profile:SC-REQUEST-ACK"
+        and target.startswith("interaction:")
+        and relation == "QUALITY_INTERACTION_CONTEXT"
+        for source, target, relation in edges
+    )
+    assert (
+        "quality-profile:SC-REQUEST-ACK",
+        "quality-characteristic:SC-REQUEST-ACK",
+        "HAS_QUALITY_CHARACTERISTIC_MAPPING",
+    ) in edges
+    assert (
+        "quality-characteristic:SC-REQUEST-ACK",
+        "quality-measurement:SC-REQUEST-ACK",
+        "HAS_MEASUREMENT_STATE",
+    ) in edges
+
+    characteristic = nodes["quality-characteristic:SC-REQUEST-ACK"]
+    measurement = nodes["quality-measurement:SC-REQUEST-ACK"]
+    assert characteristic["status"] == "UNMAPPED"
+    assert characteristic["characteristic_id"] is None
+    assert characteristic["review_status"] == "REVIEW_REQUIRED"
+    assert measurement["measurement_status"] == "NOT_MEASURED"
+    assert measurement["measurement"] is None
+    assert measurement["value_status"] == "NOT_RECORDED"
 
 
 def test_ollama_proposal_lineage_is_visible_and_stays_review_required():

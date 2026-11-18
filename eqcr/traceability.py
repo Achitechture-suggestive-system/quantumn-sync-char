@@ -36,6 +36,9 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
         edge_keys.add(edge_key)
         edges.append({"from": source, "to": target, "relation": relation, **details})
 
+    def has_edge(source: str, target: str, relation: str) -> bool:
+        return (source, target, relation) in edge_keys
+
     def add_input_source(reference: dict[str, Any], *, kind: str, text: str) -> str:
         source_id = reference["source_id"]
         sources[source_id] = {"text": text, "kind": kind}
@@ -89,10 +92,17 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             status=item.get("status"),
         )
         add_edge(source_id, scenario_id, "SOURCE_FOR")
+        for requirement_id in item.get("related_requirement_ids", []):
+            add_edge(
+                f"requirement:{requirement_id}",
+                scenario_id,
+                "QUALITY_SCENARIO_CONTEXT",
+            )
 
     requirement_ids = {item["id"] for item in raw["requirements"]}
     workflow_ids = {item["id"] for item in raw["workflows"]}
     scenario_ids = {item["id"] for item in raw["scenarios"]}
+    raw_scenarios_by_id = {item["id"]: item for item in raw["scenarios"]}
     responsibility_by_id = {
         item["id"]: item for item in artifacts["responsibilities"]["items"]
     }
@@ -659,6 +669,30 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                     interaction_node,
                     "PARTICIPATES_IN_INTERACTION",
                 )
+        source_quantum = edge.get("from_quantum")
+        target_quantum = edge.get("to_quantum")
+        if source_quantum:
+            source_node = f"quantum:{source_quantum}"
+            if source_node in node_ids:
+                add_edge(source_node, interaction_node, "SOURCE_QUANTUM_FOR_INTERACTION")
+            else:
+                issues.append(
+                    {
+                        "kind": "UNKNOWN_INTERACTION_QUANTUM",
+                        "reference": f"{edge['id']}:{source_quantum}",
+                    }
+                )
+        if target_quantum:
+            target_node = f"quantum:{target_quantum}"
+            if target_node in node_ids:
+                add_edge(interaction_node, target_node, "TARGET_QUANTUM_OF_INTERACTION")
+            else:
+                issues.append(
+                    {
+                        "kind": "UNKNOWN_INTERACTION_QUANTUM",
+                        "reference": f"{edge['id']}:{target_quantum}",
+                    }
+                )
         for reference in edge.get("source_refs", []):
             add_citation(
                 interaction_node,
@@ -666,6 +700,7 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                 owner_provenance="SOURCE_LINKED_CONDITIONAL_PATTERN_HYPOTHESES",
             )
 
+    interaction_ids = {item["id"] for item in artifacts["interactions"]["edges"]}
     for profile in artifacts["quality_profiles"]["profiles"]:
         profile_node = f"quality-profile:{profile['scenario_id']}"
         add_node(
@@ -675,17 +710,100 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             target=profile.get("target"),
             measurement_status=profile["measurement_status"],
             review_status=profile["review_status"],
+            responsibility_ids=profile.get("responsibility_ids", []),
+            quantum_ids=profile.get("quantum_ids", []),
+            affected_interaction_edges=profile.get("affected_interaction_edges", []),
         )
         scenario_node = f"scenario:{profile['scenario_id']}"
         if scenario_node in node_ids:
             add_edge(scenario_node, profile_node, "ALLOCATED_AS_QUALITY_PROFILE")
         for responsibility_id in profile.get("responsibility_ids", []):
             if responsibility_id in responsibility_by_id:
+                if scenario_node in node_ids:
+                    add_edge(
+                        scenario_node,
+                        f"responsibility:{responsibility_id}",
+                        "ALLOCATED_TO_RESPONSIBILITY",
+                    )
                 add_edge(
                     f"responsibility:{responsibility_id}",
                     profile_node,
                     "QUALITY_SCOPE",
                 )
+            else:
+                issues.append(
+                    {
+                        "kind": "UNKNOWN_QUALITY_RESPONSIBILITY",
+                        "reference": f"{profile['scenario_id']}:{responsibility_id}",
+                    }
+                )
+        for quantum_id in profile.get("quantum_ids", []):
+            quantum_node = f"quantum:{quantum_id}"
+            if quantum_node in node_ids:
+                add_edge(profile_node, quantum_node, "ALLOCATED_TO_QUANTUM_CANDIDATE")
+            else:
+                issues.append(
+                    {
+                        "kind": "UNKNOWN_QUALITY_QUANTUM",
+                        "reference": f"{profile['scenario_id']}:{quantum_id}",
+                    }
+                )
+        for interaction_id in profile.get("affected_interaction_edges", []):
+            interaction_node = f"interaction:{interaction_id}"
+            if interaction_id in interaction_ids and interaction_node in node_ids:
+                add_edge(profile_node, interaction_node, "QUALITY_INTERACTION_CONTEXT")
+            else:
+                issues.append(
+                    {
+                        "kind": "UNKNOWN_QUALITY_INTERACTION",
+                        "reference": f"{profile['scenario_id']}:{interaction_id}",
+                    }
+                )
+
+        mapping = profile.get("quality_characteristic_mapping", {})
+        characteristic_node = f"quality-characteristic:{profile['scenario_id']}"
+        add_node(
+            characteristic_node,
+            "ISO_QUALITY_CHARACTERISTIC_MAPPING",
+            standard=mapping.get("standard", "ISO/IEC 25010:2023"),
+            status=mapping.get("status", "UNSPECIFIED"),
+            source_label=mapping.get("source_label"),
+            characteristic_id=mapping.get("characteristic_id"),
+            label_provenance=mapping.get("label_provenance", "UNKNOWN"),
+            mapping_provenance=mapping.get("mapping_provenance", "UNKNOWN"),
+            review_status=mapping.get("review_status", "REVIEW_REQUIRED"),
+        )
+        add_edge(profile_node, characteristic_node, "HAS_QUALITY_CHARACTERISTIC_MAPPING")
+        label_ref = mapping.get("label_source_ref")
+        if isinstance(label_ref, dict) and not add_citation(
+            characteristic_node,
+            label_ref,
+            owner_provenance=mapping.get("label_provenance", "UNKNOWN"),
+        ):
+            issues.append(
+                {
+                    "kind": "UNRESOLVED_QUALITY_CHARACTERISTIC_CITATION",
+                    "reference": profile["scenario_id"],
+                }
+            )
+
+        measurement_node = f"quality-measurement:{profile['scenario_id']}"
+        add_node(
+            measurement_node,
+            "QUALITY_MEASUREMENT_STATE",
+            measurement_status=profile.get("measurement_status", "INSUFFICIENT_EVIDENCE"),
+            measurement=profile.get("measurement"),
+            measurement_plan_status=profile.get("measurement_plan_status", "INSUFFICIENT_EVIDENCE"),
+            target=profile.get("target"),
+            target_status=profile.get("target_status", "INSUFFICIENT_EVIDENCE"),
+            target_provenance=profile.get("target_provenance", "UNKNOWN"),
+            proposed_metric=profile.get("proposed_metric"),
+            proposed_metric_provenance=profile.get("proposed_metric_provenance", "UNKNOWN"),
+            measurement_method=profile.get("measurement_method"),
+            measurement_method_provenance=profile.get("measurement_method_provenance", "UNKNOWN"),
+            value_status="NOT_RECORDED" if profile.get("measurement") is None else "RECORDED_UNVERIFIED",
+        )
+        add_edge(characteristic_node, measurement_node, "HAS_MEASUREMENT_STATE")
         for reference in [
             profile["scenario_source_ref"],
             *(item["source_ref"] for item in profile["evidence"]),
@@ -815,6 +933,71 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
         "workflow_mapping_gaps_are_explicit": len(workflow_mappings)
         == len(responsibility_by_id)
         and all(item["status"] in {"MAPPED", "UNRESOLVED"} for item in workflow_mappings),
+        "qame_trace_chain_resolves": all(
+            f"scenario:{profile['scenario_id']}" in node_ids
+            and f"quality-profile:{profile['scenario_id']}" in node_ids
+            and f"quality-characteristic:{profile['scenario_id']}" in node_ids
+            and f"quality-measurement:{profile['scenario_id']}" in node_ids
+            and has_edge(
+                f"quality-profile:{profile['scenario_id']}",
+                f"quality-characteristic:{profile['scenario_id']}",
+                "HAS_QUALITY_CHARACTERISTIC_MAPPING",
+            )
+            and (
+                profile.get("quality_characteristic_mapping", {}).get("characteristic_id") is None
+                and profile.get("quality_characteristic_mapping", {}).get("status")
+                in {"UNMAPPED", "UNSPECIFIED"}
+                or profile.get("quality_characteristic_mapping", {}).get("characteristic_id") is not None
+                and profile.get("quality_characteristic_mapping", {}).get("status") == "MAPPED"
+            )
+            and has_edge(
+                f"quality-characteristic:{profile['scenario_id']}",
+                f"quality-measurement:{profile['scenario_id']}",
+                "HAS_MEASUREMENT_STATE",
+            )
+            for profile in artifacts["quality_profiles"]["profiles"]
+        ),
+        "qame_allocations_resolve": all(
+            profile["scenario_id"] in raw_scenarios_by_id
+            and all(
+                f"responsibility:{responsibility_id}" in node_ids
+                and has_edge(
+                    f"scenario:{profile['scenario_id']}",
+                    f"responsibility:{responsibility_id}",
+                    "ALLOCATED_TO_RESPONSIBILITY",
+                )
+                for responsibility_id in profile.get("responsibility_ids", [])
+            )
+            and all(
+                f"quantum:{quantum_id}" in node_ids
+                and has_edge(
+                    f"quality-profile:{profile['scenario_id']}",
+                    f"quantum:{quantum_id}",
+                    "ALLOCATED_TO_QUANTUM_CANDIDATE",
+                )
+                for quantum_id in profile.get("quantum_ids", [])
+            )
+            and all(
+                f"interaction:{interaction_id}" in node_ids
+                and has_edge(
+                    f"quality-profile:{profile['scenario_id']}",
+                    f"interaction:{interaction_id}",
+                    "QUALITY_INTERACTION_CONTEXT",
+                )
+                for interaction_id in profile.get("affected_interaction_edges", [])
+            )
+            and all(
+                has_edge(
+                    f"requirement:{requirement_id}",
+                    f"scenario:{profile['scenario_id']}",
+                    "QUALITY_SCENARIO_CONTEXT",
+                )
+                for requirement_id in raw_scenarios_by_id.get(profile["scenario_id"], {}).get(
+                    "related_requirement_ids", []
+                )
+            )
+            for profile in artifacts["quality_profiles"]["profiles"]
+        ),
         "input_and_evidence_citations_resolve": not any(
             issue["kind"]
             in {

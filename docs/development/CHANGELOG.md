@@ -1,5 +1,13 @@
 # Changelog
 
+## P2.1 source-only reviewer package and lock validation — 2026-11-19
+
+- Thêm package Tutor source-only có manifest/hashes và blank 0..N responsibility/relation worksheets; pin lock protocol v3 với manifest hash.
+- Thêm CLI chỉ-đọc kiểm package/lock/time-order, từ chối lock timestamp tương lai, và truyền package path rõ ràng vào runner/model proposal path.
+- Sửa Input tab Tutor: trước lock chỉ render source-only package, không render raw helper mappings; AppTest kiểm tra payload nhìn thấy. Không tạo lock, inference, human decisions hay semantic metrics thay reviewer.
+- Commit code `931dea62472ea459eacd33b1fbe6196eb4e619ce` đã push; [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) success. Trước push: 121 tests, compileall, diff check, staged-path và credential-pattern scan đều qua. Remote `main` giữ nguyên SHA P0.
+- Không có lock annotation do reviewer cung cấp; `qwen3:4b` chỉ được kiểm tra khả dụng. P2 case experiment vẫn `BLOCKED_EXTERNAL`.
+
 ## P2/research status recheck — 2026-11-17
 
 - Rechecked the feature branch and remote `main`/P0 ancestry; refreshed the P0–P11 audit, gap matrix, implementation plan, final status report and Ollama-to-optimizer dependency trace. Corrected the prior report's stale statement that interaction-contract review was unavailable in the UI.

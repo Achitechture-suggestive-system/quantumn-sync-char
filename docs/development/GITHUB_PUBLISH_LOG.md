@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## P2.1 source-only reviewer package and lock validator — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` (`feat(p2): add source-only reviewer package`) đã push. `git ls-remote` xác nhận remote feature ref cùng SHA.
+- Không sửa `main`; remote `main` tiếp tục `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`. P0 tag/ancestry không thay đổi.
+- Trước push: full suite 121 tests passed; `compileall -q app.py eqcr scripts tests`, `git diff --cached --check` passed; scan credential-pattern không có match; chỉ stage 19 đường dẫn cụ thể, không có `runs/`, snapshots, `.venv`, `.env`, cache hoặc exports.
+- GitHub Actions [run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) completed success trên đúng SHA.
+- Milestone này thêm source-only package/manifest, lock v3 validation, tương lai timestamp rejection và source-only pre-lock UI. Không có reviewer lock, model inference, human disposition hoặc P2 result bundle; không claim semantic validation.
+
 ## P2/research status recheck — 17/11/2026
 
 - Before this documentation follow-up, local branch `feat/p1-semantic-validation` and remote feature ref matched `dbe4a5f417535d11aab9696ff60e593be19b6e1a`. Remote `main` remained `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag `3d517b1a39158e539239dc73d594bc0938649feb` remained its ancestor.

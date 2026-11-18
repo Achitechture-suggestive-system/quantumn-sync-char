@@ -1,5 +1,13 @@
 # Repository capability audit — 2026-11-17
 
+## Latest recheck — 2026-11-19
+
+- Feature code milestone `931dea62472ea459eacd33b1fbe6196eb4e619ce` is pushed to `feat/p1-semantic-validation`; remote feature ref matches. [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed. Local full suite passed 121 tests; `compileall` passed.
+- Remote `main` remains `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag ancestry remains unchanged.
+- P2 now has a five-file source-only reviewer package, pinned manifest/source hashes, a v3 lock validator and a pre-lock Tutor UI that renders only the source projection. The full raw Tutor case is no longer rendered before a valid lock.
+- No reviewer-supplied lock or P2 run bundle exists. `qwen3:4b` is installed locally but has not been invoked for this experiment. Actual inference/review/revision/semantic evaluation remain blocked externally.
+- Existing ignored `runs/` and snapshots were left untouched. Test-generated annotation locks carry test provenance and are not study data.
+
 ## Snapshot inspected
 
 - Checkout: `feat/p1-semantic-validation`, clean at `dbe4a5f417535d11aab9696ff60e593be19b6e1a` during this recheck.
@@ -25,8 +33,8 @@ These statuses describe the software and evidence separately. Passing a schema/t
 |---|---|---|---|
 | P0 — preserved local MVP | `app.py`, `eqcr/fixture.py`, `eqcr/pipeline.py`, `eqcr/review.py`, `eqcr/storage.py`; P0 tag and verification report | `IMPLEMENTED_VERIFIED` | Local Streamlit flow, fixture, enumerator, review/snapshot/export behavior are recorded. This is a demo baseline, not a production architecture validation. |
 | P1 — structural/traceability validation | `eqcr/models.py`, `eqcr/traceability.py`, `tests/test_semantic_validation.py`, `tests/test_traceability.py`, `tests/test_partition_oracle.py` | `IMPLEMENTED_VERIFIED` | Strict schemas, source-span checks, negative tests, graph checks, and an independent exhaustive oracle for six responsibilities. No semantic gold labels or generalization claim. |
-| P2 — unseen case experiment | `eqcr/tutor_support.py`, `eqcr/p2_protocol.py`, `eqcr/p2_review.py`, P2 app flow and `tests/test_p2_tutor_support.py` | `PARTIAL`; experiment `BLOCKED_EXTERNAL` | Protocol/hash gate and test-only causal wiring exist. No real post-lock inference, independent annotation, actual review decisions, or real before/after case run. Historical v6 is unblinded exploratory only. |
-| P3 — requirements/source intake | `RawRequirements`, `SourceRef`, `eqcr/project_io.py`, JSON upload, Ollama prompt, artifact-bundle input hashes | `PARTIAL` | Structured JSON and exact source-span validation exist. No document/BPMN parser, source-license record, or source-package version registry; hashes identify bytes but do not provide source rights or authenticity. |
+| P2 — unseen case experiment | `eqcr/tutor_support.py`, `eqcr/p2_protocol.py`, `eqcr/p2_reviewer_package.py`, `eqcr/p2_review.py`, P2 app/CLI and tests | Package/lock/software gates `IMPLEMENTED_VERIFIED`; case experiment `BLOCKED_EXTERNAL` | Five-file allowlisted source-only package, per-file/source hashes, manifest-bound v3 lock, read-only validator and pre-lock UI leak test are covered. No reviewer-supplied lock, post-lock inference, real review decisions or before/after case run. Historical v6 is unblinded exploratory only; identity/exposure remain self-attested. |
+| P3 — requirements/source intake | `RawRequirements`, `SourceRef`, `eqcr/project_io.py`, JSON upload, Ollama prompt, artifact-bundle input hashes | `PARTIAL` | Tutor P2 now has a versioned source-only package manifest. Generic intake still has no document/BPMN parser or general source-package registry; source rights/authenticity remain unverified because hashes identify bytes only. |
 | P4 — activity → operation → responsibility | `Responsibility`, `LLMProposal`, `apply_tutor_human_review`, source/workflow mappings | `PARTIAL` | Fields and 0..N human disposition path exist. No validated activity decomposition rubric or independent evaluation labels; model-generated text remains a proposal. |
 | P5 — evidence graph | `EvidenceRecord`, `RelationAnnotation`, `eqcr/p2_protocol.py`, `eqcr/p2_review.py`, traceability graph | `PARTIAL` | Typed `PRESENT` / `SCOPED_ABSENT` / `UNKNOWN`, provenance, citations, endpoint checks, and structural graph exist. No expert semantic validation, full duplicate/contradiction adjudication across arbitrary evidence, or independent relation labels. |
 | P6 — evidence interpretation → architecture decision → constraint | `EvidenceConstraintPolicyCatalog`, Tutor experimental rules, `_derive_evidence_constraints` | `PARTIAL` | Versioned case-rule catalog and per-evidence application/abstention traces are implemented. Entries remain internal experimental policies, not independently reviewed tactics; no source-reviewed general tactic catalog exists. |

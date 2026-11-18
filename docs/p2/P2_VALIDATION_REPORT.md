@@ -29,7 +29,7 @@ Pasted methodology review đã dẫn tới thay đổi protocol: source-only lab
 | Frozen P0 baseline / `main` | Không chủ ý sửa `main`, fixture baseline hoặc tag; chỉ làm việc trên `feat/p1-semantic-validation`. |
 | Ollama v6 lịch sử | Đã gọi thật trước protocol mới; `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`, không làm inference hậu-blind hoặc reference label. |
 | Ollama v7 hậu-blind | Chưa chạy; cần source-only annotation thật được khóa trước khi app mở model proposals. |
-| P2 experiment CLI | `scripts/run_p2_experiment.py` đã có; yêu cầu annotation lock v2, đúng source hash, clean committed checkout, model tag `qwen3:4b`, prompt version v7; ghi local model metadata/digest nếu API cung cấp. Chưa chạy do blocker độc lập. |
+| P2 experiment CLI | `scripts/run_p2_experiment.py` yêu cầu annotation lock v3, exact source/package hashes, clean committed checkout, model tag `qwen3:4b`, prompt/schema versions; ghi local model metadata/digest nếu API cung cấp. Chưa chạy do blocker độc lập. |
 | P2 result export | Test-only exporter verifies run manifest, per-file SHA-256 checksum list and ZIP creation. No live run bundle exists. |
 | Source/citation audit | Unit tests kiểm exact span, unknown IDs, missing endpoint citations, duplicate relation và self-relation gates; chưa có v7 live output để đánh giá. |
 | Optimizer causal wiring | Test-only accepted relation → versioned policy evaluation → soft constraint → optimizer → interactions/quality mapping; evaluation trace links policy/evidence/source/R endpoints. Đây là kiểm code path, không phải case evidence. |
@@ -85,9 +85,24 @@ Structural evaluation của runner đếm proposal coverage/unresolved FRs, exac
 ```powershell
 .\.venv\Scripts\python.exe scripts\run_p2_experiment.py `
   --annotation-lock ".\P2_BLIND_ANNOTATION_LOCK.json" `
+  --source-package ".\docs\p2\source_only_reviewer" `
   --model qwen3:4b
 ```
 
 5. Kiểm manifest/checksums trong `runs/p2-experiments/<run-id>/`; xem raw proposals và structural error report.
 6. Mở riêng [P2_MODEL_REVIEW.md](P2_MODEL_REVIEW.md), ghi `APPROVE/CORRECT/REJECT/DEFER` thật, chạy reviewed 10-stage case và revision trước/sau.
 7. Chỉ thêm semantic metrics sau khi hai annotation độc lập và adjudication/matching rules được ghi. Không có target chạy được thì quality tiếp tục `NOT_MEASURED`.
+
+## Cập nhật P2.1 — package source-only và lock validator — 2026-11-19
+
+Commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` bổ sung package reviewer đúng năm file allowlisted, manifest/hash theo source spans, lock gắn manifest version/hash, CLI chỉ-đọc để kiểm tra lock và ngăn UI hiển thị raw Tutor helper mappings trước lock. AppTest kiểm source-only payload nhìn thấy; lock test từ chối timestamp tương lai. Đây là infrastructure/test evidence, không phải annotation hoặc experiment result. Local full suite hiện tại: 121 passed; `compileall -q app.py eqcr scripts tests` và `git diff --check` qua. Remote ref đã xác minh cùng SHA; [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) completed success.
+
+`main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`, không thay đổi.
+
+Các báo cáo P2.1 mới:
+
+- [Source-only package guide](SOURCE_ONLY_REVIEWER_GUIDE.md) và [lock validation](ANNOTATION_LOCK_VALIDATION.md).
+- [Actual experiment protocol](ACTUAL_EXPERIMENT_PROTOCOL.md) và [current Tutor experiment state](ACTUAL_TUTOR_EXPERIMENT.md).
+- [Causal before/after trace](BEFORE_AFTER_CAUSAL_TRACE.md) và [research validity](P2_RESEARCH_VALIDITY_REPORT.md).
+
+Kết quả trạng thái ở lần recheck: source package đã được commit và push; lock thật không có; Ollama có tag `qwen3:4b` nhưng không được gọi. Do đó inference, human review, actual optimizer/10-stage case run, revision experiment và semantic metrics vẫn chờ reviewer độc lập. UI source-only gate phát hiện và khắc phục việc raw Tutor input/helper mappings từng xuất hiện trước lock.

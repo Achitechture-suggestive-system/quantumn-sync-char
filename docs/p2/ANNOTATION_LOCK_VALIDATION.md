@@ -13,7 +13,7 @@ Package chuẩn nằm tại `docs/p2/source_only_reviewer/`. Manifest version l�
 3. `SOURCE_DATA.json`, source IDs, quote, span offsets và source hashes khớp với Tutor input hiện tại. `SOURCE_MATERIAL.md` phải khớp nội dung hiển thị được tạo từ JSON.
 4. `ANNOTATION_TEMPLATE.json` đúng schema, gắn đúng source bundle và manifest, không chứa responsibility labels hoặc relation status đã điền.
 5. Lock phải qua schema `P2-BLIND-ANNOTATION-v3`, bao phủ mỗi FR bằng annotations hoặc unresolved IDs, giữ nguyên relation registry, có reviewer ID và cả hai attestation đúng.
-6. Timestamp phải là ISO-8601 có timezone. Khi cung cấp thời điểm inference, lock phải có trước hoặc bằng thời điểm bắt đầu inference. `run_p2_experiment.py` cũng kiểm tra thứ tự này trong proposal bundle.
+6. Timestamp phải là ISO-8601 có timezone và không ở tương lai. Khi cung cấp thời điểm inference, lock phải có trước hoặc bằng thời điểm bắt đầu inference. `run_p2_experiment.py` cũng kiểm tra thứ tự này trong proposal bundle.
 7. Annotation hash và lock hash được tính lại; thay đổi nội dung hay metadata làm lock không hợp lệ.
 
 Lệnh chỉ kiểm tra, không gọi Ollama:

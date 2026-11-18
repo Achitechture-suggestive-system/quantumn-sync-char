@@ -16,3 +16,10 @@
 - Human Review UI có thể ghi interaction decision với schema đầy đủ, exact SourceRef span, actor/timestamp và snapshot; hiện không có decision thật cho Tutor. Cơ chế không xác minh semantic entailment hoặc qualification. Quality profile được recompute, nhưng mode hiện không làm đổi phân hoạch hay allocation; scenario targets do fixture chuẩn bị; không chạy load test, benchmark, reliability measurement hoặc operational validation. Quality Profiles `NOT_MEASURED` không phải PASS.
 - Traceability graph PASS chỉ kiểm cấu trúc ID/span/edge; nó không chứng minh nội dung quan hệ, đúng policy, correctness, deployability, performance hoặc resilience.
 - QAME result có thể thay đổi do model proposal set, reviewer dispositions, pair mapping, policy, objective và selected display tie-break. Mỗi run cần lưu version/hash của những input đó trước diễn giải.
+
+## Cập nhật P2.1 — 2026-11-19
+
+- Reviewer package source-only hiện có manifest pinning, hashes cho 12 source records/spans và template trống; package validator từ chối extra/missing files và nội dung không khớp nguồn đã đóng băng.
+- UI Tutor trước lock hiển thị duy nhất payload source-only đã ghim. Đây là xử lý leakage trong app đã phát hiện ở audit này; nó không chứng minh reviewer ngoài app chưa từng xem analysis/model output.
+- Annotation lock v3 ghi protocol/package/source hashes và thời điểm UTC; validator từ chối lock tương lai và có thể so thứ tự với inference timestamp được cung cấp. Timestamp/identity/exposure vẫn do actor tự khai báo; validator không tạo lock và không xác thực bên ngoài.
+- `qwen3:4b` có sẵn local nhưng không có inference P2.1 vì không có reviewer lock. Tất cả test annotation vẫn là test-only. Actual Tutor end-to-end, human revision, semantic metrics và empirical QAME vẫn blocked/not measured.

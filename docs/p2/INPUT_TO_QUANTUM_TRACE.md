@@ -21,6 +21,12 @@ Vì vậy causal claim P2 chỉ được kiểm tra nếu có model inference h�
 
 The causal edge from an unreviewed responsibility proposal to candidate partitions is real but remains exploratory. The stronger research claim—validated evidence and human review driving optimizer and downstream outputs—is gated through the separate human-review and policy path above. No valid P2 case has yet traversed that path.
 
+## P2.1 package source-only và cổng rò rỉ UI — recheck 2026-11-19
+
+Gói reviewer được ghim đúng năm file: `README.md`, `SOURCE_DATA.json`, `SOURCE_MATERIAL.md`, `ANNOTATION_TEMPLATE.json` và `MANIFEST.json`. Bản chiếu source-only bỏ các mapping chuẩn bị sẵn như `related_requirement_ids`, trường quality helper, policy catalog, proposal và optimizer output. Manifest gắn với case/source hash hiện tại; lock v3 mang theo hash manifest. Validator kiểm tra đúng allowlist file, hash từng file, source IDs/spans, schema mẫu trắng, lock schema/coverage/attestation và thời điểm lock có timezone; timestamp tương lai bị từ chối.
+
+Tutor UI xác thực package trước khi hiển thị. Khi chưa có lock hợp lệ, UI chỉ render `SOURCE_DATA.json`, không render toàn bộ raw Tutor object đang nằm trong memory; nút model proposal bị khóa nếu package/lock không hợp lệ. Sau lock, app mới có thể hiện raw input và proposal. AppTest xác nhận JSON trước lock chỉ gồm các trường source package và không chứa định danh nội bộ/model. Những kiểm tra này xác nhận ranh giới giao diện và integrity package, không xác nhận reviewer bên ngoài đã xem hoặc hiểu gì.
+
 ## Audit từng dependency
 
 | Nút | Đọc từ | Sinh ra | Provenance/trạng thái | Gate / giới hạn |

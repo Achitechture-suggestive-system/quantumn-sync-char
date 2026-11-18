@@ -1,5 +1,11 @@
 # Research-grade implementation plan — 2026-11-17
 
+## P2.1 milestone recheck — 2026-11-19
+
+The prior sections are the historical plan/status recorded at the 2026-11-17 checkpoint. Since then, feature commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` added and pushed the source-only package, pinned lock validation and pre-lock source-only UI boundary; [CI 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed, with 121 local tests and compileall passing. Remote `main` remains at the P0 baseline.
+
+The package and validator are now code-complete within their tested scope. The actual P2 experiment remains `BLOCKED_EXTERNAL`: a qualified reviewer must provide a valid source-only lock before local qwen inference. No real human labels, post-lock proposals, case-level optimizer outputs or revision comparison were created. Work after the blocker clears must follow [`ACTUAL_EXPERIMENT_PROTOCOL.md`](../p2/ACTUAL_EXPERIMENT_PROTOCOL.md); do not report the test-only wiring as a case result.
+
 This plan follows the repository audit. It preserves the existing P0 baseline and keeps semantic claims separate from implementation checks. Work proceeds in small commits on `feat/p1-semantic-validation`; no change to `main` is included.
 
 ## Current audit checkpoint

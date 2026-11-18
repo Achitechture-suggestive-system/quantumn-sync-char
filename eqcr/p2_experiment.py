@@ -128,6 +128,15 @@ def _expected_fr_refs(raw: dict[str, Any], ids: Any) -> list[dict[str, Any]] | N
 
 def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) -> dict[str, Any]:
     """Measure deterministic ID/span properties; never infer semantic correctness."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("requirements"), list):
+        raise P2ExperimentError("Frozen raw requirements must be a JSON object with a requirements array.")
+    if any(
+        not isinstance(item, dict) or not isinstance(item.get("id"), str)
+        for item in raw["requirements"]
+    ):
+        raise P2ExperimentError("Every raw requirement must be a JSON object with a string ID.")
+    if not isinstance(proposal_bundle, dict):
+        raise P2ExperimentError("Proposal bundle must be a JSON object.")
     requirements = {item["id"]: item for item in raw["requirements"]}
     proposals = proposal_bundle.get("proposals", [])
     evidence = proposal_bundle.get("evidence_proposals", [])
@@ -135,6 +144,17 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
     normalized = proposal_bundle.get("normalized_requirements", [])
     if not all(isinstance(rows, list) for rows in (proposals, evidence, boundaries, normalized)):
         raise P2ExperimentError("Proposal, relation, and boundary outputs must be JSON arrays.")
+    if any(
+        not isinstance(item, dict)
+        for rows in (proposals, evidence, boundaries, normalized)
+        for item in rows
+    ):
+        raise P2ExperimentError("Every proposal, relation, boundary, and normalized requirement row must be a JSON object.")
+
+    def string_values(values: Any) -> tuple[str, ...]:
+        if not isinstance(values, list):
+            return ()
+        return tuple(sorted(value for value in values if isinstance(value, str)))
 
     errors: list[dict[str, Any]] = []
     citation_total = 0
@@ -142,7 +162,7 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
     coverage: dict[str, int] = {requirement_id: 0 for requirement_id in requirements}
     responsibility_shapes = [
         (
-            tuple(sorted(item.get("requirement_ids", []))) if isinstance(item.get("requirement_ids", []), list) else (),
+            string_values(item.get("requirement_ids", [])),
             str(item.get("name", "")).strip().casefold(),
             str(item.get("activity", "")).strip().casefold(),
             str(item.get("operation", "")).strip().casefold(),
@@ -171,6 +191,8 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
             errors.append({"type": "RESPONSIBILITY_CITATION_INVALID", "proposal_id": proposal_id})
         if not isinstance(ids, list) or not ids:
             errors.append({"type": "RESPONSIBILITY_REQUIREMENT_SET_INVALID", "proposal_id": proposal_id})
+        elif any(not isinstance(value, str) for value in ids):
+            errors.append({"type": "RESPONSIBILITY_REQUIREMENT_ID_INVALID_TYPE", "proposal_id": proposal_id})
         duplicate_requirement_ids = isinstance(ids, list) and all(isinstance(value, str) for value in ids) and len(ids) != len(set(ids))
         if duplicate_requirement_ids:
             errors.append({"type": "RESPONSIBILITY_DUPLICATE_REQUIREMENT_ID", "proposal_id": proposal_id})
@@ -187,7 +209,8 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
     for item in normalized:
         source_ref = item.get("source_ref")
         citation_total += 1
-        requirement = requirements.get(item.get("id"))
+        requirement_id = item.get("id")
+        requirement = requirements.get(requirement_id) if isinstance(requirement_id, str) else None
         if requirement is not None and source_ref == requirement["source_ref"]:
             citation_resolved += 1
         else:
@@ -219,11 +242,23 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
             errors.append({"type": "RELATION_MODEL_PROPOSAL_ID_MISSING", "proposal_id": proposal_id})
         elif model_id in duplicate_relation_model_ids:
             errors.append({"type": "RELATION_MODEL_PROPOSAL_ID_DUPLICATE", "proposal_id": proposal_id})
-        if subject not in requirements or object_id not in requirements:
+        subject_is_known = isinstance(subject, str) and subject in requirements
+        object_is_known = isinstance(object_id, str) and object_id in requirements
+        if not subject_is_known or not object_is_known:
             errors.append({"type": "RELATION_ENDPOINT_UNKNOWN", "proposal_id": proposal_id})
         if subject == object_id:
             errors.append({"type": "RELATION_REFLEXIVE", "proposal_id": proposal_id})
-        if relation.get("proposed_status") == "PRESENT" and not {subject, object_id} <= set(source_ids if isinstance(source_ids, list) else []):
+        source_requirement_ids = {
+            value for value in source_ids if isinstance(value, str)
+        } if isinstance(source_ids, list) else set()
+        if isinstance(source_ids, list) and any(not isinstance(value, str) for value in source_ids):
+            errors.append({"type": "RELATION_SOURCE_ID_INVALID_TYPE", "proposal_id": proposal_id})
+        if (
+            relation.get("proposed_status") == "PRESENT"
+            and subject_is_known
+            and object_is_known
+            and not {subject, object_id} <= source_requirement_ids
+        ):
             errors.append({"type": "RELATION_PRESENT_ENDPOINT_NOT_CITED", "proposal_id": proposal_id})
         canonical_subject, canonical_object = subject, object_id
         if predicate != "BUSINESS_PRECEDES" and isinstance(subject, str) and isinstance(object_id, str):
@@ -234,7 +269,7 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
             errors.extend({"type": "RELATION_DUPLICATE_OR_STATUS_CONFLICT", "proposal_id": str(item.get("id", ""))} for item in rows)
 
     boundary_shapes = [
-        tuple(sorted(item.get("requirement_ids", []))) if isinstance(item.get("requirement_ids", []), list) else ()
+        string_values(item.get("requirement_ids", []))
         for item in boundaries
     ]
     boundary_shape_counts = {shape: boundary_shapes.count(shape) for shape in set(boundary_shapes)}
@@ -253,9 +288,17 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
             citation_resolved += len(source_ids)
         else:
             errors.append({"type": "BOUNDARY_CITATION_INVALID", "proposal_id": proposal_id})
-        if not isinstance(ids, list) or len(ids) < 2 or not set(ids) <= set(requirements):
+        valid_ids = isinstance(ids, list) and all(
+            isinstance(value, str) and value in requirements for value in ids
+        )
+        if not isinstance(ids, list) or len(ids) < 2 or not valid_ids:
             errors.append({"type": "BOUNDARY_REQUIREMENT_SET_INVALID", "proposal_id": proposal_id})
-        elif not set(ids) <= set(source_ids if isinstance(source_ids, list) else []):
+        source_requirement_ids = {
+            value for value in source_ids if isinstance(value, str)
+        } if isinstance(source_ids, list) else set()
+        if isinstance(source_ids, list) and any(not isinstance(value, str) for value in source_ids):
+            errors.append({"type": "BOUNDARY_SOURCE_ID_INVALID_TYPE", "proposal_id": proposal_id})
+        if valid_ids and not set(ids) <= source_requirement_ids:
             errors.append({"type": "BOUNDARY_SOURCE_COVERAGE_MISSING", "proposal_id": proposal_id})
         if boundary_shape_counts[boundary_shapes[boundary_index]] > 1:
             errors.append({"type": "BOUNDARY_DUPLICATE_HYPOTHESIS", "proposal_id": proposal_id})
@@ -266,9 +309,12 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
             errors.append({"type": "BOUNDARY_MODEL_PROPOSAL_ID_DUPLICATE", "proposal_id": proposal_id})
 
     uncovered = sorted(requirement_id for requirement_id, count in coverage.items() if count == 0)
+    lock_bundle = proposal_bundle.get("blind_annotation_lock")
+    annotation = lock_bundle.get("annotation") if isinstance(lock_bundle, dict) else None
+    unresolved_ids = annotation.get("unresolved_requirement_ids", []) if isinstance(annotation, dict) else []
     source_only_unresolved = sorted(
-        proposal_bundle.get("blind_annotation_lock", {}).get("annotation", {}).get("unresolved_requirement_ids", [])
-    )
+        value for value in unresolved_ids if isinstance(value, str)
+    ) if isinstance(unresolved_ids, list) else []
     error_counts: dict[str, int] = {}
     for error in errors:
         error_counts[error["type"]] = error_counts.get(error["type"], 0) + 1

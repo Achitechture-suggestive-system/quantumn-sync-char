@@ -212,6 +212,66 @@ def test_responsibility_mapping_coverage_is_independent_of_citation_validity():
     assert report["error_counts_by_type"]["RESPONSIBILITY_CITATION_INVALID"] == 1
 
 
+def test_structural_evaluator_reports_malformed_id_types_without_raw_type_errors():
+    raw = get_tutor_support_fixture()["raw_requirements"]
+    bundle = _test_bundle(raw, _locked_annotation(raw))
+    bundle["proposals"] = [
+        {
+            "id": "P-MALFORMED",
+            "model_proposal_id": "test-malformed-proposal",
+            "name": "Malformed test role",
+            "activity": "Test activity",
+            "operation": "Test operation",
+            "requirement_ids": [["FR-01"], "FR-04"],
+            "source_refs": [],
+        }
+    ]
+    bundle["normalized_requirements"] = [{"id": [], "source_ref": None}]
+    bundle["evidence_proposals"] = [
+        {
+            "id": "E-MALFORMED",
+            "model_proposal_id": "test-malformed-evidence",
+            "subject_requirement_id": [],
+            "object_requirement_id": "FR-04",
+            "predicate": "SHARES_STATE_OR_INVARIANT",
+            "proposed_status": "PRESENT",
+            "source_requirement_ids": [["FR-04"]],
+            "source_refs": [],
+        }
+    ]
+    bundle["boundary_hypotheses"] = [
+        {
+            "id": "B-MALFORMED",
+            "model_proposal_id": "test-malformed-boundary",
+            "requirement_ids": [["FR-01"], "FR-02"],
+            "source_requirement_ids": [["FR-01"], "FR-02"],
+            "source_refs": [],
+        }
+    ]
+
+    report = evaluate_p2_structure(raw, bundle)
+
+    expected_errors = {
+        "RESPONSIBILITY_REQUIREMENT_ID_INVALID_TYPE",
+        "NORMALIZED_REQUIREMENT_CITATION_INVALID",
+        "RELATION_ENDPOINT_UNKNOWN",
+        "RELATION_SOURCE_ID_INVALID_TYPE",
+        "BOUNDARY_REQUIREMENT_SET_INVALID",
+        "BOUNDARY_SOURCE_ID_INVALID_TYPE",
+    }
+    assert expected_errors <= set(report["error_counts_by_type"])
+    assert report["responsibility_mapping"]["coverage_by_requirement"]["FR-04"] == 1
+
+
+def test_structural_evaluator_rejects_non_object_rows_with_domain_error():
+    raw = get_tutor_support_fixture()["raw_requirements"]
+    bundle = _test_bundle(raw, _locked_annotation(raw))
+    bundle["proposals"] = [None]
+
+    with pytest.raises(P2ExperimentError, match="must be a JSON object"):
+        evaluate_p2_structure(raw, bundle)
+
+
 def test_reproducibility_export_contains_hash_manifest_and_test_only_provenance(tmp_path):
     raw = get_tutor_support_fixture()["raw_requirements"]
     lock = _locked_annotation(raw)

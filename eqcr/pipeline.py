@@ -129,13 +129,41 @@ def _optimize(
 
     conflicts = _constraint_conflicts(constraints)
     if not feasible and not conflicts:
+        def satisfies_hard_rules(
+            partition: tuple[tuple[str, ...], ...],
+            rules: list[Constraint],
+        ) -> bool:
+            return all(
+                (rule.relation == "MUST_LINK" and _same_group(partition, rule.left, rule.right))
+                or (rule.relation == "CANNOT_LINK" and not _same_group(partition, rule.left, rule.right))
+                for rule in rules
+            )
+
+        core_indices = sorted(
+            range(len(active_hard)),
+            key=lambda index: (active_hard[index].id, index),
+        )
+        for candidate_index in tuple(core_indices):
+            trial_indices = [index for index in core_indices if index != candidate_index]
+            trial_rules = [active_hard[index] for index in trial_indices]
+            trial_has_feasible_partition = any(
+                satisfies_hard_rules(partition, trial_rules)
+                for partition in all_partitions
+            )
+            if not trial_has_feasible_partition:
+                core_indices = trial_indices
+        core = [active_hard[index] for index in core_indices]
         conflicts.append(
             {
                 "pair": [],
-                "constraint_ids": [c.id for c in active_hard],
-                "relations": sorted({c.relation for c in active_hard}),
+                "constraint_ids": [c.id for c in core],
+                "relations": sorted({c.relation for c in core}),
                 "status": "INFEASIBLE",
-                "reason": "No partition satisfies the active hard constraints together.",
+                "reason": (
+                    "No partition satisfies these hard constraints together; removing any listed constraint "
+                    "makes at least one partition feasible."
+                ),
+                "explanation_scope": "DELETION_MINIMAL_HARD_CONSTRAINT_CORE",
             }
         )
     if feasible:

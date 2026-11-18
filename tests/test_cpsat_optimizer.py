@@ -142,6 +142,37 @@ def test_cpsat_reports_transitive_hard_conflict_explanation():
     ]
 
 
+def test_exhaustive_optimizer_reports_deletion_minimal_transitive_conflict_core():
+    responsibility_ids = ["R1", "R2", "R3", "R4"]
+    constraints = [
+        _constraint("ML-12", "MUST_LINK", "R1", "R2", hardness="HARD"),
+        _constraint("ML-23", "MUST_LINK", "R2", "R3", hardness="HARD"),
+        _constraint("CL-13", "CANNOT_LINK", "R1", "R3", hardness="HARD"),
+        _constraint("CL-14-IRRELEVANT", "CANNOT_LINK", "R1", "R4", hardness="HARD"),
+    ]
+
+    result = _optimize(responsibility_ids, constraints)
+
+    assert result["result_status"] == "INFEASIBLE"
+    assert result["feasible_candidate_count"] == 0
+    assert result["conflicts"] == [
+        {
+            "pair": [],
+            "constraint_ids": ["CL-13", "ML-12", "ML-23"],
+            "relations": ["CANNOT_LINK", "MUST_LINK"],
+            "status": "INFEASIBLE",
+            "reason": (
+                "No partition satisfies these hard constraints together; removing any listed constraint "
+                "makes at least one partition feasible."
+            ),
+            "explanation_scope": "DELETION_MINIMAL_HARD_CONSTRAINT_CORE",
+        }
+    ]
+    for constraint_id in ("CL-13", "ML-12", "ML-23"):
+        relaxed = [item for item in constraints if item.id != constraint_id]
+        assert _optimize(responsibility_ids, relaxed)["feasible_candidate_count"] > 0
+
+
 def test_cpsat_is_deterministic_under_fixed_seed_and_single_worker():
     constraints = [
         _constraint("S1", "MUST_LINK", "R1", "R2", weight=1.0),

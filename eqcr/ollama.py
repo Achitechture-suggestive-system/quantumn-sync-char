@@ -7,6 +7,7 @@ import os
 import hashlib
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -74,9 +75,14 @@ def propose_responsibilities(
     model: str,
     *,
     blind_annotation_lock: dict[str, Any] | None = None,
+    source_package_root: Path | None = None,
 ) -> dict[str, Any]:
     if raw.get("case_id") == "TUTOR-SUPPORT-P2-01":
-        if not verify_blind_annotation_lock(raw, blind_annotation_lock):
+        if not verify_blind_annotation_lock(
+            raw,
+            blind_annotation_lock,
+            source_package_root=source_package_root,
+        ):
             raise OllamaError("Tutor Support model proposals stay hidden until a source-only annotation is locked and verified.")
     requirement_source_refs = {
         item["id"]: item["source_ref"] for item in raw["requirements"]

@@ -17,6 +17,7 @@ from eqcr.p2_experiment import (  # noqa: E402
     P2IndependentAnnotationBlocked,
     run_local_tutor_proposal_experiment,
 )
+from eqcr.p2_reviewer_package import default_source_package_root  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -24,6 +25,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--annotation-lock", required=True, help="Path to the downloaded, hash-locked source-only annotation JSON.")
     parser.add_argument("--model", default=EXPECTED_MODEL, help=f"Exact installed local model tag (default: {EXPECTED_MODEL}).")
     parser.add_argument("--output-root", default=str(ROOT / "runs" / "p2-experiments"), help="New run folders are created here; existing runs are never overwritten.")
+    parser.add_argument("--source-package", default=str(default_source_package_root()), help="Source-only reviewer package directory; every listed file and hash is checked before inference.")
     args = parser.parse_args(argv)
     try:
         lock_path = Path(args.annotation_lock)
@@ -37,6 +39,7 @@ def main(argv: list[str] | None = None) -> int:
             model=args.model,
             output_root=Path(args.output_root),
             repo_root=ROOT,
+            source_package_root=Path(args.source_package),
         )
     except P2IndependentAnnotationBlocked as exc:
         print(json.dumps({"status": exc.status, "reason": str(exc)}, ensure_ascii=False))

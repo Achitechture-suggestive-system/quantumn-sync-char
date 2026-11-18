@@ -21,6 +21,7 @@ from .ollama import (
     propose_responsibilities,
 )
 from .p2_protocol import source_bundle_sha256, verify_blind_annotation_lock
+from .p2_reviewer_package import SourceOnlyPackageError, validate_source_only_reviewer_package
 from .tutor_support import get_tutor_support_fixture
 
 
@@ -56,9 +57,14 @@ def _parse_time(value: Any, name: str) -> datetime:
     return parsed
 
 
-def p2_readiness_status(raw: dict[str, Any], lock_bundle: dict[str, Any] | None) -> dict[str, str]:
+def p2_readiness_status(
+    raw: dict[str, Any],
+    lock_bundle: dict[str, Any] | None,
+    *,
+    source_package_root: Path | None = None,
+) -> dict[str, str]:
     """Return an explicit blocker unless an unexposed source-only annotation is hash-locked."""
-    if not verify_blind_annotation_lock(raw, lock_bundle):
+    if not verify_blind_annotation_lock(raw, lock_bundle, source_package_root=source_package_root):
         return {
             "status": P2IndependentAnnotationBlocked.status,
             "reason": "No verified source-only lock is available for this exact case and source hash.",
@@ -76,12 +82,16 @@ def p2_readiness_status(raw: dict[str, Any], lock_bundle: dict[str, Any] | None)
 
 
 def validate_p2_proposal_bundle(
-    raw: dict[str, Any], proposal_bundle: dict[str, Any], *, allow_test_only: bool = False
+    raw: dict[str, Any],
+    proposal_bundle: dict[str, Any],
+    *,
+    allow_test_only: bool = False,
+    source_package_root: Path | None = None,
 ) -> None:
     if raw.get("case_id") != "TUTOR-SUPPORT-P2-01":
         raise P2ExperimentError("P2 experiment validation is restricted to the prepared Tutor Support case.")
     lock_bundle = proposal_bundle.get("blind_annotation_lock")
-    readiness = p2_readiness_status(raw, lock_bundle)
+    readiness = p2_readiness_status(raw, lock_bundle, source_package_root=source_package_root)
     if readiness["status"] != "P2_READY_FOR_LOCAL_MODEL_PROPOSAL":
         raise P2IndependentAnnotationBlocked(readiness["reason"])
     if proposal_bundle.get("input_sha256") != source_bundle_sha256(raw):
@@ -339,10 +349,17 @@ def export_p2_proposal_run(
     ollama_version: str,
     model_metadata: dict[str, Any],
     allow_test_only: bool = False,
+    source_package_root: Path | None = None,
 ) -> Path:
-    validate_p2_proposal_bundle(raw, proposal_bundle, allow_test_only=allow_test_only)
-    if not verify_blind_annotation_lock(raw, lock_bundle):
+    validate_p2_proposal_bundle(
+        raw,
+        proposal_bundle,
+        allow_test_only=allow_test_only,
+        source_package_root=source_package_root,
+    )
+    if not verify_blind_annotation_lock(raw, lock_bundle, source_package_root=source_package_root):
         raise P2IndependentAnnotationBlocked("A verified source-only lock is required for a P2 result export.")
+    package_validation = validate_source_only_reviewer_package(raw, source_package_root)
     proposal_lock = proposal_bundle.get("blind_annotation_lock", {})
     if proposal_lock.get("lock", {}).get("lock_sha256") != lock_bundle.get("lock", {}).get("lock_sha256"):
         raise P2ExperimentError("Export annotation lock differs from the checkpoint attached to model proposals.")
@@ -372,6 +389,8 @@ def export_p2_proposal_run(
         "experiment_status": "P2_MODEL_PROPOSAL_COMPLETE_PENDING_HUMAN_REVIEW",
         "created_at_utc": now.isoformat(),
         "source_bundle_sha256": source_bundle_sha256(raw),
+        "source_package_manifest_sha256": package_validation["manifest_sha256"],
+        "source_package_file_sha256": package_validation["file_sha256"],
         "annotation_sha256": lock_bundle["lock"]["annotation_sha256"],
         "model_tag_requested": proposal_bundle["model"],
         "response_model": proposal_bundle.get("response_model"),
@@ -411,12 +430,17 @@ def run_local_tutor_proposal_experiment(
     model: str = EXPECTED_MODEL,
     output_root: Path,
     repo_root: Path,
+    source_package_root: Path | None = None,
 ) -> Path:
     fixture = get_tutor_support_fixture()
     raw = fixture["raw_requirements"]
-    readiness = p2_readiness_status(raw, lock_bundle)
+    readiness = p2_readiness_status(raw, lock_bundle, source_package_root=source_package_root)
     if readiness["status"] != "P2_READY_FOR_LOCAL_MODEL_PROPOSAL":
         raise P2IndependentAnnotationBlocked(readiness["reason"])
+    try:
+        validate_source_only_reviewer_package(raw, source_package_root)
+    except SourceOnlyPackageError as exc:
+        raise P2ExperimentError(f"Source-only reviewer package validation failed: {exc}") from exc
     if model != EXPECTED_MODEL:
         raise P2ExperimentError(f"P2 comparison is registered for exact local model tag {EXPECTED_MODEL}.")
     git_info = _git_metadata(repo_root)
@@ -427,8 +451,13 @@ def run_local_tutor_proposal_experiment(
     if model_metadata is None:
         raise P2ExperimentError(f"Exact local model tag {model} is not installed; no inference was started.")
     ollama_version = get_ollama_version()
-    proposal_bundle = propose_responsibilities(raw, model, blind_annotation_lock=lock_bundle)
-    validate_p2_proposal_bundle(raw, proposal_bundle)
+    proposal_bundle = propose_responsibilities(
+        raw,
+        model,
+        blind_annotation_lock=lock_bundle,
+        source_package_root=source_package_root,
+    )
+    validate_p2_proposal_bundle(raw, proposal_bundle, source_package_root=source_package_root)
     evaluation = evaluate_p2_structure(raw, proposal_bundle)
     return export_p2_proposal_run(
         raw,
@@ -439,4 +468,5 @@ def run_local_tutor_proposal_experiment(
         repo_root=repo_root,
         ollama_version=ollama_version,
         model_metadata=model_metadata,
+        source_package_root=source_package_root,
     )

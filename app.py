@@ -35,6 +35,12 @@ from eqcr.p2_protocol import (
     lock_blind_annotation,
     verify_blind_annotation_lock,
 )
+from eqcr.p2_reviewer_package import (
+    SOURCE_DATA_FILE,
+    SourceOnlyPackageError,
+    default_source_package_root,
+    validate_source_only_reviewer_package,
+)
 from eqcr.tutor_support import get_tutor_support_fixture
 from eqcr.storage import (
     list_snapshots,
@@ -332,14 +338,17 @@ with input_tab:
             f"**Input status:** `{st.session_state.fixture.get('fixture_label', 'USER_SUPPLIED')}` · "
             "requirements-only · no source code supplied"
         )
-        _show_json("Raw requirements, workflow, and scenarios", st.session_state.fixture["raw_requirements"])
         blind_lock_valid = True
         if is_tutor_case:
             blind_lock = st.session_state.p2_blind_annotation_lock
+            source_package_root = default_source_package_root()
             blind_lock_valid = verify_blind_annotation_lock(
-                st.session_state.fixture["raw_requirements"], blind_lock
+                st.session_state.fixture["raw_requirements"],
+                blind_lock,
+                source_package_root=source_package_root,
             )
             if blind_lock_valid:
+                _show_json("Raw requirements, workflow, and scenarios", st.session_state.fixture["raw_requirements"])
                 lock_info = blind_lock["lock"]
                 st.success(
                     f"Source-only annotation locked at {lock_info['locked_at']} · "
@@ -352,28 +361,43 @@ with input_tab:
                     mime="application/json",
                 )
             else:
-                st.info(
-                    "Complete and lock the source-only annotation first. Model proposals and their review remain hidden until the app records its timestamp and content hash."
-                )
-                blind_template = build_blind_annotation_template(st.session_state.fixture["raw_requirements"])
-                blind_input_key = f"p2_blind_annotation_{blind_template['source_bundle_sha256'][:12]}"
-                blind_annotation_text = st.text_area(
-                    "Source-only annotation JSON (0..N roles per FR; attest source-only work and no prior model-output exposure)",
-                    value=json.dumps(blind_template, ensure_ascii=False, indent=2),
-                    height=420,
-                    key=blind_input_key,
-                )
-                if st.button("Lock source-only annotation before model review", type="primary"):
-                    try:
-                        submitted_annotation = json.loads(blind_annotation_text)
-                        st.session_state.p2_blind_annotation_lock = lock_blind_annotation(
-                            st.session_state.fixture["raw_requirements"],
-                            submitted_annotation,
-                        )
-                        st.session_state.notice = "Source-only annotation locked. Proposals can now be generated and reviewed in this session."
-                        st.rerun()
-                    except (json.JSONDecodeError, ValueError, TypeError) as exc:
-                        st.error(f"Could not lock the source-only annotation: {exc}")
+                try:
+                    validate_source_only_reviewer_package(
+                        st.session_state.fixture["raw_requirements"],
+                        source_package_root,
+                    )
+                    source_only_data = json.loads((source_package_root / SOURCE_DATA_FILE).read_text(encoding="utf-8"))
+                    st.info(
+                        "Review only the source-only package below. Prepared mappings and model proposals stay hidden until a valid annotation is locked."
+                    )
+                    _show_json("Source-only requirements, workflows, and scenarios", source_only_data)
+                    blind_template = build_blind_annotation_template(
+                        st.session_state.fixture["raw_requirements"],
+                        source_package_root=source_package_root,
+                    )
+                    blind_input_key = f"p2_blind_annotation_{blind_template['source_bundle_sha256'][:12]}"
+                    blind_annotation_text = st.text_area(
+                        "Source-only annotation JSON (0..N roles per FR; attest source-only work and no prior model-output exposure)",
+                        value=json.dumps(blind_template, ensure_ascii=False, indent=2),
+                        height=420,
+                        key=blind_input_key,
+                    )
+                    if st.button("Lock source-only annotation before model review", type="primary"):
+                        try:
+                            submitted_annotation = json.loads(blind_annotation_text)
+                            st.session_state.p2_blind_annotation_lock = lock_blind_annotation(
+                                st.session_state.fixture["raw_requirements"],
+                                submitted_annotation,
+                                source_package_root=source_package_root,
+                            )
+                            st.session_state.notice = "Source-only annotation locked. Proposals can now be generated and reviewed in this session."
+                            st.rerun()
+                        except (json.JSONDecodeError, ValueError, TypeError) as exc:
+                            st.error(f"Could not lock the source-only annotation: {exc}")
+                except (OSError, SourceOnlyPackageError, ValueError) as exc:
+                    st.error(f"The pinned source-only reviewer package is unavailable or invalid: {exc}")
+        else:
+            _show_json("Raw requirements, workflow, and scenarios", st.session_state.fixture["raw_requirements"])
     else:
         st.info("Choose PetClinic demo data, the Tutor Support P2 case, or a structured JSON package to inspect an input.")
 

@@ -31,11 +31,11 @@ Mỗi dòng bắt đầu ở `NOT_ANNOTATED`. Người annotator có thể đán
 
 ## Gửi annotation
 
-1. Chọn **Load Tutor Support P2 case** và chỉ đọc khung **Raw requirements, workflow, and scenarios**.
-2. Tải mẫu JSON hiển thị trong **Source-only annotation JSON**. Điền annotator ID tự khai báo, xác nhận `source_only_attested=true` và `no_prior_model_output_exposure=true`, annotations 0..N và unresolved FRs. Hai attestation này được ghi lại nhưng danh tính/lịch sử truy cập không được kiểm chứng bên ngoài app.
+1. Gửi riêng thư mục [`source_only_reviewer/`](source_only_reviewer/) cho annotator. Chỉ dùng `README.md`, `SOURCE_MATERIAL.md`, `SOURCE_DATA.json` và mẫu trống trong package này; không gửi phần còn lại của `docs/p2/`.
+2. Chỉ nhập case vào ứng dụng sau khi annotator đã hoàn tất phần nguồn độc lập. Trước khi có lock hợp lệ, Input tab chỉ hiển thị đúng `SOURCE_DATA.json`; curated helper fields không được render. Tải mẫu JSON từ package và điền annotator ID tự khai báo, hai attestation, annotations 0..N và unresolved FRs.
 3. Cập nhật các dòng trong relation registry cần annotation; để các dòng còn lại là `NOT_ANNOTATED`.
-4. Dùng **Lock source-only annotation before model review**. Protocol `P2-BLIND-ANNOTATION-v2` yêu cầu cả hai attestation, rồi kiểm tra case/source hash, IDs, coverage, universe quan hệ và citations; app ghi UTC timestamp và hash annotation.
-5. Tải và lưu bản JSON đã khóa. Không sửa bản đã khóa; muốn sửa phải tạo phiên bản annotation mới và khóa lại trước khi mở proposal.
+4. Dùng **Lock source-only annotation before model review**. Protocol `P2-BLIND-ANNOTATION-v3` yêu cầu cả hai attestation, rồi kiểm tra case/source/package hashes, schema, IDs, coverage, universe quan hệ và citations; app ghi UTC timestamp và hash annotation.
+5. Tải và lưu bản JSON đã khóa. Không sửa bản đã khóa; muốn sửa phải tạo phiên bản annotation mới và khóa lại trước khi mở proposal. Hash/timestamp không xác thực độc lập reviewer identity hay lịch sử exposure.
 6. Trên checkout đã commit, clean, có local model `qwen3:4b`, chạy lệnh trong [P2 validation report](P2_VALIDATION_REPORT.md). Output được tạo dưới `runs/p2-experiments/<run-id>/`; folder cũ không bị ghi đè.
 7. Chỉ sau inference mới mở [P2_MODEL_REVIEW.md](P2_MODEL_REVIEW.md) và ghi disposition/rationale thật. Dùng source IDs/FRs; đừng dùng test fixture làm reviewer decision.
 

@@ -23,6 +23,7 @@ def _test_blind_lock(raw):
     submission["reviewer_id"] = "test-reviewer"
     submission["source_only_attested"] = True
     submission["no_prior_model_output_exposure"] = True
+    submission["unresolved_requirement_ids"] = [item["id"] for item in raw["requirements"]]
     return lock_blind_annotation(raw, submission, locked_at="2026-01-01T00:00:00+00:00")
 
 
@@ -191,6 +192,26 @@ def test_app_can_load_the_tutor_support_case_without_streamlit_exceptions():
     next(button for button in app.button if button.label == "Load Tutor Support P2 case").click().run()
     assert not app.exception
     assert app.session_state["fixture"]["raw_requirements"]["case_id"] == "TUTOR-SUPPORT-P2-01"
+    visible_source = json.loads(app.json[0].value)
+    assert set(visible_source) == {
+        "case_id",
+        "context_id",
+        "context_description",
+        "requirements",
+        "workflows",
+        "quality_scenarios",
+    }
+    visible_material = json.dumps(visible_source, ensure_ascii=False)
+    for internal_or_model_field in (
+        "related_requirement_ids",
+        "quality_characteristic",
+        "responsibility_provenance",
+        "constraint_policy_catalog",
+        "P1",
+        "E1",
+        "B1",
+    ):
+        assert internal_or_model_field not in visible_material
     app.session_state["ollama_models"] = ["qwen3:4b"]
     app.run()
     proposal_button = next(button for button in app.button if button.label == "Run local Ollama proposals")
@@ -569,7 +590,7 @@ def test_blind_annotation_protocol_is_source_only_and_supports_zero_to_many_labe
     raw = get_tutor_support_fixture()["raw_requirements"]
     submission = build_blind_annotation_template(raw)
     assert set(submission) == {
-        "protocol_version", "case_id", "source_bundle_sha256", "reviewer_id",
+        "protocol_version", "case_id", "source_bundle_sha256", "source_package_manifest_sha256", "reviewer_id",
         "source_only_attested", "no_prior_model_output_exposure", "responsibility_annotations", "unresolved_requirement_ids",
         "relation_registry",
     }
@@ -587,6 +608,7 @@ def test_blind_annotation_protocol_is_source_only_and_supports_zero_to_many_labe
             "no_prior_model_output_exposure": True,
         }
     )
+    assert submission["unresolved_requirement_ids"] == []
     submission["responsibility_annotations"] = [
         {
             "annotation_id": "A-FR-01", "name": "Search tutors", "activity": "Search",

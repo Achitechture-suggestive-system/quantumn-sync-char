@@ -1,0 +1,131 @@
+{
+  "manifest_version": "P2-SOURCE-ONLY-PACKAGE-v1",
+  "protocol_version": "P2-BLIND-ANNOTATION-v3",
+  "case_id": "TUTOR-SUPPORT-P2-01",
+  "source_bundle_sha256": "7293d2b27ad89a48b737eab30bad4b448e75cfa2bcd625948280d24abfc2ad17",
+  "source_data_sha256": "8738ce832c6c542eec06d9540ab46e9d14391483e8cb12237976d38f0fc5b3f6",
+  "source_entries": [
+    {
+      "source_id": "TUTOR-REQ-FR-01",
+      "kind": "requirement",
+      "item_id": "FR-01",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 71,
+      "text_sha256": "1b5897d7a65b4d94909904446252373f4fbdbf7693d7a13fb564a9bee4b9c59e"
+    },
+    {
+      "source_id": "TUTOR-REQ-FR-02",
+      "kind": "requirement",
+      "item_id": "FR-02",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 70,
+      "text_sha256": "3bf2e7a927d9b436e04b7fc98e535e5da700509eb906a841ed284a5851a479b8"
+    },
+    {
+      "source_id": "TUTOR-REQ-FR-03",
+      "kind": "requirement",
+      "item_id": "FR-03",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 57,
+      "text_sha256": "985ae94e3a81f80cb45cc6548f498590747c9218870078f394314a36b71473ce"
+    },
+    {
+      "source_id": "TUTOR-REQ-FR-04",
+      "kind": "requirement",
+      "item_id": "FR-04",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 62,
+      "text_sha256": "ff2c4ae3b2d25ec777b0ac0fffa11f667ac01f1a24355506ac8a502bf30f4942"
+    },
+    {
+      "source_id": "TUTOR-REQ-FR-05",
+      "kind": "requirement",
+      "item_id": "FR-05",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 65,
+      "text_sha256": "ff385c762f3867097410eaa3ec5649dfdb6961c352ea31e7b562c579b00820c6"
+    },
+    {
+      "source_id": "TUTOR-REQ-FR-06",
+      "kind": "requirement",
+      "item_id": "FR-06",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 77,
+      "text_sha256": "cc443a15688871360113e229c6c0138cbe124552061f919bf4fba8d5b1c7dd51"
+    },
+    {
+      "source_id": "TUTOR-WF-01",
+      "kind": "workflow",
+      "item_id": "WF-01",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 68,
+      "text_sha256": "78afd349a432bbb97fa8990361c83666550903dcb876b06ec5621492c0f10904"
+    },
+    {
+      "source_id": "TUTOR-WF-02",
+      "kind": "workflow",
+      "item_id": "WF-02",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 74,
+      "text_sha256": "4035af70d101a6f2b82226af45996bdf4ea3967b3fe4781d144b7a83cc628f1b"
+    },
+    {
+      "source_id": "TUTOR-WF-03",
+      "kind": "workflow",
+      "item_id": "WF-03",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 81,
+      "text_sha256": "d7a50ea0465de0b5fe3b7a7ea9de0582d5df6bc9de914181cd05aa076fd88336"
+    },
+    {
+      "source_id": "TUTOR-WF-04",
+      "kind": "workflow",
+      "item_id": "WF-04",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 54,
+      "text_sha256": "003e871aa4cdb988c31bcb72f2faf40c0c901d2f664f7e7d1d5a11bf7e1a63ed"
+    },
+    {
+      "source_id": "SC-REQUEST-ACK",
+      "kind": "quality_scenario",
+      "item_id": "SC-REQUEST-ACK",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 271,
+      "text_sha256": "d3cdfe078969353c5e5dc398ea53b903ccbd0508cfba095976ea3ab218516023"
+    },
+    {
+      "source_id": "SC-DECISION-NOTICE",
+      "kind": "quality_scenario",
+      "item_id": "SC-DECISION-NOTICE",
+      "source_file": "SOURCE_DATA.json",
+      "start": 0,
+      "end": 253,
+      "text_sha256": "64342721a45a0c5028c0137ddd094d5901d79dbbc4493126379b580d2c2316d7"
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "f28d92fd75e8d541114a834cfbef1419e058a0e7ad69f54e853b2ab6de2d23a7"
+    },
+    {
+      "path": "SOURCE_DATA.json",
+      "sha256": "8738ce832c6c542eec06d9540ab46e9d14391483e8cb12237976d38f0fc5b3f6"
+    },
+    {
+      "path": "SOURCE_MATERIAL.md",
+      "sha256": "98c69b70dd7ddb63d868c985b6dc94942478fbd448182e5de8522eb7fdacf84a"
+    }
+  ]
+}

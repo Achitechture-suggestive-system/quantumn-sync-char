@@ -32,6 +32,7 @@ def _locked_annotation(raw):
             "reviewer_id": "test-only-reviewer",
             "source_only_attested": True,
             "no_prior_model_output_exposure": True,
+            "unresolved_requirement_ids": [item["id"] for item in raw["requirements"]],
         }
     )
     return lock_blind_annotation(raw, submission, locked_at="2026-01-01T00:00:00+00:00")
@@ -112,6 +113,7 @@ def test_blind_annotation_lock_rejects_invalid_or_timezone_naive_timestamp(locke
             "reviewer_id": "test-only-reviewer",
             "source_only_attested": True,
             "no_prior_model_output_exposure": True,
+            "unresolved_requirement_ids": [item["id"] for item in raw["requirements"]],
         }
     )
     with pytest.raises(ValueError, match="timezone"):

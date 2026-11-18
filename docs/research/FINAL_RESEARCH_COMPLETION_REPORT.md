@@ -1,7 +1,7 @@
 # EQCR + QAME — Research Completion Status Report
 
 **Report date:** 2026-11-19
-**Current verified code checkpoint:** `376e424f3ffcb3a0b9161d256230696b230d4ae3` on `feat/p1-semantic-validation`; [GitHub Actions run 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744) passed. The full local suite passed 125 tests; compilation and diff checks succeeded. This report does not claim an actual Tutor experiment.
+**Current verified code checkpoint:** `9c7c7337fd9e94b034dd0230ab1bd667282e39af` on `feat/p1-semantic-validation`; [GitHub Actions run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) passed. The full local suite passed 126 tests; compilation and diff checks succeeded. This report does not claim an actual Tutor experiment.
 
 ## 1. Repository baseline and audited capabilities
 
@@ -13,7 +13,7 @@
 
 ## 2. Implementation changes
 
-- **P2 infrastructure:** a five-file source-only package, per-file/source hash manifest, v3 lock validation, source-only pre-lock UI gate, reproducible local proposal runner, structural citation/duplicate checks, review dispositions and test-only causal wiring exist. The actual post-lock Tutor experiment remains blocked.
+- **P2 infrastructure:** a five-file source-only package, per-file/source hash manifest, v3 lock validation, source-only pre-lock UI gate, reproducible local proposal runner, structural citation/duplicate checks, review dispositions and test-only causal wiring exist. Structural FR-ID mapping coverage is counted independently of citation resolution; semantic matching is still gated on independent adjudication. The actual post-lock Tutor experiment remains blocked.
 - **Typed evidence screening:** exact duplicate claim/citation rows, direct `PRESENT`/`SCOPED_ABSENT` conflicts, and known/`UNKNOWN` mixtures are reported deterministically. Conflicted or duplicated rows are explicitly blocked from evidence-derived policy constraints. This structural audit does not evaluate entailment, context/time scope or semantic truth.
 - **P6:** a versioned experimental Tutor policy catalog emits soft candidate constraints only after accepted evidence, separate human architectural implication, approved responsibility endpoints and citations. The catalog is not independently validated as an architecture tactic.
 - **P7:** exhaustive enumeration remains through R8 and now emits a tested deletion-minimal hard-rule core for transitive infeasibility; CP-SAT is dispatched for R9–R50 and explains must-link-path/cannot-link conflicts. It proves the declared objective before reporting capped optima; it does not enumerate or count the full feasible set. A minimal core is not an architecture-validity claim or minimum-cardinality guarantee. See [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md).
@@ -67,6 +67,8 @@ At the 2026-11-19 P2.1 reviewer-package milestone, the full local suite passed *
 At evidence-audit code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1`, the full local suite passed **124 tests**, compilation and `git diff --check` passed, the staged secret-pattern scan found no matches, and [CI run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) passed on the same SHA. Tests include direct-conflict and duplicate audit behavior plus optimizer abstention using `P2_TEST_ONLY`; they do not represent human Tutor decisions or semantic accuracy.
 
 At exhaustive conflict-core code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3`, the full local suite passed **125 tests**, compilation and `git diff --check` passed, staged secret-pattern scan found no matches, and [CI run 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744) passed on the same SHA. A transitive hard-constraint test proves the reported core is deletion-minimal and excludes an irrelevant constraint. This is algorithmic validation of the declared input only.
+
+At P2 evaluator code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af`, the full local suite passed **126 tests**, compilation and `git diff --check` passed, staged secret-pattern scan found no matches, and [CI run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) passed on the same SHA. A test confirms a structurally valid FR mapping remains counted when its citation is invalid; the citation error is reported separately. This does not measure semantic accuracy.
 
 A separate manual browser smoke loaded the Tutor case in the running Streamlit app, confirmed the pre-lock DOM exposed only source-only content, and confirmed the Ollama proposal action remained disabled even though the local model was detected. No model inference or pipeline execution occurred. The report commit `5a2ed9e10b03860037afacdec73818d97370a393` also passed [CI run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466). This is a UI smoke check, not an automated browser E2E suite or case experiment.
 

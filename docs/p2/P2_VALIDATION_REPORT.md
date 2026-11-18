@@ -14,6 +14,12 @@ Code milestone `a334fac8b4193c469ed0a1499a1383db4164bdf1` thêm audit claim evid
 
 Verification là test code với `P2_TEST_ONLY`: **124 tests passed**, `compileall` và `git diff --check` passed; [CI run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) passed trên SHA trên. Đây không phải reviewer decision hoặc kết quả semantic evaluation; trạng thái case vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
 
+## Cập nhật tách FR mapping và citation — 2026-11-19
+
+Tại code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af`, evaluator tính proposal FR coverage từ ID đã biết độc lập với exact citation resolution. Proposal có FR ID hợp lệ nhưng source reference sai vẫn được ghi là mapping cấu trúc và nhận `RESPONSIBILITY_CITATION_INVALID`; hai kết quả không che lấp nhau. Ý nghĩa responsibility vẫn chưa được đánh giá.
+
+Local full suite: **126 tests passed**; compileall và diff check passed. [CI run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) passed trên code SHA. Test chỉ dùng dữ liệu `P2_TEST_ONLY`; semantic precision/recall/F1 vẫn `NOT_MEASURED_NO_ADJUDICATED_REFERENCE` và actual Tutor case vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
 ## Recheck trạng thái hiện tại — 2026-11-17
 
 | Bằng chứng | Kết quả |

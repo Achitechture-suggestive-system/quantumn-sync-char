@@ -1,5 +1,9 @@
 # Research-grade implementation plan — 2026-11-17
 
+## P2 mapping/citation metric separation — 2026-11-19
+
+Code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` is pushed on `feat/p1-semantic-validation` and verified by [CI 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052). Local validation: 126 tests, compileall, and diff check passed. Structural responsibility mapping now counts known FR IDs regardless of citation validity, while citation resolution and errors remain separate. This does not assess semantic responsibility correctness; the actual P2 experiment remains blocked on an independent source-only annotation lock.
+
 ## Exhaustive hard-conflict explanation milestone — 2026-11-19
 
 Code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3` is pushed on `feat/p1-semantic-validation` and verified by [CI 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744). Local validation: 125 tests, compileall, and diff check passed. For exhaustive R1–R8 optimization, transitive infeasibility now reports a deterministic deletion-minimal set of hard constraint IDs, with a test confirming each listed rule is necessary and an irrelevant rule is excluded. The core is not guaranteed minimum-cardinality and does not justify the architecture decision.

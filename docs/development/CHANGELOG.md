@@ -1,5 +1,11 @@
 # Changelog
 
+## P2 mapping and citation coverage separation — 2026-11-19
+
+- Sửa `evaluate_p2_structure`: `coverage_by_requirement` đếm FR IDs đã biết độc lập với exact citation resolution; citation invalid vẫn tạo lỗi riêng. FR bị map hợp lệ không còn bị báo nhầm là uncovered chỉ vì citation sai.
+- Thêm diễn giải machine-readable xác định coverage này chỉ là cấu trúc, không phải semantic correctness. Không tạo independent labels hoặc accuracy metrics.
+- Verification: 126 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` đã push; [CI 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) success.
+
 ## Exhaustive hard-conflict explanations — 2026-11-19
 
 - Khi exhaustive optimizer R1–R8 không có partition khả thi và không có conflict cùng cặp được báo riêng, giảm hard-rule set theo thứ tự ID ổn định để tạo `DELETION_MINIMAL_HARD_CONSTRAINT_CORE`.

@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## P2 mapping and citation coverage separation — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` (`fix(p2): separate mapping and citation coverage`) đã push; remote feature ref xác nhận SHA.
+- Trước push: local full suite 126 tests passed; `compileall -q app.py eqcr scripts tests`, staged `git diff --check` và secret-pattern scan passed; chỉ stage 2 file code/test cụ thể.
+- GitHub Actions [run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) completed success trên đúng SHA.
+- `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag ancestry không đổi. Semantic metrics vẫn không có vì chưa có annotation/adjudication độc lập.
+
 ## Exhaustive hard-conflict explanations — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3` (`feat(p7): explain minimal hard constraint cores`) đã push; remote feature ref xác nhận SHA.

@@ -16,7 +16,7 @@ This registry separates algorithm correctness, requirements extraction, architec
 
 | Measure | Method once eligible | Current status |
 |---|---|---|
-| Responsibility extraction precision/recall/F1 | Two independent source-only annotations; predeclared granularity and match rubric; separate adjudication; one-to-many matching rules fixed before viewing proposals. | `NOT_MEASURED_NO_ADJUDICATED_REFERENCE` |
+| Responsibility extraction precision/recall/F1 | Two independent source-only annotations; predeclared granularity and match rubric; separate adjudication; one-to-many matching rules fixed before viewing proposals. | `NOT_MEASURED_NO_ADJUDICATED_REFERENCE`; deterministic FR-ID coverage is reported separately from exact citation resolution and is not a semantic metric. |
 | Relation precision/recall/F1 | Fixed relation predicate/direction universe; compare only adjudicated annotations; retain UNKNOWN/NOT_ANNOTATED/SCOPED_ABSENT separately. | `NOT_MEASURED_NO_ADJUDICATED_REFERENCE` |
 | Citation support | Exact ID/span resolution is reported as structural mapping. Entailment requires independent human adjudication and is reported separately. | Structural checks tested; semantic entailment `NOT_MEASURED` |
 | Human agreement | Compare independent annotators before adjudication; choose and predeclare a statistic appropriate to label type and missing values. | `NOT_MEASURED_NO_TWO_ANNOTATORS` |

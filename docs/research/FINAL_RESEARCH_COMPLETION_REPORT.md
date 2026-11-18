@@ -62,6 +62,8 @@ At the subsequent artifact-bundle milestone, the local full suite passed **110 t
 
 At the 2026-11-19 P2.1 reviewer-package milestone, the full local suite passed **121 tests**, `compileall -q app.py eqcr scripts tests` passed, and staged diff/credential-pattern checks passed. Commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` matches the remote feature ref; [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed. `main` remained unchanged. This verifies package/validator/UI behavior, not independent annotation or semantics.
 
+A separate manual browser smoke loaded the Tutor case in the running Streamlit app, confirmed the pre-lock DOM exposed only source-only content, and confirmed the Ollama proposal action remained disabled even though the local model was detected. No model inference or pipeline execution occurred. The report commit `5a2ed9e10b03860037afacdec73818d97370a393` also passed [CI run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466). This is a UI smoke check, not an automated browser E2E suite or case experiment.
+
 The interaction-contract review milestone then passed **114 tests** locally, including Streamlit render, exact-span rejection, before/after audit, and an explicit test-only unchanged-partition/QAME result. Compileall and `git diff --check` passed. Commit `8707334310dcd8fb7520b9d519a6023b753143a3` is pushed; [CI run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. No real reviewer decision was entered.
 
 These checks validate bounded code behavior, not case semantics or architecture quality.

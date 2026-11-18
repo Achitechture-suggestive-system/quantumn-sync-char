@@ -1,5 +1,12 @@
 # Changelog
 
+## P2.1 browser smoke record — 2026-11-19
+
+- Chạy app Streamlit local và nạp Tutor case; DOM trước lock chỉ hiển thị source-only data, không có helper mappings hay mã proposal P1–P6/E1/B1.
+- Sau khi UI phát hiện `qwen3:4b`, nút chạy proposal vẫn disabled do thiếu lock. Không gọi model và không chạy pipeline/reviewer experiment.
+- Ghi nhận thủ công trong validation report. Đây không phải automated browser E2E test hoặc kết quả case-level.
+- Docs commit `5a2ed9e10b03860037afacdec73818d97370a393` đã push; [CI 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466) success.
+
 ## P2.1 source-only reviewer package and lock validation — 2026-11-19
 
 - Thêm package Tutor source-only có manifest/hashes và blank 0..N responsibility/relation worksheets; pin lock protocol v3 với manifest hash.

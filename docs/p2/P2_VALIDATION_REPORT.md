@@ -106,3 +106,5 @@ Các báo cáo P2.1 mới:
 - [Causal before/after trace](BEFORE_AFTER_CAUSAL_TRACE.md) và [research validity](P2_RESEARCH_VALIDITY_REPORT.md).
 
 Kết quả trạng thái ở lần recheck: source package đã được commit và push; lock thật không có; Ollama có tag `qwen3:4b` nhưng không được gọi. Do đó inference, human review, actual optimizer/10-stage case run, revision experiment và semantic metrics vẫn chờ reviewer độc lập. UI source-only gate phát hiện và khắc phục việc raw Tutor input/helper mappings từng xuất hiện trước lock.
+
+Sau commit tài liệu `5a2ed9e10b03860037afacdec73818d97370a393`, [CI run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466) passed. Browser smoke trên app local ngày 2026-11-19 đã nạp Tutor case, kiểm DOM trước lock không có helper mappings hoặc proposal IDs `P1–P6/E1/B1`, kiểm nút `Run local Ollama proposals` vẫn disabled sau khi UI phát hiện model. Không thực hiện inference; đây là kiểm tra UI thủ công, không phải reviewed end-to-end case run.

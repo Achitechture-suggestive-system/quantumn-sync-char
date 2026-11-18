@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## P2.1 browser smoke documentation — 19/11/2026
+
+- Branch `feat/p1-semantic-validation`; report commit `5a2ed9e10b03860037afacdec73818d97370a393` đã push và remote ref được xác minh cùng SHA.
+- GitHub Actions [run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466) completed success trên đúng SHA.
+- Manual browser smoke nạp Tutor Support, xác nhận source-only pre-lock UI và model button bị disable khi chưa có lock; không gọi Ollama. Đây không phải E2E experiment.
+- Remote `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag ancestry giữ nguyên.
+
 ## P2.1 source-only reviewer package and lock validator — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; code commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` (`feat(p2): add source-only reviewer package`) đã push. `git ls-remote` xác nhận remote feature ref cùng SHA.

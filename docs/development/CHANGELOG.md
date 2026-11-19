@@ -1,5 +1,12 @@
 # Changelog
 
+## Sơ đồ tương tác Quantum Studio — 2026-11-19
+
+- Thay tab nhập bảng bằng sơ đồ kéo thả. Chỉnh component, tập characteristics, kho và quan hệ ngay trong sơ đồ. Tách tọa độ bố cục khỏi `Architecture`.
+- Vẽ đầu ra từ phân hoạch đã tính, truy vết component, cạnh và phần kho tới Quantum. Giải thích điểm bằng cùng đóng góp chi phí mà bộ giải sử dụng.
+- 143 bài kiểm tra qua. Browser smoke kiểm kéo thả, giữ tọa độ, ánh xạ cạnh ASYNC, truy kho tách, sửa characteristic, nối cạnh SYNC và tính lại trade-off. Ca kiểm tra khác Ticket Support đổi từ hai Quantum sang một khi đổi đặc tính.
+- [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44554382575) qua trên commit `f50836c40d5aa5bca7bda774b560423d69e25418`.
+
 ## Quantum Studio — 2026-11-19
 
 - Entry point mặc định đọc component, quan hệ Sync/Async, kho và characteristics. Bộ giải liệt kê phân hoạch, lọc ràng buộc cứng và so sánh các phương án Pareto.

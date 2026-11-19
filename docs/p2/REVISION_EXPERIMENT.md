@@ -26,3 +26,8 @@ Trong cả hai run không khai báo hard constraints; tập feasible vì vậy t
 ## Kết quả case study
 
 Chưa thực hiện revision experiment bằng accepted post-blind LLM proposal và quyết định reviewer thật. Trạng thái này được giữ `PENDING_HUMAN_REVIEW`; test-only result không thay thế yêu cầu case thật. Sau khi có decisions, cập nhật phần này bằng hashes và artifact diff trước/sau, không gắn nhãn human decision cho test harness.
+## Trạng thái demo live — 2026-11-19
+
+Đã có run EXPLORATORY_UNBLINDED_DEMO riêng: run-20261119T071904Z-ebd8fd64. Đây là inference qwen3:4b local mới, nhưng proposal chưa được review. Run có 0 role được chấp nhận và 0 constraint dẫn xuất, nên chưa có before/after optimizer experiment cho case này. Các hàng propagation phía trên vẫn chỉ là test-only.
+
+Trạng thái revision demo: AWAITING_DEMO_REVIEW. Stakeholder cần review responsibilities và relations thật; sau đó chọn một PRESENT relation đã duyệt, thỏa policy có tài liệu, trước khi revision UI dùng được. Người review nhập quyết định old/new, source, rationale và actor. Chỉ sau action đó mới ghi nhận full recomputation và before/after comparison.

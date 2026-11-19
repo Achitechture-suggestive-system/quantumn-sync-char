@@ -190,3 +190,11 @@
 - Local checks before push: 63 tests passed; `compileall -q app.py eqcr tests` passed; staged diff whitespace check passed; staged secret-pattern scan found no matches; no runs/snapshots/environment paths were staged.
 - GitHub Actions [run 43841700612](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43841700612) on the commit completed successfully. Regression/P1 tests and compile steps passed.
 - This is a protocol/code-wiring milestone only. It does not include a real source-only annotation, post-lock `qwen3:4b` inference, real proposal dispositions, a case revision experiment, or semantic metrics. Those remain pending human input.
+## 19/11/2026 — Tutor demo validation fix and live inference record
+
+- Branch: feat/tutor-exploratory-demo; P0 main and tag remain unchanged.
+- Code/test commit: 4a8b1a41f0f8eadea37d56e49dc68c1570fb3847 (fix(validation): mark absent unknown assertion not applicable).
+- Local verification: full pytest — 139 passed; compileall and git diff --check passed; staged secret scan clear.
+- Push verification: refs/heads/feat/tutor-exploratory-demo resolved to 4a8b1a41f0f8eadea37d56e49dc68c1570fb3847.
+- GitHub Actions run 44479878846 completed success on that SHA.
+- Live unblinded qwen3:4b run run-20261119T071904Z-ebd8fd64 is documented in docs/demo/TUTOR_E2E_DEMO_RESULT.md. Run artifacts were not staged or pushed. Demo currently awaits actual stakeholder review; blind P2 remains blocked.

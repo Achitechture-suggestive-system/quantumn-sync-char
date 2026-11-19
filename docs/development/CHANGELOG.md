@@ -164,3 +164,9 @@ Các mục dưới đây ghi nhận thay đổi đã được kiểm tra, không
 - Commit: 0dbd90675beb193c92d4fd06bd7ccf4bf95c61f3 — docs: explain implemented ten-step architecture pipeline.
 - Kiểm tra: 30 tests pass (1.10s), compileall PASS, AppTest zero exceptions, 21 Markdown files không có relative link hỏng, localhost health/root HTTP 200; staged secret scan không có match.
 - Push nhánh main được GitHub xác nhận cùng SHA; CI chưa có workflow.
+## 19/11/2026 — Tutor unblinded demo run
+
+- Connected the Tutor demo UI to the actual local qwen3:4b service and recorded run run-20261119T071904Z-ebd8fd64, its input/raw-response hashes, digest, prompt version, exact citation audit and all ten pre-review stage states.
+- The model returned 6 responsibility proposals, 2 relation proposals and 1 boundary hypothesis. No reviewer decisions were entered, so 0 responsibilities and constraints reached the optimizer; 0 partitions were enumerated. The UI remains at Human Review.
+- Corrected the validation report so a case without UNKNOWN evidence marks that assertion NOT_APPLICABLE instead of false. Added regression coverage; 139 tests and compileall passed.
+- Code commit 4a8b1a41f0f8eadea37d56e49dc68c1570fb3847 was pushed; GitHub Actions run 44479878846 passed. The live run remains local and excluded from blind research.

@@ -35,3 +35,8 @@ Nhánh `feat/tutor-exploratory-demo` bổ sung exploratory UI để trình diễ
 ## Demo branch tách biệt
 
 Nhánh `feat/tutor-exploratory-demo` bổ sung exploratory UI để có thể trình diễn model và downstream pipeline không cần blind lock. Bất kỳ live demo output nào cũng là `EXCLUDED_FROM_BLIND_RESEARCH` và được ghi ở `docs/demo/TUTOR_E2E_DEMO_RESULT.md`; nó không thay đổi trạng thái thí nghiệm mù ở trên, không tạo annotation độc lập và không cung cấp gold labels.
+## Run demo unblinded riêng — 2026-11-19
+
+Inference local thật đã chạy ở nhánh demo cách ly với run run-20261119T071904Z-ebd8fd64. Run này bị loại khỏi experiment: không có source-only lock hợp lệ trước inference, annotation độc lập hay adjudication. Blind experiment vẫn P2_BLOCKED_INDEPENDENT_ANNOTATION. Không báo semantic metric.
+
+Demo run đang chờ DEMO_STAKEHOLDER review thật trước khi accepted evidence đi vào policy evaluator và optimizer. Xem ../demo/TUTOR_E2E_DEMO_RESULT.md để biết model metadata, citations, audit và các output trước review.

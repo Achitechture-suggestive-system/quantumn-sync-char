@@ -31,3 +31,39 @@ Trong `EXPLORATORY_UNBLINDED_DEMO`, model call tạo proposal bundle; bước đ
 ## Trạng thái xác thực
 
 Code/test chứng minh flow deterministic và gate behavior. Một test-only AppTest exercise proposal-shaped data và revision để bảo đảm UI nối được. Không tính nó là inference thật hoặc semantic review. Chỉ artifacts trong [kết quả E2E](TUTOR_E2E_DEMO_RESULT.md) mới được gọi là lần chạy thực tế.
+## Output trực tiếp của run Tutor unblinded — 19/11/2026
+
+Run run-20261119T071904Z-ebd8fd64 đã gọi qwen3:4b local thật trên input SHA 7293d2b27ad89a48b737eab30bad4b448e75cfa2bcd625948280d24abfc2ad17. Bảng dưới đây nối từng việc code làm với output thực tế; không gộp proposal model vào evidence đã duyệt.
+
+| Stage | Xử lý trong run | Output render | Nguồn và trạng thái |
+|---|---|---|---|
+| 01 Context | Kiểm input IDs, schema và exact source spans. | 6 FR, 4 WF, 2 scenarios; PASS. | Prepared source package; structural only. |
+| 02 Responsibility | Gửi FR tới Ollama với schema/version và temperature 0; resolve citations. | P01–P06, một proposal mỗi FR; review required. | Live LLM proposal; chưa accepted. |
+| 03 Evidence | Kiểm relation endpoints, predicate và citations. | E01 FR-04→FR-05, E02 FR-05→FR-06; còn là proposal; 1 prepared scope-boundary row. | LLM proposals + prepared fixture; semantic meaning unassessed. |
+| 04 Policy | Chạy policy catalog có version trên evidence và role pairs đã review. | 0 constraints, 0 conflicts; hai policy result NOT_APPLICABLE. | Deterministic transformation + experimental policy. |
+| 05 Optimizer | Enumerate partitions của accepted roles. | 0 roles được nhận → 0 partition/feasible/optimal. | Deterministic; gate hoạt động. |
+| 06 Quantum | Gán responsibility vào partition đã chọn. | 0 quanta; INSUFFICIENT_EVIDENCE. | Deterministic. |
+| 07 Interactions | Trace scenario qua responsibility và quantum. | 0 edges; INSUFFICIENT_EVIDENCE. | Deterministic; chưa có Sync/Async contract. |
+| 08 QAME | Tạo profile sáu phần cho scenarios. | 2 profiles; NOT_MEASURED. | Prepared scenarios + mapping; chưa benchmark. |
+| 09 Human review | Lưu actor/action/reason/source và full recompute. | 0 quyết định; đang chờ người vận hành. | Chưa có Human Decision. |
+| 10 Verification | Kiểm traceability, constraint, completeness và provenance. | 10 stage records; overall REVIEW_REQUIRED. | Structural checks; không có semantic/production validation. |
+
+Chi tiết hash, proposal audit, trạng thái các validator và việc cần làm trong Human Review nằm tại TUTOR_E2E_DEMO_RESULT.md.
+## Output trực tiếp của run Tutor unblinded — 19/11/2026
+
+Run run-20261119T071904Z-ebd8fd64 đã gọi qwen3:4b local thật trên input SHA 7293d2b27ad89a48b737eab30bad4b448e75cfa2bcd625948280d24abfc2ad17. Bảng dưới đây nối việc code làm với output thực tế; proposal model không được gộp vào evidence đã duyệt.
+
+| Stage | Xử lý quan sát được | Output render | Nguồn và trạng thái |
+|---|---|---|---|
+| 01 Context | Kiểm input IDs, schema và exact source spans. | 6 FR, 4 WF, 2 scenarios; PASS. | Prepared source package; structural only. |
+| 02 Responsibility | Gửi FR tới Ollama với schema/version và temperature 0; resolve citations. | P01–P06, một proposal mỗi FR; REVIEW_REQUIRED. | Live LLM proposal; chưa accepted. |
+| 03 Evidence | Kiểm relation endpoints, predicate và citations. | E01 FR-04→FR-05, E02 FR-05→FR-06; còn là proposal; 1 prepared scope-boundary row. | LLM proposals + prepared fixture; semantic meaning unassessed. |
+| 04 Policy | Chạy policy catalog có version trên evidence và role pairs đã review. | 0 derived constraints, 0 conflicts; hai policy result NOT_APPLICABLE. | Deterministic transformation + experimental policy. |
+| 05 Optimizer | Enumerate partitions của accepted roles. | 0 roles được nhận → 0 partition/feasible/optimal. | Deterministic; review gate giữ optimizer không đọc model output raw. |
+| 06 Quantum | Gán responsibility vào partition đã chọn. | 0 quanta; INSUFFICIENT_EVIDENCE. | Deterministic. |
+| 07 Interactions | Trace scenario qua responsibility và quantum. | 0 edges; INSUFFICIENT_EVIDENCE. | Deterministic; chưa có Sync/Async contract. |
+| 08 QAME | Tạo profile sáu phần cho scenarios. | 2 profiles; NOT_MEASURED. | Prepared scenarios + mapping; chưa benchmark. |
+| 09 Human review | Lưu actor/action/reason/source và full recompute. | 0 decisions; đang chờ người vận hành. | Chưa có Human Decision. |
+| 10 Verification | Kiểm traceability, constraint, completeness và provenance. | 10 stage records; overall REVIEW_REQUIRED. | Structural checks; không có semantic/production validation. |
+
+Đầu ra trước review cố tình không có partition/Quantum groups: đây là hành vi của gate, không phải thiếu một lời gọi optimizer. Khi stakeholder gửi review thật, cùng flow sẽ nhận roles/evidence đã duyệt, chạy policy/optimizer rồi tạo interaction và QAME outputs. Xem hash và audit đầy đủ tại TUTOR_E2E_DEMO_RESULT.md.

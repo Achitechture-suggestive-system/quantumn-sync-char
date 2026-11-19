@@ -52,3 +52,12 @@ Test dùng `P2_TEST_ONLY`: **126 tests passed**, compileall và diff check passe
 Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` bổ sung cổng kiểu JSON cho requirements và các hàng proposal/relation/boundary/normalized requirements. ID sai kiểu được ghi như structural error; hàng không phải object hoặc raw requirements sai schema dừng bằng `P2ExperimentError` thay vì exception Python thô. Mapping FR vẫn được đếm độc lập với citation.
 
 Verification: **128 tests passed**, compileall và diff check passed; [CI run 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) passed. Adversarial records đều `P2_TEST_ONLY`; không phải LLM output thật hay semantic evaluation.
+## Inference demo Tutor unblinded thật — 2026-11-19
+
+Đây là ghi nhận demo exploratory riêng, không phải kết quả P2 blind. UI đã gọi qwen3:4b local cho run run-20261119T071904Z-ebd8fd64. Ollama version 0.40.16; model digest 359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7; prompt requirements-context-multiresponsibility-relation-boundary-v7; temperature 0. Input SHA-256: 7293d2b27ad89a48b737eab30bad4b448e75cfa2bcd625948280d24abfc2ad17. Raw-response SHA-256: 6503bbbdb75b1267f39c207ccb4613d12852fa6bf38d8d77b06fec72fa6973b8.
+
+Model đề xuất 6 responsibilities, 2 evidence relations và 1 boundary hypothesis. Cả sáu FR ID/source ID hợp lệ và exact span được resolve; không proposal nào bị đánh dấu duplicate. Hai relation resolve cả hai endpoint citations, không có cờ duplicate/conflict/self-relation. Boundary citations được resolve và không bị đánh dấu duplicate. Đây chỉ là structural/citation checks deterministic.
+
+Điểm cần reviewer xử lý: B01 trích FR-05 và FR-06 nhưng nói rằng responsibility thông báo tách riêng có thể gửi notice mà không chặn phản hồi của tutor; các requirements này không nêu thuộc tính runtime đó. Đây là rationale kiến trúc chưa có nguồn, đang chờ stakeholder quyết định. Không chạy ambiguity detector hay adjudication ngữ nghĩa; semantic correctness vẫn NOT_ASSESSED. E01/E02 là business-order hypotheses, không tự tạo optimizer constraints.
+
+Bundle này mang EXCLUDED_FROM_BLIND_RESEARCH. Không có source-only lock, independent reference labels, semantic accuracy metric hay human decision. Kết quả live và trạng thái downstream trước review được ghi trong docs/demo/TUTOR_E2E_DEMO_RESULT.md.

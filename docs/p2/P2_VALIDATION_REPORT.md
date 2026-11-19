@@ -148,3 +148,10 @@ Test-only AppTest exercise pending run (zero responsibilities), explicit review,
 Implementation milestone trên `feat/tutor-exploratory-demo` thêm mode `EXPLORATORY_UNBLINDED_DEMO`, lưu dưới `runs/demo-unblinded/`, ghi rõ `EXCLUDED_FROM_BLIND_RESEARCH`, và từ chối demo bundles trong blind evaluator. Nó cho phép operator trình diễn live model sau checkbox riêng, nhưng không tạo source-only lock, blind labels hoặc semantic score. Thay đổi demo không chuyển trạng thái P2 research khỏi `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
 
 Test-only AppTest exercise pending run (zero responsibilities), explicit review, policy-to-optimizer flow and evidence revision. Đây là kiểm tra wiring, không phải human decision hoặc kết quả case thật. Tại thời điểm code milestone chưa có live inference/review/revision; trạng thái demo được cập nhật riêng trong [demo report](../demo/TUTOR_E2E_DEMO_RESULT.md). P0 `main` giữ nguyên.
+## Ghi nhận demo Tutor unblinded live — 2026-11-19
+
+Run run-20261119T071904Z-ebd8fd64 ghi nhận lời gọi qwen3:4b local mới từ UI EXPLORATORY_UNBLINDED_DEMO riêng. Bundle lưu source-input hash, model digest, prompt version, generation parameter, timestamps và raw-response hash. Run nằm dưới runs/demo-unblinded và mang trạng thái EXCLUDED_FROM_BLIND_RESEARCH.
+
+Run đã render đủ mười stage records nhưng chưa hoàn tất reviewed case flow: chưa nhập human decision; responsibilities được chấp nhận và constraints dẫn xuất đều bằng 0, nên optimizer liệt kê 0 partition. Quantum và interaction outputs là INSUFFICIENT_EVIDENCE; hai QAME profiles là NOT_MEASURED. Chưa revision hoặc export. Điều này không thay P2_BLOCKED_INDEPENDENT_ANNOTATION, không tạo gold labels và không được tính là blind experiment evidence.
+
+Snapshot đầu tiên bộc lộ vấn đề applicability của validator: unknown_is_not_false trả false dù case không có UNKNOWN evidence. Commit 4a8b1a41f0f8eadea37d56e49dc68c1570fb3847 đổi trường hợp không có UNKNOWN thành null / NOT_APPLICABLE_NO_UNKNOWN_EVIDENCE và thêm regression test. Snapshot đầu tiên được giữ nguyên.

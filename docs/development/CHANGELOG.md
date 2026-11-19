@@ -1,5 +1,12 @@
 # Changelog
 
+## Quantum Studio — 2026-11-19
+
+- Entry point mặc định đọc component, quan hệ Sync/Async, kho và characteristics. Bộ giải liệt kê phân hoạch, lọc ràng buộc cứng và so sánh các phương án Pareto.
+- Human Review chọn nhanh ưu tiên, xem thứ hạng thay đổi, chọn A/B hoặc yêu cầu chỉnh. Mỗi quyết định lưu cùng mô hình và trade-off tại thời điểm review.
+- Ticket Support xét 203 cách chia, giữ 37 cách khả thi và tìm hai phương án tương ứng hình 2 và 3 dưới giả định demo. Giao diện nghiên cứu chuyển sang `research_app.py`.
+- 142 bài kiểm tra và compileall qua. Đã mở app cục bộ, kiểm tra hai sơ đồ và đổi ưu tiên trong trình duyệt. [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44491723562) qua trên commit `1f28da61b65bca28afc9fe891d0408e247484fbf`.
+
 ## Tutor exploratory demo isolation — 2026-11-19
 
 - Tạo nhánh `feat/tutor-exploratory-demo` từ feature P2 hiện tại, giữ `main`/P0 nguyên trạng. Thêm execution mode `EXPLORATORY_UNBLINDED_DEMO`, UI acknowledgement, storage root tách, demo eligibility trong metadata/manifest và evaluator gate để không nhận demo làm blind data.

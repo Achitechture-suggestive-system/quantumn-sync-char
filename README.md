@@ -25,6 +25,8 @@ Mở URL cục bộ mà Streamlit in ra. Nếu đã có môi trường ảo:
 
 - **Xác định/offline:** nạp fixture PRECOMPUTED tại eqcr/fixture.py và chạy pipeline cục bộ. Cùng đầu vào và revisions sẽ tạo cùng kết quả.
 - **JSON có cấu trúc:** tải template, cung cấp raw_requirements, responsibilities, evidence và constraints; ứng dụng kiểm tra schema, tham chiếu và source spans. Các ý nghĩa vẫn cần review.
+- **Tutor Exploratory Demo (unblinded):** chỉ mở sau khi người vận hành xác nhận unblinded; proposals chưa vào optimizer trước Human Review, run lưu dưới `runs/demo-unblinded/` và luôn `EXCLUDED_FROM_BLIND_RESEARCH`. Mode này không thay thế P2 blind experiment.
+- **Tutor Blind Research:** vẫn lock-first, cần source-only annotation độc lập hợp lệ; thiếu lock thì model proposals bị khóa.
 - **Ollama tùy chọn:** tạo đề xuất JSON cục bộ, kiểm tra schema rồi ánh xạ ID được trích dẫn vào spans chính xác của đầu vào. Mọi đề xuất vẫn REVIEW_REQUIRED; span khớp không đồng nghĩa ngữ nghĩa được duyệt.
 
 Luồng offline không cần Ollama. Để dùng model-assisted mode, chạy Ollama và cài model cục bộ như qwen3:4b; sau đó chọn **Check local Ollama models** trong UI.
@@ -36,11 +38,13 @@ Luồng offline không cần Ollama. Để dùng model-assisted mode, chạy Oll
 .\.venv\Scripts\python.exe -m compileall -q app.py eqcr
 ```
 
-P0 baseline được kiểm tra ngày 14/11/2026: 30 test pass; compileall, Streamlit AppTest và HTTP smoke cục bộ pass. Nhánh P1 có 44 test pass. Nhánh P2 hiện có 54 test pass, compileall và AppTest pass; xem [P2 validation](docs/p2/P2_VALIDATION_REPORT.md) và [P2 human worksheet](docs/p2/HUMAN_REVIEW_WORKSHEET.md). Case thật vẫn chờ reviewer; test-only decisions không phải annotation. Đây là kiểm tra cấu trúc/chạy cục bộ, không phải xác minh semantic hoặc chất lượng kiến trúc.
+P0 baseline được kiểm tra ngày 14/11/2026: 30 test pass; compileall, Streamlit AppTest và HTTP smoke cục bộ pass. Nhánh P1 có 44 test pass. Feature branch gần nhất đạt 138 test pass, compileall và AppTest; xem [P2 validation](docs/p2/P2_VALIDATION_REPORT.md), [P2 human worksheet](docs/p2/HUMAN_REVIEW_WORKSHEET.md) và [demo acceptance matrix](docs/demo/DEMO_ACCEPTANCE_MATRIX.md). Đây là kiểm tra code/fixture; không tự xác nhận semantic hoặc chất lượng kiến trúc. P2 blind case vẫn chờ independent annotation lock.
 
 ## Tài liệu
 
 [Đọc từ đây](docs/00_START_HERE.md) · [Vấn đề và phạm vi nghiên cứu](docs/01_RESEARCH_PROBLEM_AND_SCOPE.md) · [Pipeline 10 bước](docs/02_PIPELINE_01_TO_10.md) · [Kiến trúc và luồng dữ liệu](docs/03_ARCHITECTURE_AND_DATA_FLOW.md) · [Schema và truy vết](docs/04_DATA_SCHEMAS_AND_TRACEABILITY.md) · [Kiểm tra và giới hạn](docs/05_VALIDATION_AND_RESEARCH_LIMITS.md) · [Human-in-the-loop](docs/06_HUMAN_IN_THE_LOOP.md) · [Giải thích PetClinic](docs/07_CURRENT_SYSTEM_EXPLAINED_VI.md) · [P2 Tutor Support](docs/p2/NEW_CASE_STUDY.md) · [P1 semantic evaluation](docs/verification/P1_SEMANTIC_EVALUATION.md) · [P2 validation](docs/p2/P2_VALIDATION_REPORT.md) · [Lộ trình](docs/09_ROADMAP_AND_BACKLOG.md) · [Changelog](docs/development/CHANGELOG.md) · [Nhật ký GitHub](docs/development/GITHUB_PUBLISH_LOG.md).
+
+Hướng dẫn và giới hạn riêng cho [Tutor exploratory demo](docs/demo/TUTOR_EXPLORATORY_DEMO_WALKTHROUGH.md), [logic pipeline tiếng Việt](docs/demo/CURRENT_MVP_LOGIC_VI.md), [so sánh demo với nghiên cứu mù](docs/demo/DEMO_VS_BLIND_RESEARCH.md), [kết quả E2E](docs/demo/TUTOR_E2E_DEMO_RESULT.md) và [acceptance matrix](docs/demo/DEMO_ACCEPTANCE_MATRIX.md).
 
 ## Giới hạn cần trình bày cùng demo
 

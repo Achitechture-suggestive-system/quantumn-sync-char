@@ -1,5 +1,13 @@
 # Changelog
 
+## Tutor exploratory demo isolation — 2026-11-19
+
+- Tạo nhánh `feat/tutor-exploratory-demo` từ feature P2 hiện tại, giữ `main`/P0 nguyên trạng. Thêm execution mode `EXPLORATORY_UNBLINDED_DEMO`, UI acknowledgement, storage root tách, demo eligibility trong metadata/manifest và evaluator gate để không nhận demo làm blind data.
+- Tutor Ollama proposals chỉ là audit artifacts lúc chờ review. Test-only AppTest đi qua explicit review → policy-derived soft constraint → optimizer → full evidence revision/recompute và hash/snapshot audit; đây là wiring test, không phải inference hoặc human decision thật.
+- Bổ sung capture Ollama/model metadata nếu endpoint khả dụng và yêu cầu actor/reason/source nhập thật cho demo review. Sửa trạng thái chờ review để chạy khi optimizer roles còn rỗng.
+- Verification: 138 tests pass; compileall và `git diff --check` pass. Commit `f981e55125ddee3f3c10a34d4adb8c4319b3fa04` đã push lên nhánh mới; GitHub Actions [run `44476894324`](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44476894324) completed success trên đúng SHA. Chưa có live inference hoặc stakeholder action; [demo result](../demo/TUTOR_E2E_DEMO_RESULT.md) giữ đúng trạng thái đó.
+- Scientific P2 vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`; không có semantic metric, gold label hoặc thay đổi P0.
+
 ## Automated UI regression — 2026-11-19
 
 - Thêm Streamlit `AppTest` chạy PetClinic offline flow từ load đến đủ 10 pipeline stages, kiểm tra trạng thái fixture, QAME trace chain và `NOT_MEASURED`/`INSUFFICIENT_EVIDENCE`.

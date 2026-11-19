@@ -136,3 +136,15 @@ Các báo cáo P2.1 mới:
 Kết quả trạng thái ở lần recheck: source package đã được commit và push; lock thật không có; Ollama có tag `qwen3:4b` nhưng không được gọi. Do đó inference, human review, actual optimizer/10-stage case run, revision experiment và semantic metrics vẫn chờ reviewer độc lập. UI source-only gate phát hiện và khắc phục việc raw Tutor input/helper mappings từng xuất hiện trước lock.
 
 Sau commit tài liệu `5a2ed9e10b03860037afacdec73818d97370a393`, [CI run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466) passed. Browser smoke trên app local ngày 2026-11-19 đã nạp Tutor case, kiểm DOM trước lock không có helper mappings hoặc proposal IDs `P1–P6/E1/B1`, kiểm nút `Run local Ollama proposals` vẫn disabled sau khi UI phát hiện model. Không thực hiện inference; đây là kiểm tra UI thủ công, không phải reviewed end-to-end case run.
+
+## Nhánh demo unblinded được cách ly — 2026-11-19
+
+Implementation milestone trên `feat/tutor-exploratory-demo` thêm mode `EXPLORATORY_UNBLINDED_DEMO`, lưu dưới `runs/demo-unblinded/`, ghi rõ `EXCLUDED_FROM_BLIND_RESEARCH`, và từ chối demo bundles trong blind evaluator. Nó cho phép operator trình diễn live model sau checkbox riêng, nhưng không tạo source-only lock, blind labels hoặc semantic score. Thay đổi demo không chuyển trạng thái P2 research khỏi `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
+Test-only AppTest exercise pending run (zero responsibilities), explicit review, policy-to-optimizer flow and evidence revision. Đây là kiểm tra wiring, không phải human decision hoặc kết quả case thật. Tại thời điểm code milestone chưa có live inference/review/revision; trạng thái demo được cập nhật riêng trong [demo report](../demo/TUTOR_E2E_DEMO_RESULT.md). P0 `main` giữ nguyên.
+
+## Nhánh demo unblinded được cách ly — 2026-11-19
+
+Implementation milestone trên `feat/tutor-exploratory-demo` thêm mode `EXPLORATORY_UNBLINDED_DEMO`, lưu dưới `runs/demo-unblinded/`, ghi rõ `EXCLUDED_FROM_BLIND_RESEARCH`, và từ chối demo bundles trong blind evaluator. Nó cho phép operator trình diễn live model sau checkbox riêng, nhưng không tạo source-only lock, blind labels hoặc semantic score. Thay đổi demo không chuyển trạng thái P2 research khỏi `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
+Test-only AppTest exercise pending run (zero responsibilities), explicit review, policy-to-optimizer flow and evidence revision. Đây là kiểm tra wiring, không phải human decision hoặc kết quả case thật. Tại thời điểm code milestone chưa có live inference/review/revision; trạng thái demo được cập nhật riêng trong [demo report](../demo/TUTOR_E2E_DEMO_RESULT.md). P0 `main` giữ nguyên.

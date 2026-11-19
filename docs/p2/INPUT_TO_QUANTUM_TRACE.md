@@ -71,3 +71,15 @@ Nếu constraint hoặc assignment không đổi, phải nêu nguyên nhân bằ
 Run `qwen3:4b` v6 trước blind checkpoint là `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`; chi tiết trong `LLM_EXTRACTION_EVALUATION.md`. Không tính nó là run hậu protocol.
 
 Unit tests hiện kiểm chứng test-only proposal/review/evidence đi qua optimizer, tạo 203 phân hoạch khi 6 R, constraint soft đổi optimal/display assignment, rồi đổi interaction `same_quantum`; source IDs giữ traceability và hard constraints được kiểm từng candidate. Đây là bằng chứng code path deterministic, không phải semantic outcome của Tutor Support. Chưa có case run hậu-blind/review thật.
+
+## Tách biệt đường Tutor Exploratory Demo — 2026-11-19
+
+Demo mode có cơ chế riêng: inference unblinded chỉ sau acknowledgement; `_build_unreviewed_demo_fixture` xóa responsibilities, proposal evidence và constraints trước `run_pipeline`; `ollama_proposals` chỉ nằm trong audit artifact. Human review thật mới materialize responsibility/evidence inputs. Sau đó `_derive_evidence_constraints` đọc evidence approved, citation refs, relation annotation, implication và named role pair; output constraints được truyền đến `_optimize`. `run_pipeline` tiếp tục dựng quanta, interactions, QAME profiles và traceability. `apply_tutor_demo_review` yêu cầu demo actor và acknowledgement, nhưng đánh dấu mọi decision `EXCLUDED_FROM_BLIND_RESEARCH`.
+
+Mode này không dùng `validate_p2_proposal_bundle` hoặc `evaluate_p2_structure` làm semantic evaluator; hai entrypoint từ chối bundle demo. Test mới gọi Ollama adapter qua mock và exercise app review/revision bằng dữ liệu `TEST_ONLY`. Tại implementation checkpoint chưa có proposal/output live hoặc human decision; xem riêng [demo result](../demo/TUTOR_E2E_DEMO_RESULT.md). Blind path và lock gate không đổi.
+
+## Tách biệt đường Tutor Exploratory Demo — 2026-11-19
+
+Demo mode có cơ chế riêng: inference unblinded chỉ sau acknowledgement; `_build_unreviewed_demo_fixture` xóa responsibilities, proposal evidence và constraints trước `run_pipeline`; `ollama_proposals` chỉ được lưu như audit artifact. Human review thật mới materialize responsibility/evidence inputs. Sau đó `_derive_evidence_constraints` đọc evidence đã approved, citation refs, relation annotation, implication và named role pair; output constraints được truyền vào `_optimize`. `run_pipeline` tiếp tục dựng quanta, interactions, QAME profiles và traceability. `apply_tutor_demo_review` yêu cầu demo actor và acknowledgement, nhưng đánh dấu mọi decision `EXCLUDED_FROM_BLIND_RESEARCH`.
+
+Mode này không gọi `validate_p2_proposal_bundle` hoặc `evaluate_p2_structure` thành semantic evaluator; hai entrypoints đó từ chối bundle demo. Các test mới gọi Ollama adapter qua mock và exercise app review/revision với dữ liệu `TEST_ONLY`. Tại implementation checkpoint chưa có proposal/output live hoặc human decision; xem riêng [demo result](../demo/TUTOR_E2E_DEMO_RESULT.md). Blind path và lock gate không đổi.

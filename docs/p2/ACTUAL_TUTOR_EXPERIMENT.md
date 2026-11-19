@@ -27,3 +27,11 @@
 ## Kết luận
 
 Trạng thái experiment: `P2_BLOCKED_INDEPENDENT_ANNOTATION`. Khả dụng model và kiểm thử causal code path không trả lời được câu hỏi nghiên cứu trên case mới. Cần reviewer lock từ package source-only trước khi có thể chạy inference thật. Tài liệu này không ghi semantic accuracy score, expert label hoặc output giả lập.
+
+## Demo branch tách biệt
+
+Nhánh `feat/tutor-exploratory-demo` bổ sung exploratory UI để trình diễn model và downstream pipeline không cần blind lock. Bất kỳ live demo output nào cũng là `EXCLUDED_FROM_BLIND_RESEARCH` và được ghi ở `docs/demo/TUTOR_E2E_DEMO_RESULT.md`; nó không thay đổi trạng thái thí nghiệm mù ở trên, không tạo annotation độc lập và không cung cấp gold labels.
+
+## Demo branch tách biệt
+
+Nhánh `feat/tutor-exploratory-demo` bổ sung exploratory UI để có thể trình diễn model và downstream pipeline không cần blind lock. Bất kỳ live demo output nào cũng là `EXCLUDED_FROM_BLIND_RESEARCH` và được ghi ở `docs/demo/TUTOR_E2E_DEMO_RESULT.md`; nó không thay đổi trạng thái thí nghiệm mù ở trên, không tạo annotation độc lập và không cung cấp gold labels.

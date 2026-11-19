@@ -1,5 +1,13 @@
 # Nhật ký publish GitHub
 
+## Tutor exploratory demo isolation — 2026-11-19
+
+- Repository: private `Achitechture-suggestive-system/quantumn-sync-char`; branch `feat/tutor-exploratory-demo` từ HEAD P2 feature hiện hữu. Không checkout/sửa `main`.
+- Implementation + tests commit: `f981e55125ddee3f3c10a34d4adb8c4319b3fa04` (`feat(demo): isolate Tutor unblinded workflow`). Local pre-push: **138 tests passed**, `compileall -q app.py eqcr tests scripts` passed, `git diff --check` passed. Staged secret-pattern scan không có match; chỉ stage app/modules/test files cụ thể; không stage `runs/`, `.venv`, export hay credentials.
+- `git ls-remote` xác nhận `refs/heads/feat/tutor-exploratory-demo` khớp commit đầy đủ. P0 `main` vẫn `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; tag `p0-demo-2026-11-14` vẫn `02531985dd915318fc7a30f800c6b17bf9e6f95f`.
+- GitHub Actions run [44476894324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44476894324) completed `success` trên đúng head SHA `f981e55125ddee3f3c10a34d4adb8c4319b3fa04`.
+- Code/tests không bao gồm live qwen inference hoặc human review. Demo path loại khỏi blind research; P2 lock, labels và semantic score chưa có.
+
 ## Automated UI regression — 19/11/2026
 
 - Branch `feat/p1-semantic-validation`; test commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` (`test(ui): cover ten-stage offline flow`) đã push; `git ls-remote` xác nhận feature ref đúng SHA.

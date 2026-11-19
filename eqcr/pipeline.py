@@ -1256,6 +1256,12 @@ def run_pipeline(
             "responsibility_provenance": fixture.get("responsibility_provenance", fixture["fixture_label"]),
         },
     }
+    if execution_mode == "EXPLORATORY_UNBLINDED_DEMO":
+        validation_report["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+        artifacts["metadata"]["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+        artifacts["metadata"]["demo_status"] = (
+            "AWAITING_DEMO_REVIEW" if not decisions else "DEMO_REVIEW_RECORDED"
+        )
     refresh_traceability_artifact(artifacts)
     validation_report["assertions"]["traceability_workflow_mappings_explicit"] = artifacts["traceability"][
         "assertions"

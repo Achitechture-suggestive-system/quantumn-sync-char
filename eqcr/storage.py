@@ -194,6 +194,7 @@ def _build_bundle_manifest(artifacts: dict[str, Any], member_hashes: dict[str, s
         "case_id": raw.get("case_id"),
         "run_id": artifacts.get("metadata", {}).get("run_id"),
         "execution_mode": artifacts.get("metadata", {}).get("execution_mode"),
+        "research_eligibility": artifacts.get("metadata", {}).get("research_eligibility", "NOT_APPLICABLE"),
         "input_hashes": {
             "raw_requirements_sha256": _canonical_sha256(raw) if raw else None,
             "source_refs_sha256": _canonical_sha256(source_refs) if source_refs else None,

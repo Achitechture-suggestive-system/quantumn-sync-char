@@ -76,9 +76,16 @@ def propose_responsibilities(
     *,
     blind_annotation_lock: dict[str, Any] | None = None,
     source_package_root: Path | None = None,
+    demo_unblinded: bool = False,
+    demo_acknowledged: bool = False,
 ) -> dict[str, Any]:
     if raw.get("case_id") == "TUTOR-SUPPORT-P2-01":
-        if not verify_blind_annotation_lock(
+        if demo_unblinded:
+            if not demo_acknowledged:
+                raise OllamaError("Unblinded Tutor demo requires explicit acknowledgement; no research lock is created.")
+            if blind_annotation_lock is not None:
+                raise OllamaError("The unblinded demo mode cannot carry a blind-research annotation lock.")
+        elif not verify_blind_annotation_lock(
             raw,
             blind_annotation_lock,
             source_package_root=source_package_root,
@@ -161,6 +168,25 @@ def propose_responsibilities(
         parsed = LLMProposalBundle.model_validate_json(content)
     except Exception as exc:
         raise OllamaError(f"Model output did not match the proposal schema: {exc}") from exc
+    response_model = response.get("model", model)
+    model_digest = None
+    model_size_bytes = None
+    model_metadata_status = "NOT_REQUESTED_FOR_THIS_MODE"
+    ollama_version = None
+    if demo_unblinded:
+        try:
+            installed_model = next(
+                (item for item in list_model_details() if item.get("name") == response_model),
+                None,
+            )
+            if installed_model is not None:
+                model_digest = installed_model.get("digest")
+                model_size_bytes = installed_model.get("size")
+                model_metadata_status = "AVAILABLE" if model_digest else "PARTIAL"
+            ollama_version = get_ollama_version()
+        except OllamaError:
+            # Successful inference remains usable; missing runtime metadata is explicit.
+            model_metadata_status = "UNAVAILABLE"
     checks = []
     proposal_requirement_counts: dict[str, int] = {}
     for proposal in parsed.proposals:
@@ -390,7 +416,11 @@ def propose_responsibilities(
     )
     return {
         "model": model,
-        "response_model": response.get("model", model),
+        "response_model": response_model,
+        "ollama_version": ollama_version,
+        "model_digest": model_digest,
+        "model_size_bytes": model_size_bytes,
+        "model_metadata_status": model_metadata_status,
         "prompt_version": PROMPT_VERSION,
         "input_sha256": input_sha256,
         "inference_started_at_utc": inference_started_at_utc,
@@ -423,6 +453,20 @@ def propose_responsibilities(
         ),
         "can_apply_to_fixture": can_apply,
         "blind_annotation_lock": deepcopy(blind_annotation_lock),
+        "execution_mode": (
+            "EXPLORATORY_UNBLINDED_DEMO"
+            if demo_unblinded
+            else "P2_BLIND_RESEARCH"
+            if raw.get("case_id") == "TUTOR-SUPPORT-P2-01"
+            else "OLLAMA_ASSISTED"
+        ),
+        "research_eligibility": (
+            "EXCLUDED_FROM_BLIND_RESEARCH"
+            if demo_unblinded
+            else "BLIND_RESEARCH_LOCK_REQUIRED"
+            if raw.get("case_id") == "TUTOR-SUPPORT-P2-01"
+            else "NOT_APPLICABLE"
+        ),
         "status": "REVIEW_REQUIRED",
         "provenance": "LOCAL_OLLAMA_UNVERIFIED",
     }
@@ -436,6 +480,10 @@ def apply_proposals_to_fixture(fixture: dict[str, Any], proposal_data: dict[str,
     requirements = {
         item["id"]: item for item in updated["raw_requirements"]["requirements"]
     }
+    unblinded_demo = proposal_data.get("execution_mode") == "EXPLORATORY_UNBLINDED_DEMO"
+    responsibility_provenance = (
+        "LOCAL_OLLAMA_PROPOSAL_UNBLINDED" if unblinded_demo else "LOCAL_OLLAMA_PROPOSAL"
+    )
     new_responsibilities = []
     for index, proposal in enumerate(proposal_data["proposals"], start=1):
         source_refs = []
@@ -448,6 +496,7 @@ def apply_proposals_to_fixture(fixture: dict[str, Any], proposal_data: dict[str,
             {
                 "id": f"R{index}",
                 "proposal_id": proposal["id"],
+                "provenance": responsibility_provenance,
                 "name": proposal["name"],
                 "activity": proposal["activity"],
                 "operation": proposal["operation"],
@@ -469,7 +518,12 @@ def apply_proposals_to_fixture(fixture: dict[str, Any], proposal_data: dict[str,
     updated["evidence"] = kept_evidence
     updated["relation_annotations"] = []
     updated["responsibility_review_complete"] = False
-    updated["responsibility_provenance"] = "LOCAL_OLLAMA_UNVERIFIED"
+    updated["responsibility_provenance"] = (
+        "LOCAL_OLLAMA_PROPOSAL_UNBLINDED" if unblinded_demo else "LOCAL_OLLAMA_UNVERIFIED"
+    )
+    updated["research_eligibility"] = (
+        "EXCLUDED_FROM_BLIND_RESEARCH" if unblinded_demo else "PENDING_REVIEW"
+    )
     updated["context_proposal"] = {
         "context_summary": proposal_data["context_summary"],
         "normalized_requirements": proposal_data["normalized_requirements"],

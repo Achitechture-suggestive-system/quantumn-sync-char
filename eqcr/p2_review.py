@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .models import EvidenceRecord, RelationAnnotation
@@ -27,33 +27,59 @@ def _required_fields(item: dict[str, Any], decision_type: str) -> None:
         raise ValueError(f"{decision_type} decisions require action, reason, source, and actor.")
 
 
-def apply_tutor_human_review(
+def _apply_tutor_review(
     fixture: dict[str, Any],
     proposal_data: dict[str, Any],
     review: dict[str, Any],
+    *,
+    mode: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Record optional human dispositions; only accepted roles and explicit architecture pairs reach QAME."""
+    """Record human dispositions after the mode-specific research/demo gate."""
     updated = deepcopy(fixture)
     if not isinstance(review, dict):
         raise ValueError("Human review input must be a JSON object.")
     raw = updated["raw_requirements"]
     if raw["case_id"] != "TUTOR-SUPPORT-P2-01":
-        raise ValueError("Tutor P2 review can only be applied to TUTOR-SUPPORT-P2-01.")
+        raise ValueError("Tutor review can only be applied to TUTOR-SUPPORT-P2-01.")
     blind_bundle = proposal_data.get("blind_annotation_lock")
-    if not verify_blind_annotation_lock(raw, blind_bundle):
-        raise ValueError("The source-only annotation lock is missing, changed, or bound to different sources.")
+    demo_actor = ""
+    if mode == "EXPLORATORY_UNBLINDED_DEMO":
+        if (
+            proposal_data.get("execution_mode") != mode
+            or proposal_data.get("research_eligibility") != "EXCLUDED_FROM_BLIND_RESEARCH"
+            or blind_bundle is not None
+        ):
+            raise ValueError("Unblinded demo review requires an explicitly unblinded proposal bundle without a research lock.")
+        if review.get("demo_unblinded_acknowledged") is not True:
+            raise ValueError("Demo review requires an explicit acknowledgement that outputs are unblinded and not gold labels.")
+        demo_actor = review.get("demo_actor", "")
+        if not isinstance(demo_actor, str) or not demo_actor.strip():
+            raise ValueError("Demo review requires the actual demo stakeholder identifier.")
+    elif mode == "P2_BLIND_RESEARCH":
+        if not verify_blind_annotation_lock(raw, blind_bundle):
+            raise ValueError("The source-only annotation lock is missing, changed, or bound to different sources.")
+    else:
+        raise ValueError("Unknown Tutor review mode.")
     if proposal_data.get("input_sha256") != source_bundle_sha256(raw):
         raise ValueError("The model proposal bundle is not bound to this exact frozen source package.")
     try:
-        locked_at = datetime.fromisoformat(blind_bundle["lock"]["locked_at"].replace("Z", "+00:00"))
         inference_started = datetime.fromisoformat(proposal_data["inference_started_at_utc"].replace("Z", "+00:00"))
         inference_completed = datetime.fromisoformat(proposal_data["inference_completed_at_utc"].replace("Z", "+00:00"))
     except (KeyError, TypeError, ValueError, AttributeError) as exc:
-        raise ValueError("Proposal bundle must record a valid UTC inference interval after the blind checkpoint.") from exc
-    if any(value.tzinfo is None for value in (locked_at, inference_started, inference_completed)):
-        raise ValueError("Blind-lock and inference timestamps must include a timezone.")
-    if not locked_at <= inference_started <= inference_completed:
-        raise ValueError("The source-only annotation must be locked before local inference starts.")
+        raise ValueError("Proposal bundle must record a valid timezone-aware local inference interval.") from exc
+    if any(value.tzinfo is None for value in (inference_started, inference_completed)):
+        raise ValueError("Inference timestamps must include a timezone.")
+    if inference_started > inference_completed:
+        raise ValueError("The local inference interval is invalid.")
+    if mode == "P2_BLIND_RESEARCH":
+        try:
+            locked_at = datetime.fromisoformat(blind_bundle["lock"]["locked_at"].replace("Z", "+00:00"))
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise ValueError("Proposal bundle must record a valid blind-lock timestamp.") from exc
+        if locked_at.tzinfo is None:
+            raise ValueError("Blind-lock timestamp must include a timezone.")
+        if locked_at > inference_started:
+            raise ValueError("The source-only annotation must be locked before local inference starts.")
 
     requirements = {item["id"]: item for item in raw["requirements"]}
     workflows = {item["id"]: item for item in raw["workflows"]}
@@ -85,8 +111,33 @@ def apply_tutor_human_review(
             return False
         return refs == [requirements[item]["source_ref"] for item in requirement_ids]
 
-    decisions: list[dict[str, Any]] = [
-        {
+    if mode == "EXPLORATORY_UNBLINDED_DEMO":
+        decisions: list[dict[str, Any]] = [
+            {
+                "decision_id": "D00",
+                "decision_type": "UNBLINDED_DEMO_ACKNOWLEDGEMENT",
+                "target_step": "09",
+                "target_artifact": "demo_research_eligibility",
+                "object_id": proposal_data.get("run_id", proposal_data["input_sha256"]),
+                "action": "ACKNOWLEDGED",
+                "old_value": None,
+                "new_value": {
+                    "execution_mode": mode,
+                    "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+                    "input_sha256": proposal_data["input_sha256"],
+                },
+                "reason": "Demo stakeholder acknowledged that this exposure is unblinded and cannot create gold labels.",
+                "source": "EXPLORATORY_DEMO_UI_ACKNOWLEDGEMENT",
+                "actor": demo_actor.strip(),
+                "actor_role": "DEMO_STAKEHOLDER",
+                "created_at_utc": datetime.now(timezone.utc).isoformat(),
+                "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+                "result": "ACKNOWLEDGED_NOT_A_SEMANTIC_LABEL",
+            }
+        ]
+    else:
+        decisions = [
+            {
             "decision_id": "D00",
             "decision_type": "BLIND_ANNOTATION_CHECKPOINT",
             "target_step": "02",
@@ -105,8 +156,8 @@ def apply_tutor_human_review(
             "source": "P2-BLIND-ANNOTATION",
             "actor": blind_bundle["lock"]["reviewer_id"],
             "result": "CHECKPOINT_RECORDED_NOT_IDENTITY_VERIFIED",
-        }
-    ]
+            }
+        ]
 
     responsibility_decisions = {item["proposal_id"]: item for item in review.get("responsibilities", [])}
     if len(responsibility_decisions) != len(review.get("responsibilities", [])):
@@ -172,7 +223,13 @@ def apply_tutor_human_review(
             produced.append(
                 add_responsibility(
                     proposal,
-                        provenance="P2_TEST_ONLY" if test_only_proposals else "LOCAL_OLLAMA_PROPOSAL",
+                    provenance=(
+                        "P2_TEST_ONLY"
+                        if test_only_proposals
+                        else "LOCAL_OLLAMA_PROPOSAL_UNBLINDED"
+                        if mode == "EXPLORATORY_UNBLINDED_DEMO"
+                        else "LOCAL_OLLAMA_PROPOSAL"
+                    ),
                     proposal_id=proposal["id"],
                 )
             )
@@ -315,7 +372,13 @@ def apply_tutor_human_review(
                     "source_workflow_ids": [],
                     "rationale": proposal["rationale"],
                 }
-                provenance = "P2_TEST_ONLY" if test_only_proposals else "LOCAL_OLLAMA_REVIEWED"
+                provenance = (
+                    "P2_TEST_ONLY"
+                    if test_only_proposals
+                    else "LOCAL_OLLAMA_UNBLINDED_DEMO"
+                    if mode == "EXPLORATORY_UNBLINDED_DEMO"
+                    else "LOCAL_OLLAMA_REVIEWED"
+                )
             else:
                 correction = decision.get("correction", {})
                 provenance = "HUMAN_OVERRIDE"
@@ -420,6 +483,8 @@ def apply_tutor_human_review(
                             provenance=(
                                 "P2_TEST_ONLY"
                                 if provenance == "P2_TEST_ONLY"
+                                else "MODEL_PROPOSED_UNBLINDED_DEMO"
+                                if provenance == "LOCAL_OLLAMA_UNBLINDED_DEMO"
                                 else "MODEL_PROPOSED"
                                 if provenance == "LOCAL_OLLAMA_REVIEWED"
                                 else "HUMAN_OVERRIDE"
@@ -519,11 +584,47 @@ def apply_tutor_human_review(
         requirement_ids - {fr for item in reviewed_responsibilities for fr in item["requirement_ids"]}
     )
     updated["responsibility_review_complete"] = True
-    updated["independent_annotation_lock"] = deepcopy(blind_bundle)
-    updated["responsibility_provenance"] = "P2_TEST_ONLY" if test_only_proposals else "LOCAL_OLLAMA_HUMAN_REVIEWED"
-    updated["fixture_note"] = (
-        "Tutor Support source package was frozen; a source-only annotation was hash-locked before model review. "
-        "Responsibility cardinality is variable, and only explicitly accepted/corrected roles enter optimization. "
-        "Business ordering is recorded separately from architectural candidate constraints."
+    updated["independent_annotation_lock"] = deepcopy(blind_bundle) if mode == "P2_BLIND_RESEARCH" else None
+    updated["research_eligibility"] = (
+        "EXCLUDED_FROM_BLIND_RESEARCH"
+        if mode == "EXPLORATORY_UNBLINDED_DEMO"
+        else "P2_BLIND_RESEARCH_PENDING_ADJUDICATED_REFERENCE"
     )
+    updated["responsibility_provenance"] = (
+        "P2_TEST_ONLY"
+        if test_only_proposals
+        else "LOCAL_OLLAMA_PROPOSAL_UNBLINDED"
+        if mode == "EXPLORATORY_UNBLINDED_DEMO"
+        else "LOCAL_OLLAMA_HUMAN_REVIEWED"
+    )
+    if mode == "EXPLORATORY_UNBLINDED_DEMO":
+        for decision in decisions:
+            decision.setdefault("actor_role", "DEMO_STAKEHOLDER")
+            decision.setdefault("created_at_utc", datetime.now(timezone.utc).isoformat())
+            decision["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+            decision["demo_run_id"] = proposal_data.get("run_id")
+        updated["fixture_note"] = (
+            "Exploratory unblinded Tutor demo. Local model outputs and stakeholder decisions are excluded from blind "
+            "research labels; only reviewed roles/evidence enter this deterministic candidate pipeline."
+        )
+    else:
+        updated["fixture_note"] = (
+            "Tutor Support source package was frozen; a source-only annotation was hash-locked before model review. "
+            "Responsibility cardinality is variable, and only explicitly accepted/corrected roles enter optimization. "
+            "Business ordering is recorded separately from architectural candidate constraints."
+        )
     return updated, decisions
+
+
+def apply_tutor_human_review(
+    fixture: dict[str, Any], proposal_data: dict[str, Any], review: dict[str, Any]
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Review the Tutor blind-research proposal path; a valid lock remains mandatory."""
+    return _apply_tutor_review(fixture, proposal_data, review, mode="P2_BLIND_RESEARCH")
+
+
+def apply_tutor_demo_review(
+    fixture: dict[str, Any], proposal_data: dict[str, Any], review: dict[str, Any]
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Review an explicitly unblinded demo; it can never be research-eligible."""
+    return _apply_tutor_review(fixture, proposal_data, review, mode="EXPLORATORY_UNBLINDED_DEMO")

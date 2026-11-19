@@ -378,8 +378,22 @@ def apply_evidence_relation_edit(
     actor: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Revise an approved architecture candidate using registered relations and explicit role pairs."""
-    if not all((object_id.strip(), subject_requirement_id.strip(), predicate.strip(), object_requirement_id.strip(), subject_responsibility_id.strip(), object_responsibility_id.strip(), architecture_implication.strip(), architecture_rationale.strip(), reason.strip(), source.strip(), actor.strip())):
-        raise ValueError("Evidence, FR endpoints, registered predicate, responsibility pair, architectural rationale, reason, source, and reviewer are required.")
+    required_values = {
+        "evidence ID": object_id,
+        "subject requirement": subject_requirement_id,
+        "registered predicate": predicate,
+        "object requirement": object_requirement_id,
+        "subject responsibility": subject_responsibility_id,
+        "object responsibility": object_responsibility_id,
+        "architecture implication": architecture_implication,
+        "architecture rationale": architecture_rationale,
+        "reason": reason,
+        "source": source,
+        "reviewer": actor,
+    }
+    missing = [name for name, value in required_values.items() if not isinstance(value, str) or not value.strip()]
+    if missing:
+        raise ValueError(f"Evidence revision is missing required fields: {', '.join(missing)}.")
     if subject_requirement_id == object_requirement_id:
         raise ValueError("An evidence relation must connect two different requirements.")
     predicate = predicate.strip().upper()

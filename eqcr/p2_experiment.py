@@ -88,6 +88,11 @@ def validate_p2_proposal_bundle(
     allow_test_only: bool = False,
     source_package_root: Path | None = None,
 ) -> None:
+    if (
+        proposal_bundle.get("execution_mode") == "EXPLORATORY_UNBLINDED_DEMO"
+        or proposal_bundle.get("research_eligibility") == "EXCLUDED_FROM_BLIND_RESEARCH"
+    ):
+        raise P2ExperimentError("Exploratory unblinded demo proposals are permanently excluded from blind P2 evaluation.")
     if raw.get("case_id") != "TUTOR-SUPPORT-P2-01":
         raise P2ExperimentError("P2 experiment validation is restricted to the prepared Tutor Support case.")
     lock_bundle = proposal_bundle.get("blind_annotation_lock")
@@ -137,6 +142,11 @@ def evaluate_p2_structure(raw: dict[str, Any], proposal_bundle: dict[str, Any]) 
         raise P2ExperimentError("Every raw requirement must be a JSON object with a string ID.")
     if not isinstance(proposal_bundle, dict):
         raise P2ExperimentError("Proposal bundle must be a JSON object.")
+    if (
+        proposal_bundle.get("execution_mode") == "EXPLORATORY_UNBLINDED_DEMO"
+        or proposal_bundle.get("research_eligibility") == "EXCLUDED_FROM_BLIND_RESEARCH"
+    ):
+        raise P2ExperimentError("Exploratory unblinded demo proposals cannot be evaluated as blind P2 data.")
     requirements = {item["id"]: item for item in raw["requirements"]}
     proposals = proposal_bundle.get("proposals", [])
     evidence = proposal_bundle.get("evidence_proposals", [])

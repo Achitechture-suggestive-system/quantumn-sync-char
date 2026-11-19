@@ -177,6 +177,7 @@ class Responsibility(StrictModel):
     provenance: Literal[
         "PREPARED_FIXTURE",
         "LOCAL_OLLAMA_PROPOSAL",
+        "LOCAL_OLLAMA_PROPOSAL_UNBLINDED",
         "HUMAN_CORRECTION",
         "HUMAN_ADDITION",
         "P2_TEST_ONLY",
@@ -206,6 +207,7 @@ class EvidenceRecord(StrictModel):
         "POLICY",
         "HUMAN_OVERRIDE",
         "MODEL_PROPOSED",
+        "MODEL_PROPOSED_UNBLINDED_DEMO",
         "P2_TEST_ONLY",
         "SCOPE_BOUNDARY",
         "UNKNOWN",
@@ -289,7 +291,13 @@ class RelationAnnotation(StrictModel):
     direction: Literal["DIRECTED", "UNDIRECTED"]
     status: EvidenceStatus
     review_status: Literal["REVIEW_REQUIRED", "APPROVED", "REJECTED", "DEFERRED"]
-    provenance: Literal["LOCAL_OLLAMA_UNVERIFIED", "LOCAL_OLLAMA_REVIEWED", "HUMAN_OVERRIDE", "P2_TEST_ONLY"]
+    provenance: Literal[
+        "LOCAL_OLLAMA_UNVERIFIED",
+        "LOCAL_OLLAMA_REVIEWED",
+        "LOCAL_OLLAMA_UNBLINDED_DEMO",
+        "HUMAN_OVERRIDE",
+        "P2_TEST_ONLY",
+    ]
     source_requirement_ids: list[str] = Field(default_factory=list)
     source_workflow_ids: list[str] = Field(default_factory=list)
     source_refs: list[SourceRef] = Field(default_factory=list)

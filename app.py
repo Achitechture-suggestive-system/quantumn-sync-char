@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import subprocess
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 
 import streamlit as st
 
@@ -28,7 +31,7 @@ from eqcr.review import (
     replay_artifact_review_decisions,
 )
 from eqcr.traceability import refresh_traceability_artifact
-from eqcr.p2_review import apply_tutor_human_review
+from eqcr.p2_review import apply_tutor_demo_review, apply_tutor_human_review
 from eqcr.p2_protocol import (
     RELATION_PREDICATES,
     build_blind_annotation_template,
@@ -43,6 +46,7 @@ from eqcr.p2_reviewer_package import (
 )
 from eqcr.tutor_support import get_tutor_support_fixture
 from eqcr.storage import (
+    ARTIFACT_ROOT,
     list_snapshots,
     load_snapshot,
     make_export_zip,
@@ -116,6 +120,11 @@ st.title("EQCR + QAME — Architecture Quantum Review")
 st.caption(
     "Requirements-based case studies. Candidate groups are reviewable proposals; runtime deployability is not verified and quality targets are not measured."
 )
+if st.session_state.get("tutor_mode") == "EXPLORATORY_UNBLINDED_DEMO" or (
+    st.session_state.get("artifacts")
+    and st.session_state.artifacts.get("metadata", {}).get("execution_mode") == "EXPLORATORY_UNBLINDED_DEMO"
+):
+    st.error("EXPLORATORY_UNBLINDED_DEMO | NO_GOLD_LABELS | SEMANTIC_EVALUATION_NOT_PERFORMED")
 
 for key, value in {
     "fixture": None,
@@ -128,6 +137,10 @@ for key, value in {
     "ollama_models": [],
     "ollama_proposals": None,
     "p2_blind_annotation_lock": None,
+    "tutor_mode": "P2_BLIND_RESEARCH",
+    "tutor_demo_acknowledged": False,
+    "tutor_demo_actor_id": "",
+    "tutor_demo_exposed": False,
     "notice": None,
     "review_preview": None,
     "responsibility_preview": None,
@@ -140,13 +153,162 @@ input_tab, evidence_tab, quantum_tab, review_tab = st.tabs(
 )
 
 
+def _run_root(artifacts: dict | None = None):
+    active = artifacts or st.session_state.artifacts or {}
+    mode = active.get("metadata", {}).get("execution_mode")
+    return ARTIFACT_ROOT / "demo-unblinded" if mode == "EXPLORATORY_UNBLINDED_DEMO" else ARTIFACT_ROOT
+
+
+def _save_run_artifacts(run_id: str, artifacts: dict):
+    return save_run(run_id, artifacts, root=_run_root(artifacts))
+
+
+def _save_run_snapshot(run_id: str, version: str, artifacts: dict):
+    return save_snapshot(run_id, version, artifacts, root=_run_root(artifacts))
+
+
+def _list_run_snapshots(run_id: str, artifacts: dict | None = None):
+    return list_snapshots(run_id, root=_run_root(artifacts))
+
+
+def _load_run_snapshot(run_id: str, version: str, artifacts: dict | None = None):
+    return load_snapshot(run_id, version, root=_run_root(artifacts))
+
+
 def _save_current() -> None:
     artifacts = st.session_state.artifacts
     if not artifacts:
         return
     artifacts["metadata"]["run_id"] = st.session_state.run_id
-    run_dir = save_run(st.session_state.run_id, artifacts)
+    run_dir = _save_run_artifacts(st.session_state.run_id, artifacts)
     st.session_state.run_dir = str(run_dir)
+
+
+def _canonical_sha256(payload: object) -> str:
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _record_demo_revision_audit(
+    previous: dict,
+    updated: dict,
+    decision: dict,
+    revision: dict,
+    *,
+    fixture: dict,
+    proposal_data: dict,
+    run_id: str,
+    before_version: int,
+    after_version: int,
+    cited_requirement_ids: list[str],
+) -> None:
+    """Attach reproducible hashes and actual reviewer details to an unblinded demo revision."""
+    timestamp = datetime.now(timezone.utc).isoformat()
+    repo_root = Path(__file__).resolve().parent
+    try:
+        code_revision = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo_root, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        code_tree_sha256 = subprocess.run(
+            ["git", "ls-tree", "-r", "HEAD"], cwd=repo_root, capture_output=True, text=True, check=True
+        ).stdout
+        code_tree_sha256 = hashlib.sha256(code_tree_sha256.encode("utf-8")).hexdigest()
+        worktree_status = subprocess.run(
+            ["git", "status", "--porcelain"], cwd=repo_root, capture_output=True, text=True, check=True
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        code_revision = None
+        code_tree_sha256 = None
+        worktree_status = "UNAVAILABLE"
+
+    configuration = {
+        "execution_mode": "EXPLORATORY_UNBLINDED_DEMO",
+        "candidate_selection_policy": fixture.get("candidate_selection_policy"),
+        "constraint_policy_catalog": fixture.get("constraint_policy_catalog"),
+        "solver_backend": previous.get("partitions", {}).get("solver_backend"),
+        "prompt_version": proposal_data.get("prompt_version"),
+        "generation_parameters": proposal_data.get("generation_parameters"),
+    }
+    diff = artifact_diff(previous, updated, exclude={"decisions", "revisions", "demo_comparison", "demo_revision_audit"})
+    changed_artifacts = sorted(set(diff["changed_artifacts"]) | {"decisions", "revisions"})
+    decision_fields = {
+            "actor_role": "DEMO_STAKEHOLDER",
+            "created_at_utc": timestamp,
+            "result": "RECOMPUTED",
+            "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+            "demo_run_id": run_id,
+            "recomputed_artifacts": changed_artifacts,
+            "recompute_scope": "FULL_PIPELINE_01_TO_10",
+            "stale_artifacts_after_revalidation": [],
+        }
+    revision_fields = {
+            "actor_role": "DEMO_STAKEHOLDER",
+            "created_at_utc": timestamp,
+            "run_id": run_id,
+            "revision_id": f"v{after_version}",
+            "from_revision": f"v{before_version}",
+            "changed_artifacts": changed_artifacts,
+            "artifact_diff": diff["changes"],
+            "recomputed_artifacts": changed_artifacts,
+            "recompute_scope": "FULL_PIPELINE_01_TO_10",
+            "stale_artifacts_after_revalidation": [],
+            "revalidation_status": updated["validation_report"]["status"],
+            "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+        }
+    decision_record = next(
+        item for item in updated["decisions"]["items"] if item.get("decision_id") == decision["decision_id"]
+    )
+    revision_record = next(
+        item for item in updated["revisions"]["items"] if item.get("decision_id") == decision["decision_id"]
+    )
+    decision.update(decision_fields)
+    decision_record.update(decision_fields)
+    revision.update(revision_fields)
+    revision_record.update(revision_fields)
+    audit = {
+        "provenance": "HUMAN_DECISION",
+        "execution_mode": "EXPLORATORY_UNBLINDED_DEMO",
+        "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+        "run_id": run_id,
+        "revision_id": revision["revision_id"],
+        "created_at_utc": timestamp,
+        "actor": decision_record["actor"],
+        "actor_role": "DEMO_STAKEHOLDER",
+        "rationale": decision_record["reason"],
+        "source": decision_record["source"],
+        "source_requirement_ids": sorted(set(cited_requirement_ids)),
+        "old_value": decision["old_value"],
+        "new_value": decision["new_value"],
+        "input_hashes": {
+            "proposal_input_sha256": proposal_data.get("input_sha256"),
+            "raw_requirements_sha256": _canonical_sha256(fixture["raw_requirements"]),
+        },
+        "code": {
+            "revision": code_revision,
+            "tracked_tree_manifest_sha256": code_tree_sha256,
+            "working_tree_status": "CLEAN" if worktree_status == "" else "DIRTY_NOT_CLEAN",
+        },
+        "configuration_sha256": _canonical_sha256(configuration),
+        "before_artifacts_sha256": _canonical_sha256(previous),
+        "after_artifacts_sha256": _canonical_sha256(updated),
+        "before_snapshot": f"v{before_version}",
+        "after_snapshot": f"v{after_version}",
+        "changed_artifacts": changed_artifacts,
+        "changed_values": diff["changes"],
+        "recompute_scope": "FULL_PIPELINE_01_TO_10",
+        "status": "RECOMPUTED",
+    }
+    updated["demo_revision_audit"] = audit
+    updated["demo_comparison"] = {
+        "before_snapshot": audit["before_snapshot"],
+        "after_snapshot": audit["after_snapshot"],
+        "before_artifacts_sha256": audit["before_artifacts_sha256"],
+        "after_artifacts_sha256": audit["after_artifacts_sha256"],
+        "changed_artifacts": changed_artifacts,
+        "changed_values": diff["changes"],
+        "recompute_scope": "FULL_PIPELINE_01_TO_10",
+        "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+    }
 
 
 def _show_json(title: str, payload: object) -> None:
@@ -185,6 +347,10 @@ def _attach_ollama_proposals(artifacts: dict, proposal_data: dict) -> None:
         "provenance": {
             "kind": proposal_data.get("provenance", "LOCAL_OLLAMA_UNVERIFIED"),
             "execution_mode": artifacts["metadata"]["execution_mode"],
+            "research_eligibility": proposal_data.get(
+                "research_eligibility",
+                artifacts["metadata"].get("research_eligibility", "NOT_APPLICABLE"),
+            ),
             "source_artifacts": ["raw_requirements"],
             "model": proposal_data.get("model"),
             "prompt_version": proposal_data.get("prompt_version"),
@@ -200,18 +366,27 @@ def _attach_ollama_proposals(artifacts: dict, proposal_data: dict) -> None:
 
 def _start_run(fixture: dict, execution_mode: str) -> None:
     artifacts = run_pipeline(fixture, execution_mode=execution_mode)
-    if st.session_state.ollama_proposals:
-        _attach_ollama_proposals(artifacts, st.session_state.ollama_proposals)
     run_id = new_run_id()
+    if st.session_state.ollama_proposals:
+        if execution_mode == "EXPLORATORY_UNBLINDED_DEMO":
+            st.session_state.ollama_proposals["run_id"] = run_id
+        _attach_ollama_proposals(artifacts, st.session_state.ollama_proposals)
     artifacts["metadata"]["run_id"] = run_id
     st.session_state.artifacts = artifacts
     st.session_state.run_fixture = fixture
     st.session_state.run_id = run_id
     st.session_state.snapshot_version = 1
-    run_dir = save_run(run_id, artifacts)
-    save_snapshot(run_id, "v1", artifacts)
+    run_dir = _save_run_artifacts(run_id, artifacts)
+    _save_run_snapshot(run_id, "v1", artifacts)
     st.session_state.run_dir = str(run_dir)
-    if (
+    if execution_mode == "EXPLORATORY_UNBLINDED_DEMO":
+        artifacts["metadata"]["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+        artifacts["metadata"]["demo_status"] = "AWAITING_DEMO_REVIEW"
+        st.session_state.notice = (
+            "Live local Tutor proposals were captured. They have not entered the optimizer; record an actual "
+            "DEMO_STAKEHOLDER review in Human Review to recompute downstream outputs."
+        )
+    elif (
         execution_mode == "OFFLINE_FIXTURE"
         and fixture.get("fixture_label") == "PRECOMPUTED"
         and fixture.get("responsibility_provenance", "PRECOMPUTED") == "PRECOMPUTED"
@@ -223,6 +398,26 @@ def _start_run(fixture: dict, execution_mode: str) -> None:
         st.session_state.notice = "Structured project input completed the deterministic pipeline; derived outputs remain reviewable."
     else:
         st.session_state.notice = "Model-assisted fixture completed. Citations passed structural checks; semantics remain REVIEW_REQUIRED."
+
+
+def _build_unreviewed_demo_fixture(fixture: dict) -> dict:
+    """Hold all proposed responsibilities out of optimization until the demo review is submitted."""
+    pending = deepcopy(fixture)
+    pending["responsibilities"] = []
+    pending["evidence"] = [
+        item for item in pending.get("evidence", [])
+        if item.get("predicate") == "independent_deployment_evidence"
+    ]
+    pending["relation_annotations"] = []
+    pending["constraints"] = []
+    pending["responsibility_review_complete"] = False
+    pending["responsibility_provenance"] = "UNBLINDED_MODEL_PROPOSALS_PENDING_REVIEW"
+    pending["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+    pending["fixture_note"] = (
+        "Unblinded local-model proposal run. No model responsibility/evidence proposal is used by the optimizer "
+        "until a real demo stakeholder submits an explicit review."
+    )
+    return pending
 
 
 def _prepare_responsibility_revision(artifacts: dict, fixture: dict, **edit: str):
@@ -290,6 +485,8 @@ with input_tab:
         st.session_state.snapshot_version = 0
         st.session_state.ollama_proposals = None
         st.session_state.p2_blind_annotation_lock = None
+        st.session_state.tutor_mode = "P2_BLIND_RESEARCH"
+        st.session_state.tutor_demo_acknowledged = False
         st.session_state.review_preview = None
         st.session_state.responsibility_preview = None
         st.session_state.notice = "Loaded the PRECOMPUTED PetClinic mini-case input."
@@ -303,6 +500,8 @@ with input_tab:
         st.session_state.snapshot_version = 0
         st.session_state.ollama_proposals = None
         st.session_state.p2_blind_annotation_lock = None
+        st.session_state.tutor_mode = "P2_BLIND_RESEARCH"
+        st.session_state.tutor_demo_acknowledged = False
         st.session_state.review_preview = None
         st.session_state.responsibility_preview = None
         st.session_state.notice = "Loaded the original Tutor Support P2 requirements case."
@@ -310,6 +509,45 @@ with input_tab:
         st.session_state.fixture
         and st.session_state.fixture.get("raw_requirements", {}).get("case_id") == "TUTOR-SUPPORT-P2-01"
     )
+    tutor_mode = "P2_BLIND_RESEARCH"
+    tutor_demo_acknowledged = False
+    is_tutor_demo = False
+    if is_tutor_case:
+        st.subheader("Choose the Tutor workflow")
+        tutor_mode = st.radio(
+            "Tutor mode",
+            options=["P2_BLIND_RESEARCH", "EXPLORATORY_UNBLINDED_DEMO"],
+            format_func=lambda value: (
+                "Blind research (source-only lock first)"
+                if value == "P2_BLIND_RESEARCH"
+                else "Exploratory demo (unblinded; excluded from research)"
+            ),
+            key="tutor_mode",
+            disabled=bool(st.session_state.ollama_proposals),
+            horizontal=True,
+        )
+        is_tutor_demo = tutor_mode == "EXPLORATORY_UNBLINDED_DEMO"
+        if is_tutor_demo:
+            st.error("EXPLORATORY_UNBLINDED_DEMO | NO_GOLD_LABELS | SEMANTIC_EVALUATION_NOT_PERFORMED")
+            st.warning(
+                "This mode reveals model output without a blind lock. It is for demonstration only and cannot be used "
+                "as independent labels, a blind score, or a research evaluation."
+            )
+            tutor_demo_acknowledged = st.checkbox(
+                "I acknowledge this Tutor run is unblinded, creates no gold labels, and is excluded from blind research.",
+                key="tutor_demo_acknowledged",
+            )
+            if st.session_state.tutor_demo_exposed:
+                st.info(
+                    "This app session has already exposed Tutor model output. Do not create a blind annotation as this reviewer; "
+                    "use a separate eligible annotator for the research path."
+                )
+        else:
+            is_tutor_demo = False
+            tutor_demo_acknowledged = False
+            st.caption(
+                "The blind research workflow remains lock-first. The UI does not verify identity or prior exposure outside this session."
+            )
     if run_col.button(
         "Run offline fixture",
         type="primary",
@@ -339,7 +577,11 @@ with input_tab:
             "requirements-only · no source code supplied"
         )
         blind_lock_valid = True
-        if is_tutor_case:
+        if is_tutor_case and is_tutor_demo:
+            blind_lock_valid = tutor_demo_acknowledged
+            _show_json("Tutor source requirements, workflow, and quality scenarios", st.session_state.fixture["raw_requirements"])
+            st.caption("This source input is a prepared requirements case; model output will be a separate live local inference.")
+        elif is_tutor_case:
             blind_lock = st.session_state.p2_blind_annotation_lock
             source_package_root = default_source_package_root()
             blind_lock_valid = verify_blind_annotation_lock(
@@ -370,6 +612,11 @@ with input_tab:
                     st.info(
                         "Review only the source-only package below. Prepared mappings and model proposals stay hidden until a valid annotation is locked."
                     )
+                    if st.session_state.tutor_demo_exposed:
+                        st.error(
+                            "This app session has already shown Tutor model output. Do not submit a blind lock as this reviewer; "
+                            "use a separate eligible annotator."
+                        )
                     _show_json("Source-only requirements, workflows, and scenarios", source_only_data)
                     blind_template = build_blind_annotation_template(
                         st.session_state.fixture["raw_requirements"],
@@ -382,7 +629,11 @@ with input_tab:
                         height=420,
                         key=blind_input_key,
                     )
-                    if st.button("Lock source-only annotation before model review", type="primary"):
+                    if st.button(
+                        "Lock source-only annotation before model review",
+                        type="primary",
+                        disabled=st.session_state.tutor_demo_exposed,
+                    ):
                         try:
                             submitted_annotation = json.loads(blind_annotation_text)
                             st.session_state.p2_blind_annotation_lock = lock_blind_annotation(
@@ -411,13 +662,16 @@ with input_tab:
             st.session_state.ollama_models,
             index=st.session_state.ollama_models.index(preferred),
         )
-        blind_lock_valid = (
-            not is_tutor_case
-            or verify_blind_annotation_lock(
-                st.session_state.fixture["raw_requirements"],
-                st.session_state.p2_blind_annotation_lock,
+        if is_tutor_demo:
+            blind_lock_valid = tutor_demo_acknowledged
+        else:
+            blind_lock_valid = (
+                not is_tutor_case
+                or verify_blind_annotation_lock(
+                    st.session_state.fixture["raw_requirements"],
+                    st.session_state.p2_blind_annotation_lock,
+                )
             )
-        )
         if st.button("Run local Ollama proposals", disabled=not blind_lock_valid):
             if st.session_state.fixture is None:
                 st.session_state.fixture = get_fixture()
@@ -426,11 +680,25 @@ with input_tab:
                     proposal_data = propose_responsibilities(
                         st.session_state.fixture["raw_requirements"],
                         model,
-                        blind_annotation_lock=st.session_state.p2_blind_annotation_lock if is_tutor_case else None,
+                        blind_annotation_lock=(
+                            st.session_state.p2_blind_annotation_lock
+                            if is_tutor_case and not is_tutor_demo
+                            else None
+                        ),
+                        demo_unblinded=is_tutor_demo,
+                        demo_acknowledged=tutor_demo_acknowledged,
                     )
                     st.session_state.ollama_proposals = proposal_data
                     st.session_state.notice = "LLM proposals received; source IDs were resolved to exact input spans. Semantic review is still required."
-                    if st.session_state.artifacts:
+                    if is_tutor_demo:
+                        st.session_state.tutor_demo_exposed = True
+                        st.session_state.pending_model_fixture = None
+                        _start_run(
+                            _build_unreviewed_demo_fixture(st.session_state.fixture),
+                            "EXPLORATORY_UNBLINDED_DEMO",
+                        )
+                        st.rerun()
+                    elif st.session_state.artifacts:
                         _attach_ollama_proposals(st.session_state.artifacts, proposal_data)
                         _save_current()
                 except OllamaError as exc:
@@ -481,14 +749,25 @@ with input_tab:
                     {
                         "model": proposal_data["model"],
                         "response_model": proposal_data["response_model"],
+                        "ollama_version": proposal_data.get("ollama_version"),
+                        "model_digest": proposal_data.get("model_digest"),
+                        "model_size_bytes": proposal_data.get("model_size_bytes"),
+                        "model_metadata_status": proposal_data.get("model_metadata_status"),
                         "prompt_version": proposal_data["prompt_version"],
                         "input_sha256": proposal_data["input_sha256"],
+                        "inference_started_at_utc": proposal_data.get("inference_started_at_utc"),
+                        "inference_completed_at_utc": proposal_data.get("inference_completed_at_utc"),
                         "generation_parameters": proposal_data["generation_parameters"],
                         "output_schema": proposal_data["output_schema"],
                     },
                     expanded=False,
                 )
-            if st.session_state.ollama_proposals.get("can_apply_to_fixture"):
+            if is_tutor_demo:
+                st.info(
+                    "Unblinded demo proposals remain outside the optimizer until you record explicit review decisions "
+                    "in the Human Review tab."
+                )
+            elif st.session_state.ollama_proposals.get("can_apply_to_fixture"):
                 if st.button("Use these proposals for a candidate run"):
                     try:
                         st.session_state.pending_model_fixture = apply_proposals_to_fixture(
@@ -528,8 +807,8 @@ with input_tab:
     artifacts = st.session_state.artifacts
     if artifacts:
         snapshot_exports = {
-            f"snapshots/{version}.json": load_snapshot(st.session_state.run_id, version)
-            for version in list_snapshots(st.session_state.run_id)
+            f"snapshots/{version}.json": _load_run_snapshot(st.session_state.run_id, version, artifacts)
+            for version in _list_run_snapshots(st.session_state.run_id, artifacts)
         }
         st.success(
             f"Run `{st.session_state.run_id}` · status `{artifacts['validation_report']['status']}` · "
@@ -538,7 +817,11 @@ with input_tab:
         st.download_button(
             "Download all run artifacts (ZIP)",
             data=make_export_zip(artifacts, extra=snapshot_exports),
-            file_name=f"{st.session_state.run_id}-artifacts.zip",
+                    file_name=(
+                        f"{st.session_state.run_id}-EXPLORATORY_UNBLINDED_DEMO-artifacts.zip"
+                        if artifacts.get("metadata", {}).get("execution_mode") == "EXPLORATORY_UNBLINDED_DEMO"
+                        else f"{st.session_state.run_id}-artifacts.zip"
+                    ),
             mime="application/zip",
         )
         st.download_button(
@@ -704,48 +987,97 @@ with review_tab:
             ],
         }
         review_input_key = f"tutor_review_json_{proposal_data['input_sha256'][:12]}"
-        with st.expander("Review Tutor Support proposals before evidence can affect optimization", expanded=False):
+        demo_actor = ""
+        demo_review_acknowledged = False
+        with st.expander(
+            "Review Tutor demo proposals before evidence can affect optimization"
+            if is_tutor_demo
+            else "Review Tutor Support proposals before evidence can affect optimization",
+            expanded=is_tutor_demo,
+        ):
             st.caption(
                 "Each responsibility proposal may be APPROVED, CORRECTED into one or more roles, REJECTED, or DEFERRED. "
                 "Add manual responsibility rows only with source citations. Relation approval records business evidence; "
                 "optimizer constraints require a separate architecture implication and explicit responsibility pairs."
             )
+            if is_tutor_demo:
+                st.error("EXPLORATORY_UNBLINDED_DEMO | NO_GOLD_LABELS | SEMANTIC_EVALUATION_NOT_PERFORMED")
+                demo_actor = st.text_input("Your demo stakeholder identifier", value="", key="tutor_demo_review_actor")
+                demo_review_acknowledged = st.checkbox(
+                    "I am reviewing this unblinded demo output as a DEMO_STAKEHOLDER, not as an independent annotator or gold-label reviewer.",
+                    key="tutor_demo_review_acknowledged",
+                )
             review_payload_text = st.text_area(
                 "Human review decisions (JSON)",
                 value=json.dumps(review_template, ensure_ascii=False, indent=2),
                 height=360,
                 key=review_input_key,
             )
-            if st.button("Apply human review & recompute P2 case", type="primary"):
+            if st.button(
+                "Apply demo stakeholder review & recompute all stages"
+                if is_tutor_demo
+                else "Apply human review & recompute P2 case",
+                type="primary",
+            ):
                 try:
                     review_payload = json.loads(review_payload_text)
+                    if is_tutor_demo:
+                        review_payload["demo_unblinded_acknowledged"] = demo_review_acknowledged
+                        review_payload["demo_actor"] = demo_actor
+                        st.session_state["tutor_demo_actor_id"] = demo_actor.strip()
+                        for group in ("responsibilities", "evidence", "boundaries", "additional_responsibilities"):
+                            for decision in review_payload.get(group, []):
+                                if not decision.get("actor"):
+                                    decision["actor"] = demo_actor
+                                if not decision.get("source"):
+                                    decision["source"] = "Human Review UI"
                     current_fixture = st.session_state.run_fixture or st.session_state.fixture
-                    reviewed_fixture, review_decisions = apply_tutor_human_review(
-                        current_fixture,
-                        proposal_data,
-                        review_payload,
-                    )
+                    review_function = apply_tutor_demo_review if is_tutor_demo else apply_tutor_human_review
+                    reviewed_fixture, review_decisions = review_function(current_fixture, proposal_data, review_payload)
                     previous = st.session_state.artifacts
+                    execution_mode = (
+                        "EXPLORATORY_UNBLINDED_DEMO" if is_tutor_demo else "P2_REVIEWED_LOCAL_LLM"
+                    )
                     reviewed_artifacts = run_pipeline(
                         reviewed_fixture,
                         decisions=review_decisions,
-                        execution_mode="P2_REVIEWED_LOCAL_LLM",
+                        execution_mode=execution_mode,
                     )
                     _attach_ollama_proposals(reviewed_artifacts, proposal_data)
                     run_id = st.session_state.run_id or new_run_id()
                     reviewed_artifacts["metadata"]["run_id"] = run_id
+                    if is_tutor_demo:
+                        reviewed_artifacts["metadata"]["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+                        reviewed_artifacts["metadata"]["demo_status"] = "DEMO_REVIEW_RECORDED"
+                        if previous:
+                            diff = artifact_diff(previous, reviewed_artifacts, exclude={"decisions", "revisions"})
+                            changed = sorted(set(diff["changed_artifacts"]) | {"decisions", "revisions"})
+                            for decision in reviewed_artifacts["decisions"]["items"]:
+                                decision["recomputed_artifacts"] = changed
+                                decision["recompute_scope"] = "FULL_PIPELINE_01_TO_10"
+                                decision["stale_artifacts_after_revalidation"] = []
+                            reviewed_artifacts["demo_comparison"] = {
+                                "before_snapshot": "v1",
+                                "after_snapshot": f"v{st.session_state.snapshot_version + 1}",
+                                "changed_artifacts": changed,
+                                "changed_values": diff["changes"],
+                                "recompute_scope": "FULL_PIPELINE_01_TO_10",
+                                "research_eligibility": "EXCLUDED_FROM_BLIND_RESEARCH",
+                            }
                     st.session_state.fixture = reviewed_fixture
                     st.session_state.run_fixture = reviewed_fixture
                     st.session_state.artifacts = reviewed_artifacts
                     st.session_state.run_id = run_id
                     st.session_state.snapshot_version += 1
                     version = st.session_state.snapshot_version
-                    run_dir = save_run(run_id, reviewed_artifacts)
-                    save_snapshot(run_id, f"v{version}", reviewed_artifacts)
+                    run_dir = _save_run_artifacts(run_id, reviewed_artifacts)
+                    _save_run_snapshot(run_id, f"v{version}", reviewed_artifacts)
                     st.session_state.run_dir = str(run_dir)
                     st.session_state.notice = (
-                        "Recorded the supplied human decisions and recomputed all ten pipeline stages. "
-                        "APPROVED remains a review record; quality measurements are still not measured."
+                        "Recorded the supplied demo stakeholder decisions and recomputed all ten pipeline stages. "
+                        "Outputs remain excluded from blind research; quality measurements are still not measured."
+                        if is_tutor_demo
+                        else "Recorded the supplied human decisions and recomputed all ten pipeline stages. APPROVED remains a review record; quality measurements are still not measured."
                     )
                     st.rerun()
                 except (json.JSONDecodeError, ValueError, KeyError, TypeError, AttributeError) as exc:
@@ -826,8 +1158,8 @@ with review_tab:
                         st.session_state.run_id = run_id
                         st.session_state.snapshot_version += 1
                         version = st.session_state.snapshot_version
-                        run_dir = save_run(run_id, updated)
-                        save_snapshot(run_id, f"v{version}", updated)
+                        run_dir = _save_run_artifacts(run_id, updated)
+                        _save_run_snapshot(run_id, f"v{version}", updated)
                         st.session_state.run_dir = str(run_dir)
                         partitions_unchanged = previous["partitions"] == updated["partitions"]
                         quality_unchanged = previous["quality_profiles"] == updated["quality_profiles"]
@@ -905,15 +1237,29 @@ with review_tab:
                     )
                     architecture_rationale = st.text_area(
                         "Architectural candidate rationale",
-                        value=current_relation.get("architecture_rationale", ""),
+                        value="" if is_tutor_demo else current_relation.get("architecture_rationale", ""),
                     )
                     evidence_edit_reason = st.text_area(
                         "Correction reason",
-                        value="Correct the accepted relation against the cited requirements.",
+                        value="" if is_tutor_demo else "Correct the accepted relation against the cited requirements.",
                     )
-                    evidence_edit_source = st.text_input("Review source", value="P2-HUMAN-REVIEW")
-                    evidence_edit_actor = st.text_input("Reviewer identifier", value="reviewer")
-                    apply_evidence_edit = st.form_submit_button("Apply correction & Revalidate", type="primary")
+                    evidence_edit_source = st.text_input(
+                        "Review source",
+                        value="Human Review UI" if is_tutor_demo else "",
+                        placeholder="For example: Human Review UI",
+                    )
+                    evidence_edit_actor = st.text_input(
+                        "Your demo stakeholder identifier" if is_tutor_demo else "Reviewer identifier",
+                        value=st.session_state.get("tutor_demo_actor_id", "") if is_tutor_demo else "",
+                    )
+                    if is_tutor_demo:
+                        st.caption(
+                            "Enter your actual rationale and cited source IDs. These values are recorded as a demo stakeholder decision; no reviewer label is prefilled."
+                        )
+                    apply_evidence_edit = st.form_submit_button(
+                        "Record demo correction & recompute all stages" if is_tutor_demo else "Apply correction & Revalidate",
+                        type="primary",
+                    )
                 if apply_evidence_edit:
                     try:
                         previous = artifacts
@@ -945,6 +1291,8 @@ with review_tab:
                             "responsibility_provenance", "LOCAL_OLLAMA_HUMAN_REVIEWED"
                         )
                         _attach_ollama_proposals(updated, st.session_state.ollama_proposals)
+                        run_id = st.session_state.run_id or new_run_id()
+                        updated["metadata"]["run_id"] = run_id
                         diff = artifact_diff(previous, updated, exclude={"decisions", "revisions"})
                         revision_record = updated["revisions"]["items"][-1]
                         revision_record["changed_artifacts"] = sorted(
@@ -964,13 +1312,30 @@ with review_tab:
                             "checked_artifacts": revision_record["unaffected_artifacts"],
                             "note": "Relation and evidence correction leaves unrelated source and responsibility artifacts unchanged.",
                         }
+                        before_version = st.session_state.snapshot_version
+                        after_version = before_version + 1
+                        if is_tutor_demo:
+                            updated["metadata"]["research_eligibility"] = "EXCLUDED_FROM_BLIND_RESEARCH"
+                            updated["metadata"]["demo_status"] = "DEMO_REVISION_RECOMPUTED"
+                            _record_demo_revision_audit(
+                                previous,
+                                updated,
+                                decision,
+                                revision,
+                                fixture=revised_fixture,
+                                proposal_data=st.session_state.ollama_proposals,
+                                run_id=run_id,
+                                before_version=before_version,
+                                after_version=after_version,
+                                cited_requirement_ids=source_requirement_ids,
+                            )
                         st.session_state.fixture = revised_fixture
                         st.session_state.run_fixture = revised_fixture
                         st.session_state.artifacts = updated
                         st.session_state.snapshot_version += 1
                         version = st.session_state.snapshot_version
-                        run_dir = save_run(st.session_state.run_id, updated)
-                        save_snapshot(st.session_state.run_id, f"v{version}", updated)
+                        run_dir = _save_run_artifacts(run_id, updated)
+                        _save_run_snapshot(run_id, f"v{version}", updated)
                         st.session_state.run_dir = str(run_dir)
                         st.session_state.notice = (
                             f"Saved v{version}; the reviewed evidence change recomputed optimizer and downstream outputs. "
@@ -986,10 +1351,14 @@ with review_tab:
         with st.expander("Edit name, activity, or operation and preview downstream impact"):
             responsibility_id = st.selectbox(
                 "Responsibility to revise",
-                list(responsibility_by_id),
+                list(responsibility_by_id) or ["No reviewed responsibilities"],
+                disabled=not bool(responsibility_by_id),
                 key="responsibility_edit_target",
             )
-            current_responsibility = responsibility_by_id[responsibility_id]
+            current_responsibility = responsibility_by_id.get(
+                responsibility_id,
+                {"name": "", "activity": "", "operation": ""},
+            )
             with st.form("responsibility_revision_form"):
                 edited_name = st.text_input(
                     "Responsibility name",
@@ -1008,23 +1377,29 @@ with review_tab:
                 )
                 responsibility_reason = st.text_area(
                     "Revision reason",
-                    value="Human revision after reviewing the requirement and workflow.",
+                    value="",
                     key=f"responsibility_reason_{responsibility_id}",
                 )
                 responsibility_source = st.text_input(
                     "Revision source",
-                    value="HUMAN-DEMO-REVIEW",
+                    value="Human Review UI" if is_tutor_demo else "",
                     key=f"responsibility_source_{responsibility_id}",
                 )
                 responsibility_actor = st.text_input(
-                    "Reviewer identifier",
-                    value="demo-reviewer",
+                    "Your demo stakeholder identifier" if is_tutor_demo else "Reviewer identifier",
+                    value=st.session_state.get("tutor_demo_actor_id", "") if is_tutor_demo else "",
                     key=f"responsibility_actor_{responsibility_id}",
                 )
-                responsibility_preview_button = st.form_submit_button("Preview responsibility impact")
-                responsibility_apply_button = st.form_submit_button(
-                    "Apply responsibility revision & Revalidate", type="primary"
+                responsibility_preview_button = st.form_submit_button(
+                    "Preview responsibility impact", disabled=not bool(responsibility_by_id)
                 )
+                responsibility_apply_button = st.form_submit_button(
+                    "Apply responsibility revision & Revalidate",
+                    type="primary",
+                    disabled=not bool(responsibility_by_id),
+                )
+            if not responsibility_by_id:
+                st.info("No reviewed responsibility is available to revise yet. Complete the explicit Tutor review first.")
             responsibility_request = {
                 "object_id": responsibility_id,
                 "name": edited_name,
@@ -1099,8 +1474,8 @@ with review_tab:
                     st.session_state.responsibility_preview = None
                     st.session_state.snapshot_version += 1
                     version = st.session_state.snapshot_version
-                    run_dir = save_run(st.session_state.run_id, updated)
-                    save_snapshot(st.session_state.run_id, f"v{version}", updated)
+                    run_dir = _save_run_artifacts(st.session_state.run_id, updated)
+                    _save_run_snapshot(st.session_state.run_id, f"v{version}", updated)
                     st.session_state.run_dir = str(run_dir)
                     st.session_state.notice = (
                         f"Saved responsibility revision v{version}; recomputed downstream outputs. "
@@ -1128,9 +1503,12 @@ with review_tab:
                 review_target = st.selectbox("Artifact to review", available_review_targets)
                 review_object_id = st.selectbox("Artifact item", review_choices[review_target])
                 review_action = st.selectbox("Review outcome", ["APPROVE", "REJECT", "DEFER"])
-                review_reason = st.text_area("Review justification", value="Reviewed during the demo.")
-                review_source = st.text_input("Review source", value="HUMAN-DEMO-REVIEW")
-                review_actor = st.text_input("Reviewer identifier", value="demo-reviewer")
+                review_reason = st.text_area("Review justification", value="")
+                review_source = st.text_input("Review source", value="")
+                review_actor = st.text_input(
+                    "Your demo stakeholder identifier" if is_tutor_demo else "Reviewer identifier",
+                    value=st.session_state.get("tutor_demo_review_actor", "") if is_tutor_demo else "",
+                )
                 record_review = st.form_submit_button("Record artifact review")
             else:
                 st.info("No reviewable artifact items are available in this run.")
@@ -1152,8 +1530,8 @@ with review_tab:
                 updated["metadata"].update(artifacts["metadata"])
                 st.session_state.snapshot_version += 1
                 version = st.session_state.snapshot_version
-                run_dir = save_run(st.session_state.run_id, updated)
-                save_snapshot(st.session_state.run_id, f"v{version}", updated)
+                run_dir = _save_run_artifacts(st.session_state.run_id, updated)
+                _save_run_snapshot(st.session_state.run_id, f"v{version}", updated)
                 st.session_state.artifacts = updated
                 st.session_state.run_dir = str(run_dir)
                 st.session_state.review_preview = None
@@ -1289,8 +1667,8 @@ with review_tab:
                 st.session_state.review_preview = None
                 version = st.session_state.snapshot_version + 1
                 st.session_state.snapshot_version = version
-                run_dir = save_run(st.session_state.run_id, updated)
-                save_snapshot(st.session_state.run_id, f"v{version}", updated)
+                run_dir = _save_run_artifacts(st.session_state.run_id, updated)
+                _save_run_snapshot(st.session_state.run_id, f"v{version}", updated)
                 st.session_state.run_dir = str(run_dir)
                 st.session_state.notice = f"Saved v{version}; recomputed the full pipeline after the reviewed change. Status: {updated['validation_report']['status']}."
                 st.rerun()
@@ -1305,11 +1683,11 @@ with review_tab:
         _show_json("Validation details and limits", artifacts["validation_report"])
         st.subheader("Decision and revision audit")
         st.json({"decisions": artifacts["decisions"], "revisions": artifacts["revisions"]}, expanded=False)
-        versions = list_snapshots(st.session_state.run_id)
+        versions = _list_run_snapshots(st.session_state.run_id, artifacts)
         if len(versions) > 1:
             earlier_versions = versions[:-1]
             compare_version = st.selectbox("Compare current run with snapshot", earlier_versions)
-            earlier = load_snapshot(st.session_state.run_id, compare_version)
+            earlier = _load_run_snapshot(st.session_state.run_id, compare_version, artifacts)
             st.subheader(f"Diff: {compare_version} → current")
             st.json(artifact_diff(earlier, artifacts), expanded=False)
         st.caption(f"Snapshots saved in `{st.session_state.run_dir}\\snapshots` (v1 is the initial run).")

@@ -298,7 +298,7 @@ def test_demo_run_storage_root_and_export_manifest_are_isolated(tmp_path):
 
 
 def test_tutor_ui_disables_model_until_unblinded_demo_acknowledgement():
-    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30).run()
+    app = AppTest.from_file(Path(__file__).parents[1] / "research_app.py", default_timeout=30).run()
     next(button for button in app.button if button.label == "Load Tutor Support P2 case").click().run()
     app.session_state["ollama_models"] = ["qwen3:4b"]
     app.run()
@@ -335,7 +335,7 @@ def test_tutor_demo_review_ui_recomputes_only_from_explicit_test_fixture_decisio
     monkeypatch.setattr(storage, "save_run", lambda *args, **kwargs: Path("isolated-ui-test-run"))
     monkeypatch.setattr(storage, "save_snapshot", lambda *args, **kwargs: Path("isolated-ui-test-snapshot"))
 
-    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30)
+    app = AppTest.from_file(Path(__file__).parents[1] / "research_app.py", default_timeout=30)
     app.session_state["fixture"] = pending
     app.session_state["run_fixture"] = pending
     app.session_state["artifacts"] = run_pipeline(

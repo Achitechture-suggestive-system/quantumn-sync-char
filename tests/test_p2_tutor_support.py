@@ -188,7 +188,7 @@ def test_tutor_case_has_original_requirements_workflows_scenarios_and_exact_sour
 
 
 def test_app_can_load_the_tutor_support_case_without_streamlit_exceptions():
-    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30).run()
+    app = AppTest.from_file(Path(__file__).parents[1] / "research_app.py", default_timeout=30).run()
     next(button for button in app.button if button.label == "Load Tutor Support P2 case").click().run()
     assert not app.exception
     assert app.session_state["fixture"]["raw_requirements"]["case_id"] == "TUTOR-SUPPORT-P2-01"
@@ -222,7 +222,7 @@ def test_app_can_load_the_tutor_support_case_without_streamlit_exceptions():
 def test_app_renders_interaction_contract_review_for_a_computed_case():
     fixture = get_tutor_support_fixture()
     artifacts = run_pipeline(fixture, execution_mode="P2_TEST_ONLY")
-    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30)
+    app = AppTest.from_file(Path(__file__).parents[1] / "research_app.py", default_timeout=30)
     app.session_state["fixture"] = fixture
     app.session_state["run_fixture"] = fixture
     app.session_state["artifacts"] = artifacts

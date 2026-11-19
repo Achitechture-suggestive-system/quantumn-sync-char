@@ -51,6 +51,17 @@ def save_run(run_id: str, artifacts: dict[str, Any], *, root: Path = ARTIFACT_RO
     return run_dir
 
 
+def save_quantum_review(review: dict[str, Any]) -> Path:
+    review_id = review.get("id")
+    if not isinstance(review_id, str) or not re.fullmatch(r"review-[0-9a-f]{32}", review_id):
+        raise ValueError("Invalid Quantum Studio review ID.")
+    path = ARTIFACT_ROOT / "quantum-studio" / "reviews" / f"{review_id}.json"
+    if path.exists():
+        raise FileExistsError(path)
+    _write_json(path, review)
+    return path
+
+
 def save_snapshot(
     run_id: str,
     version: str,

@@ -1,8 +1,6 @@
-# EQCR + QAME — MVP chạy cục bộ
+# Quantum Studio · EQCR + QAME
 
-MVP nghiên cứu chạy cục bộ, chuyển requirements chức năng/phi chức năng, workflow và quality scenarios thành các Architectural Quantum ứng viên có thể truy vết, giả thuyết tương tác và Quantum Quality Profiles.
-
-> **Phạm vi demo:** mini-case PetClinic đóng băng với sáu responsibilities; nhánh P2 thêm ca Tutor Support nguyên bản để kiểm tra luồng proposal/review. Đây không phải bộ khuyến nghị kiến trúc tổng quát, không chọn architectural style, không chứng minh deployability, hiệu năng hay độ chính xác ngữ nghĩa.
+Quantum Studio nhận component, characteristics, quan hệ Sync/Async và kho dữ liệu. App đề xuất các cách chia Quantum, vẽ hai phương án cạnh nhau, tính trade-off và ghi quyết định khi người review chọn phương án.
 
 ## Chạy nhanh (Windows / PowerShell)
 
@@ -15,13 +13,15 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-Mở URL cục bộ mà Streamlit in ra. Nếu đã có môi trường ảo:
+Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket Support. Bấm **Phân tích Quantum** để xem hai cách chia, đổi ưu tiên trên màn so sánh và ghi quyết định trong **Human Review**. Xem [cách tính và kịch bản demo](docs/demo/QUANTUM_STUDIO.md).
+
+## Chạy giao diện nghiên cứu lưu trữ
+
+PetClinic, Tutor Support và các walkthrough nghiên cứu dùng entrypoint lưu trữ `research_app.py`.
 
 ```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run research_app.py --server.port 8502
 ```
-
-## Các chế độ
 
 - **Xác định/offline:** nạp fixture PRECOMPUTED tại eqcr/fixture.py và chạy pipeline cục bộ. Cùng đầu vào và revisions sẽ tạo cùng kết quả.
 - **JSON có cấu trúc:** tải template, cung cấp raw_requirements, responsibilities, evidence và constraints; ứng dụng kiểm tra schema, tham chiếu và source spans. Các ý nghĩa vẫn cần review.
@@ -35,7 +35,7 @@ Luồng offline không cần Ollama. Để dùng model-assisted mode, chạy Oll
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
-.\.venv\Scripts\python.exe -m compileall -q app.py eqcr
+.\.venv\Scripts\python.exe -m compileall -q app.py research_app.py eqcr tests
 ```
 
 P0 baseline được kiểm tra ngày 14/11/2026: 30 test pass; compileall, Streamlit AppTest và HTTP smoke cục bộ pass. Nhánh P1 có 44 test pass. Feature branch gần nhất đạt 138 test pass, compileall và AppTest; xem [P2 validation](docs/p2/P2_VALIDATION_REPORT.md), [P2 human worksheet](docs/p2/HUMAN_REVIEW_WORKSHEET.md) và [demo acceptance matrix](docs/demo/DEMO_ACCEPTANCE_MATRIX.md). Đây là kiểm tra code/fixture; không tự xác nhận semantic hoặc chất lượng kiến trúc. P2 blind case vẫn chờ independent annotation lock.

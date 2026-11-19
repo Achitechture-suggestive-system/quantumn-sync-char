@@ -33,4 +33,4 @@ jobs:
         run: python -m pytest -q
 
       - name: Compile application and tests
-        run: python -m compileall -q app.py eqcr tests
+        run: python -m compileall -q app.py research_app.py eqcr tests

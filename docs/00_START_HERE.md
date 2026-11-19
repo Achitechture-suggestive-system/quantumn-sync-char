@@ -2,6 +2,8 @@
 
 Tài liệu này hướng dẫn đọc những gì checkout hiện thực sự triển khai. [README](../README.md) có quickstart; [AGENTS.md](../AGENTS.md) nêu quy tắc thay đổi.
 
+Giao diện mặc định là Quantum Studio. Xem [pipeline và kịch bản Ticket Support](demo/QUANTUM_STUDIO.md) để chạy từ component đến Human Review và trade-off. Phần đọc bên dưới mô tả pipeline nghiên cứu lưu trữ.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)
@@ -20,7 +22,7 @@ Tài liệu này hướng dẫn đọc những gì checkout hiện thực sự t
 Trong PowerShell tại thư mục gốc:
 
 ```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run research_app.py --server.port 8502
 ```
 
 Nạp **PetClinic demo data** rồi chạy fixture offline. Ollama không bắt buộc. Cách cài môi trường nằm trong README.

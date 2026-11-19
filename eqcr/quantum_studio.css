@@ -1,0 +1,48 @@
+.stApp {
+    background: #f7f7ef;
+}
+[data-testid="stHeader"] {
+    background: #f7f7ef;
+}
+[data-testid="stMainBlockContainer"] {
+    max-width: 1440px;
+    padding-top: 3.6rem;
+    padding-bottom: 4rem;
+}
+.studio-header {
+    background: #163a37;
+    color: #e4eee5;
+    border-left: 6px solid #b3d48e;
+    padding: 1.5rem 2rem;
+    margin-bottom: .8rem;
+}
+.studio-header p {
+    color: #c5dfa7;
+    font: 700 .75rem ui-monospace, Consolas, monospace;
+    letter-spacing: .16em;
+    margin: 0;
+}
+.studio-header h1 {
+    color: #fcfcf3;
+    font: 400 clamp(2.4rem, 5vw, 4.4rem)/1.02 Georgia, serif;
+    letter-spacing: -.035em;
+    margin: .35rem 0 .7rem;
+    padding: 0;
+}
+.studio-header div {
+    font-size: .95rem;
+}
+.st-key-studio_guide {
+    background: #e7eee0;
+}
+.st-key-studio_guide li {
+    margin-bottom: .7rem;
+}
+[data-testid="stMetricValue"] {
+    color: #174e44;
+}
+[data-testid="stGraphVizChart"] {
+    border: 1px solid #d9e2d4;
+    background: #f7f7ef;
+    padding: .5rem;
+}

@@ -19,7 +19,7 @@ def test_streamlit_petclinic_offline_run_reaches_all_ten_stages(monkeypatch):
         "save_snapshot",
         lambda run_id, version, artifacts, **kwargs: Path("isolated-ui-test-snapshot"),
     )
-    app_path = Path(__file__).parents[1] / "app.py"
+    app_path = Path(__file__).parents[1] / "research_app.py"
     app = AppTest.from_file(app_path, default_timeout=30).run()
 
     next(button for button in app.button if button.label == "Load PetClinic demo data").click().run()

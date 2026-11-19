@@ -8,7 +8,7 @@ Case input là prepared Tutor Support package trong `eqcr/tutor_support.py`, g�
 
 ## Thao tác giao diện
 
-1. Chạy `.\.venv\Scripts\python.exe -m streamlit run app.py` trong PowerShell.
+1. Chạy `.\.venv\Scripts\python.exe -m streamlit run research_app.py --server.port 8502` trong PowerShell.
 2. Chọn **Load Tutor Support P2 case**. Màn hình source-only hiển thị FR, workflow và scenario; không thay đổi `main`/P0.
 3. Chọn **Exploratory demo (unblinded; excluded from research)**. Đọc cảnh báo `EXPLORATORY_UNBLINDED_DEMO | NO_GOLD_LABELS | SEMANTIC_EVALUATION_NOT_PERFORMED`.
 4. Người vận hành tự đánh dấu xác nhận unblinded rồi bấm **Check local Ollama models**. Nếu Ollama không chạy hoặc `qwen3:4b` chưa có, khởi động Ollama/cài model rồi thử lại. Không có offline fallback nào được gọi là live inference.

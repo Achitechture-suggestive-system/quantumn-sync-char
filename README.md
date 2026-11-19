@@ -13,7 +13,7 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket Support. Bấm **Phân tích Quantum** để xem hai cách chia, đổi ưu tiên trên màn so sánh và ghi quyết định trong **Human Review**. Xem [cách tính và kịch bản demo](docs/demo/QUANTUM_STUDIO.md).
+Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket Support. Kéo hoặc bấm component để chỉnh sơ đồ, rồi bấm **Phân tích sơ đồ**. Chọn phương án bên đầu ra và bấm một component để xem ánh xạ vào Quantum. Đổi ưu tiên và lưu quyết định trong **Human Review**. Xem [cách tính và kịch bản demo](docs/demo/QUANTUM_STUDIO.md).
 
 ## Chạy giao diện nghiên cứu lưu trữ
 

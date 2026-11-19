@@ -32,17 +32,6 @@
 .studio-header div {
     font-size: .95rem;
 }
-.st-key-studio_guide {
-    background: #e7eee0;
-}
-.st-key-studio_guide li {
-    margin-bottom: .7rem;
-}
 [data-testid="stMetricValue"] {
     color: #174e44;
-}
-[data-testid="stGraphVizChart"] {
-    border: 1px solid #d9e2d4;
-    background: #f7f7ef;
-    padding: .5rem;
 }

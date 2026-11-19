@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from collections.abc import Iterator
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
@@ -107,6 +108,10 @@ class Preferences(InputModel):
     async_seam: Cost = 1
     characteristics: Cost = 2
 
+    @property
+    def vector(self) -> tuple[int, ...]:
+        return self.sync, self.data, self.async_seam, self.characteristics, self.characteristics
+
 
 @dataclass(frozen=True)
 class Candidate:
@@ -123,12 +128,7 @@ class Candidate:
         return self.sync, self.data, self.async_seam, self.characteristic_spread, self.characteristic_mix
 
     def score(self, weights: Preferences) -> int:
-        return (
-            self.sync * weights.sync
-            + self.data * weights.data
-            + self.async_seam * weights.async_seam
-            + (self.characteristic_spread + self.characteristic_mix) * weights.characteristics
-        )
+        return sum(units * weight for units, weight in zip(self.vector, weights.vector, strict=True))
 
 
 @dataclass(frozen=True)
@@ -137,6 +137,15 @@ class Analysis:
     feasible: tuple[Candidate, ...]
     frontier: tuple[Candidate, ...]
     ranked: tuple[Candidate, ...]
+
+
+@dataclass(frozen=True)
+class CostDriver:
+    axis: int
+    subject: str
+    components: tuple[str, ...]
+    quanta: tuple[int, ...]
+    units: int
 
 
 def group_index(groups: tuple[tuple[str, ...], ...]) -> dict[str, int]:
@@ -154,28 +163,51 @@ def characteristic_index(architecture: Architecture, assignment: dict[str, int])
     return dict(locations), dict(labels)
 
 
+def _cost_drivers(architecture: Architecture, assignment: dict[str, int]) -> Iterator[CostDriver]:
+    """Trace each contribution back to the input edge, store, or characteristic."""
+    for edge in architecture.interactions:
+        pair = (edge.source, edge.target)
+        quanta = tuple(dict.fromkeys(assignment[component] for component in pair))
+        crosses = len(quanta) > 1
+        if not edge.weight:
+            continue
+        if edge.mode == "SYNC" and crosses:
+            yield CostDriver(0, f"{edge.source} → {edge.target}", pair, quanta, edge.weight)
+        if edge.mode == "ASYNC" and not crosses:
+            yield CostDriver(2, f"{edge.source} → {edge.target}", pair, quanta, edge.weight)
+    for store in architecture.stores:
+        quanta = tuple(sorted({assignment[member] for member in store.members}))
+        if len(quanta) > 1 and store.weight:
+            yield CostDriver(1, store.name, tuple(store.members), quanta, store.weight * (len(quanta) - 1))
+    locations, labels = characteristic_index(architecture, assignment)
+    for label, quanta in sorted(locations.items()):
+        if len(quanta) > 1:
+            members = tuple(item.id for item in architecture.components if label in item.characteristics)
+            yield CostDriver(3, label, members, tuple(sorted(quanta)), len(quanta) - 1)
+    for group, characteristics in sorted(labels.items()):
+        if len(characteristics) > 1:
+            members = tuple(item for item, quantum in assignment.items() if quantum == group)
+            yield CostDriver(4, ", ".join(sorted(characteristics)), members, (group,), len(characteristics) - 1)
+
+
+def explain_candidate(architecture: Architecture, candidate: Candidate) -> tuple[CostDriver, ...]:
+    return tuple(_cost_drivers(architecture, group_index(candidate.groups)))
+
+
 def _evaluate(architecture: Architecture, groups: tuple[tuple[str, ...], ...], index: int) -> Candidate | None:
     assignment = group_index(groups)
     if any(assignment[rule.left] == assignment[rule.right] for rule in architecture.keep_apart):
         return None
-    sync = async_seam = data = 0
-    for edge in architecture.interactions:
-        crosses = assignment[edge.source] != assignment[edge.target]
-        if edge.local_transaction and crosses:
-            return None
-        if edge.mode == "SYNC" and crosses:
-            sync += edge.weight
-        if edge.mode == "ASYNC" and not crosses:
-            async_seam += edge.weight
-    for store in architecture.stores:
-        extra_groups = len({assignment[member] for member in store.members}) - 1
-        if store.policy == "KEEP_SHARED" and extra_groups:
-            return None
-        data += store.weight * extra_groups
-    locations, labels = characteristic_index(architecture, assignment)
-    spread = sum(len(groups) - 1 for groups in locations.values())
-    mix = sum(len(characteristics) - 1 for characteristics in labels.values())
-    return Candidate(f"P{index:03d}", groups, sync, data, async_seam, spread, mix)
+    if any(edge.local_transaction and assignment[edge.source] != assignment[edge.target]
+           for edge in architecture.interactions):
+        return None
+    if any(store.policy == "KEEP_SHARED" and len({assignment[item] for item in store.members}) > 1
+           for store in architecture.stores):
+        return None
+    totals = [0] * 5
+    for driver in _cost_drivers(architecture, assignment):
+        totals[driver.axis] += driver.units
+    return Candidate(f"P{index:03d}", groups, *totals)
 
 
 def analyze(architecture: Architecture, weights: Preferences) -> Analysis:

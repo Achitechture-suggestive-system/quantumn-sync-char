@@ -5,9 +5,9 @@ import pytest
 from pydantic import ValidationError
 from streamlit.testing.v1 import AppTest
 
-from eqcr import storage
+from eqcr import storage, studio_canvas
 from eqcr.quantum_example import ticket_example
-from eqcr.quantum_tradeoff import Architecture, Preferences, analyze, group_index
+from eqcr.quantum_tradeoff import Architecture, Preferences, analyze, explain_candidate, group_index
 
 
 def test_ticket_example_reproduces_both_tradeoffs_and_reverses_ranking():
@@ -26,6 +26,12 @@ def test_ticket_example_reproduces_both_tradeoffs_and_reverses_ranking():
         assert assignment["LOGIN"] == assignment["PROFILE"]
         assert assignment["LOGIN"] != assignment["ROUTE"]
         assert set(assignment) == {component.id for component in architecture.components}
+    for candidate in result.frontier:
+        drivers = explain_candidate(architecture, candidate)
+        assert tuple(sum(item.units for item in drivers if item.axis == axis) for axis in range(5)) == candidate.vector
+    assert [(item.subject, item.components, item.quanta) for item in explain_candidate(architecture, separate)] == [
+        ("Ticket DB", ("CREATE", "ROUTE", "COMPLETE"), (1, 2))
+    ]
 
 
 def test_cross_group_sync_soft_cost_unknown_edge_and_hard_conflict():
@@ -48,8 +54,9 @@ def test_cross_group_sync_soft_cost_unknown_edge_and_hard_conflict():
 
 def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
+    event = {"token": "test-1", "action": "analyze", "model": ticket_example().model_dump(mode="json")}
+    monkeypatch.setattr(studio_canvas, "render_board", lambda **_: event)
     app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30).run()
-    next(button for button in app.button if button.label == "Phân tích Quantum").click().run()
     assert not app.exception
     assert app.metric[-1].value == "P031 · 5 điểm"
     assert not list(tmp_path.rglob("*.json"))
@@ -67,3 +74,37 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert review["preferences"]["characteristics"] == 4
     assert review["note"] == "AppTest-only decision"
     assert [item["score"] for item in review["comparison"]] == [9, 6]
+    assert review["comparison"][1]["cost_drivers"][0]["subject"] == "Ticket DB"
+
+
+def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):
+    model = {
+        "components": [
+            {"id": "INDEXER", "name": "Indexer", "characteristics": ["Freshness"]},
+            {"id": "QUERY", "name": "Query", "characteristics": ["Latency"]},
+        ]
+    }
+    event = {"token": "generic-1", "action": "analyze", "model": model,
+             "layout": {"component:INDEXER": [0.4, 0.25], "component:DELETED": [0.1, 0.1]}}
+    views = []
+
+    def board(**kwargs):
+        views.append(kwargs)
+        return event
+
+    monkeypatch.setattr(studio_canvas, "render_board", board)
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30).run()
+    assert not app.exception
+    assert views[-1]["plans"][0]["assignment"] == {"INDEXER": "Q1", "QUERY": "Q2"}
+    assert views[-1]["layout"] == {"component:INDEXER": [0.4, 0.25]}
+
+    event.update(token="generic-2", action="dirty")
+    app.run()
+    assert views[-1]["pending"] is True
+    assert not app.metric
+    model["components"][1]["characteristics"] = ["Freshness"]
+    event.update(token="generic-3", action="analyze")
+    app.run()
+    assert not app.exception
+    assert views[-1]["pending"] is False
+    assert views[-1]["plans"][0]["assignment"] == {"INDEXER": "Q1", "QUERY": "Q1"}

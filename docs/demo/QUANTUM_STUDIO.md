@@ -2,8 +2,8 @@
 
 ## Demo trong 60 giây
 
-1. Mở app và xem **Sơ đồ ban đầu** của Ticket Support. **Chỉnh đầu vào** cho phép thay component, characteristics, quan hệ, kho và cặp cần tách.
-2. Bấm **Phân tích Quantum**. Hai sơ đồ có đường viền theo nhóm, quan hệ Sync/Async, kho dữ liệu và ánh xạ characteristics. Bảng điểm cho biết từng tiêu chí thay đổi bao nhiêu.
+1. Mở app và kéo component hoặc kho trong **Sơ đồ đầu vào**. Bấm component để sửa tập characteristics. Dùng **Nối** rồi chọn hai đầu để tạo cạnh. Bấm nhãn cạnh để đổi Sync/Async, mức ảnh hưởng và căn cứ. Dùng **Bắt buộc tách** để thêm cặp có ràng buộc.
+2. Bấm **Phân tích sơ đồ**. Chọn phương án trong **Sơ đồ đầu ra**. Bấm component hoặc kho ở một bên để làm nổi phần tương ứng và Quantum ở bên còn lại. Cạnh nâu chấm nối các phần của kho cần đồng bộ.
 3. Bấm **Ưu tiên tập trung đặc tính**. Màn hình giữ hai phương án đang so sánh và cập nhật thứ hạng. Bấm **Ưu tiên giữ dữ liệu** để quay lại bộ trọng số ban đầu.
 4. Trong **Human Review**, bấm **Chọn A**, **Chọn B** hoặc nhập điều cần sửa rồi chọn **Yêu cầu chỉnh**. Quyết định lưu cùng đầu vào, trọng số, phương án và điểm tại thời điểm review. Có thể tải bản JSON và sửa mô hình để phân tích lại.
 
@@ -17,6 +17,8 @@
 | 4. Xếp hạng | Tính biên Pareto theo năm chi phí. Phương án trên biên không có bộ chi phí khác tốt hơn hoặc bằng ở mọi tiêu chí và tốt hơn ở ít nhất một tiêu chí. Xếp điểm tăng dần theo trọng số, sau đó ưu tiên ít nhóm hơn và dùng ID để quyết định thứ tự ổn định. |
 | 5. Review và lặp lại | Đổi trọng số để xếp hạng lại ngay. Chọn một phương án hoặc yêu cầu chỉnh. Nếu thay relation, characteristic hoặc chính sách dữ liệu thì lưu đầu vào và chạy lại bước 2–4. |
 
+Kéo vị trí chỉ đổi bố cục. Khi bấm **Phân tích sơ đồ**, app lưu bố cục trong phiên làm việc và gửi riêng mô hình để giải. Khi sửa thuộc tính, kết quả trước vẫn xem được trong sơ đồ đầu ra với cảnh báo chờ cập nhật. Bảng trade-off và Human Review xuất hiện lại sau khi phân tích mô hình mới hợp lệ.
+
 | Chi phí | Cách tính |
 |---|---|
 | SYNC qua ranh giới | Cộng mức ảnh hưởng của mỗi cạnh SYNC bị cắt. Giao dịch cục bộ tách ra sẽ bị loại từ bước 2. |
@@ -26,6 +28,8 @@
 | Một Quantum trộn đặc tính | Cộng số characteristic khác nhau trong nhóm trừ một, cho các nhóm có characteristic. Nhóm chưa có characteristic được ghi riêng, nên chi phí 0 không mặc nhiên đạt ánh xạ 1:1. |
 
 Điểm xếp hạng bằng tổng chi phí nhân với trọng số tương ứng. Hai chi phí về characteristic cùng dùng trọng số **Tập trung đặc tính**. Các con số là đơn vị ưu tiên thiết kế. Việc xác nhận latency, consistency hay khả năng triển khai cần dữ liệu vận hành.
+
+Phần **Điểm phát sinh từ đâu** truy từng khoản điểm về cạnh, kho hoặc characteristic gốc và nêu Quantum liên quan. Các khoản này dùng cùng phép tính với bộ giải và có trong JSON review. Dropdown trên sơ đồ nhận ứng viên do bộ giải tìm từ dữ liệu đang nhập. Hai hình tham chiếu chỉ cung cấp cách minh họa ví dụ Ticket Support.
 
 ## Mẫu Ticket Support
 

@@ -267,6 +267,19 @@ def test_reviewed_test_only_evidence_enters_generic_optimizer_with_excluded_stat
     }
 
 
+def test_unknown_assertion_is_not_a_failure_when_case_has_no_unknown_evidence():
+    artifacts = run_pipeline(
+        get_tutor_support_fixture(),
+        execution_mode="EXPLORATORY_UNBLINDED_DEMO",
+    )
+
+    assert artifacts["validation_report"]["assertions"]["unknown_is_not_false"] is None
+    assert (
+        artifacts["validation_report"]["assertion_applicability"]["unknown_is_not_false"]
+        == "NOT_APPLICABLE_NO_UNKNOWN_EVIDENCE"
+    )
+
+
 def test_demo_run_storage_root_and_export_manifest_are_isolated(tmp_path):
     artifacts = run_pipeline(
         get_tutor_support_fixture(),

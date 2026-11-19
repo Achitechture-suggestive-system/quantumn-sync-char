@@ -1129,7 +1129,9 @@ def run_pipeline(
                 len(responsibilities) <= 8
                 or optimization.get("solver_backend") == "CP_SAT" and len(responsibilities) <= 50
             ),
-            "unknown_is_not_false": any(item.status == "UNKNOWN" for item in evidence),
+            "unknown_is_not_false": (
+                True if any(item.status == "UNKNOWN" for item in evidence) else None
+            ),
             "bell_6_count_is_203": (
                 optimization["enumerated_partition_count"] == 203
                 if len(responsibilities) == 6
@@ -1201,6 +1203,11 @@ def run_pipeline(
             "evidence_claim_audit_clear": evidence_audit["status"] == "NO_FINDINGS",
         },
         "assertion_applicability": {
+            "unknown_is_not_false": (
+                "APPLIED"
+                if any(item.status == "UNKNOWN" for item in evidence)
+                else "NOT_APPLICABLE_NO_UNKNOWN_EVIDENCE"
+            ),
             "fixture_has_10_zero_cost_optima": (
                 "APPLIED" if fixture_optimization_check_applies else "NOT_APPLICABLE_AFTER_REVIEW_OR_INPUT_EDIT"
             ),

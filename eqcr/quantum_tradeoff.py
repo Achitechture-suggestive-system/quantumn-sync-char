@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from collections.abc import Iterator
+from hashlib import sha256
+import json
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
@@ -36,12 +38,39 @@ class QualityAllocation(InputModel):
     source_quote: str = Field(default="", max_length=600)
 
 
+class RequirementGeneration(InputModel):
+    model: Label
+    case_id: Key
+    proposal_number: int = Field(ge=1)
+    response_sha256: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    input_sha256: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    characteristic: QualityCharacteristic | None = None
+    quote: str = Field(default="", max_length=600)
+
+
 class Requirement(InputModel):
     id: Key
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
     kind: Literal["UNSPECIFIED", "FR", "NFR"] = "UNSPECIFIED"
     component_ids: list[Key] = Field(default_factory=list, max_length=8)
     quality_allocations: list[QualityAllocation] = Field(default_factory=list, max_length=9)
+    generation: RequirementGeneration | None = None
+
+    def input_digest(self) -> str:
+        payload = json.dumps([self.kind, self.text, sorted(self.component_ids)], ensure_ascii=False)
+        return sha256(payload.encode("utf-8")).hexdigest()
+
+    @property
+    def matches_generated_input(self) -> bool:
+        return self.generation is not None and self.input_digest() == self.generation.input_sha256
+
+    @property
+    def model_suggestion(self) -> tuple[QualityCharacteristic, str] | None:
+        generated = self.generation
+        if (self.matches_generated_input and self.kind == "NFR" and generated is not None
+                and generated.characteristic and generated.quote and generated.quote in self.text):
+            return generated.characteristic, generated.quote
+        return None
 
 
 class Interaction(InputModel):

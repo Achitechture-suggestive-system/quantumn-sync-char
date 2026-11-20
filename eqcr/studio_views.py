@@ -11,6 +11,16 @@ def tag(value: object, tone: str = "neutral") -> str:
     return f'<span class="qs-tag qs-tag--{tone}">{escape(str(value))}</span>'
 
 
+def requirement_origin(requirement) -> str:
+    provenance = requirement.generation
+    if provenance is None:
+        return ""
+    state = "LLM giả lập" if requirement.matches_generated_input else "Đã chỉnh từ LLM"
+    label = f"{state} · {provenance.model}"
+    source = f"{provenance.case_id}/{provenance.proposal_number} · SHA-256 {provenance.response_sha256}"
+    return f'<span class="qs-tag" title="{escape(source)}">{escape(label)}</span>'
+
+
 def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool, feasible: bool) -> str:
     name = "Ticket Support" if example else "Sơ đồ đang chỉnh"
     status = "Chờ phân tích"
@@ -19,7 +29,7 @@ def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool
     elif analyzed:
         status = "Có kết quả phân tích" if feasible else "Không có phương án khả thi"
     status_tone = "warn" if pending or analyzed and not feasible else "accent" if analyzed else "neutral"
-    links = ['<a href="#studio-diagrams">Sơ đồ</a>']
+    links = ['<a href="#studio-diagrams">Sơ đồ</a>', '<a href="#studio-ollama">Requirement Ollama</a>']
     if analyzed and not pending:
         if any(item.kind == "NFR" for item in architecture.requirements):
             links.append('<a href="#studio-iso">Ánh xạ ISO</a>')
@@ -63,10 +73,19 @@ def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str,
         for label, item_allocation in confirmed.items()
     )
     state = tag("Đã lưu ánh xạ", "accent") if confirmed else tag("Chờ xác nhận", "warn")
+    model_suggestion = requirement.model_suggestion
+    model_line = ""
+    if model_suggestion:
+        label, quote = model_suggestion
+        model_line = (f'<h4>Đề xuất nhãn từ Ollama</h4><ul class="qs-evidence-list">'
+                      f'<li><strong>{escape(label.value)}</strong><q>{escape(quote)}</q></li></ul>')
+    elif requirement.matches_generated_input and requirement.generation.characteristic:
+        model_line = (f'<h4>Nhãn Ollama cần kiểm tra</h4><p class="qs-muted">'
+                      f'{escape(requirement.generation.characteristic.value)} · Đoạn trích không khớp requirement.</p>')
     return f"""
     <div class="qs-evidence-grid">
         <article class="qs-card qs-source">
-            <div class="qs-card-top"><span class="qs-code">{escape(requirement.id)}</span>{state}</div>
+            <div class="qs-card-top"><span class="qs-code">{escape(requirement.id)}</span><div class="qs-tags">{requirement_origin(requirement)}{state}</div></div>
             <h3>Requirement gốc</h3>
             <blockquote>{escape(requirement.text)}</blockquote>
             <h4>Phạm vi component khai báo</h4>
@@ -76,6 +95,8 @@ def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str,
         </article>
         <article class="qs-card">
             <h3>Đề xuất từ văn bản</h3>
+            {model_line}
+            <h4>Tín hiệu từ quy tắc văn bản</h4>
             {f'<ul class="qs-evidence-list">{signals}</ul>' if signals else '<p class="qs-muted">Chưa tìm thấy đoạn khớp. Bạn có thể chọn nhãn bên dưới.</p>'}
             <h4>Ánh xạ đã xác nhận</h4>
             {f'<ul class="qs-evidence-list">{allocations}</ul>' if allocations else '<p class="qs-muted">Xem tuyến bên dưới rồi xác nhận để đưa đặc tính vào phân nhóm.</p>'}
@@ -143,7 +164,7 @@ def cost_matrix(axes, weights, candidates, slots: str) -> str:
     """
 
 
-def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, names, ranked, frontier, dominator, scale):
+def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, names, ranked, frontier, displayed, dominator, scale):
     profile = "".join(
         f'<li><span class="qs-code">{escape(group["id"])}</span><span>'
         f'{escape(", ".join(names[item] for item in group["components"]))}</span></li>'
@@ -159,6 +180,8 @@ def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, na
     status = tag("Pareto" if frontier else "Ngoài Pareto", "accent" if frontier else "neutral")
     if ranked:
         status += tag("Xếp đầu", "accent")
+    if displayed:
+        status += tag("Đang vẽ", "accent")
     notes = ""
     if candidate.id != baseline.id:
         score_delta = total - sum(units * weight for units, weight in zip(baseline.vector, weights, strict=True))
@@ -293,7 +316,7 @@ def requirement_cards(architecture, plan, names) -> str:
                          for item in requirement.component_ids)
         cards.append(f"""
         <article class="qs-card qs-requirement">
-            <div class="qs-card-top"><h3>{escape(requirement.id)}</h3><div class="qs-tags">{tag(kind)}{tag(status, "accent" if links else "warn")}</div></div>
+            <div class="qs-card-top"><h3>{escape(requirement.id)}</h3><div class="qs-tags">{tag(kind)}{requirement_origin(requirement)}{tag(status, "accent" if links else "warn")}</div></div>
             <p>{escape(requirement.text)}</p>
             {f'<div class="qs-tags qs-scope" aria-label="Phạm vi component khai báo">{scoped}</div>' if scoped else ''}
             {f'<ul class="qs-chain" aria-label="Đặc tính, component và Quantum">{body}</ul>' if body else ''}

@@ -159,6 +159,11 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
         ("ASYNC", "Q1", "Q2", "CROSS_QUANTUM"),
         ("SYNC", "Q2", "Q2", "INTERNAL"),
     ]
+    output_selector = next(widget for widget in app.radio if widget.label == "Phương án hiển thị trên sơ đồ")
+    output_selector.set_value("A").run()
+    shown = next(item for item in views[-1]["plans"] if item["id"] == views[-1]["active_plan"])
+    assert shown["label"].startswith("A · P031")
+    assert any(item.value == f"Theo sơ đồ đang hiển thị · {shown['label']}" for item in app.caption)
     next(button for button in app.button if button.label == "Ưu tiên giữ dữ liệu").click().run()
     assert not app.exception
     assert app.metric[-1].value == "P031 · 5 điểm"
@@ -175,6 +180,7 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert review["selected_candidate"] == "P011"
     assert review["ranking"] == "WEIGHTED"
     assert review["recommended_candidate"] == "P011"
+    assert review["displayed_candidate"] == "P031"
     assert review["baseline_under_default_weights"] == "P031"
     assert review["preferences"]["characteristics"] == 4
     assert review["note"] == "AppTest-only decision"
@@ -239,6 +245,41 @@ def test_declared_requirement_scope_feeds_iso_review_and_quantum_trace(monkeypat
         group_id = plan["assignment"]["PROFILE"]
         group = next(item for item in plan["groups"] if item["id"] == group_id)
         assert group["characteristic_requirements"]["Security · NFR-03"] == {"PROFILE": ["NFR-03"]}
+
+
+def test_loading_llm_case_keeps_inputs_draft_until_explicit_iso_review(monkeypatch):
+    from eqcr.studio_cases import case_requirements, ticket_requirement_cases
+
+    cases = ticket_requirement_cases()
+    selected_case, source = next((case, item) for case in cases.values() for item in case_requirements(case)
+                                 if item.model_suggestion)
+    captured = []
+
+    def board(**kwargs):
+        captured.append(kwargs)
+
+    monkeypatch.setattr(studio_canvas, "render_board", board)
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py").run()
+    next(widget for widget in app.selectbox if widget.label == "Kịch bản Ticket Support").select(selected_case["id"]).run()
+    next(widget for widget in app.multiselect if widget.label == "Requirement để nạp vào sơ đồ").set_value([source.id]).run()
+    next(widget for widget in app.button if widget.label == "Nạp requirement đã chọn").click().run()
+    assert not app.exception
+    architecture = Architecture.model_validate(captured[-1]["model"])
+    assert architecture.requirements[-1] == source
+    assert source.matches_generated_input
+    assert component_profiles(architecture) == component_profiles(ticket_example())
+
+    next(widget for widget in app.selectbox if widget.label == "NFR nguồn").select(source.id).run()
+    label, quote = source.model_suggestion
+    assert next(widget for widget in app.selectbox if widget.label == "Characteristic ISO").value == label
+    next(widget for widget in app.button if widget.label == "Xác nhận gán ISO").click().run()
+    assert not app.exception
+    accepted = Architecture.model_validate(captured[-1]["model"]).requirements[-1]
+    assert accepted.quality_allocations[0].source_quote == quote
+    assert accepted.matches_generated_input
+    assert accepted.model_copy(update={"text": "Đã sửa tại Studio."}).model_suggestion is None
+    shown = next(plan for plan in captured[-1]["plans"] if plan["id"] == captured[-1]["active_plan"])
+    assert any(f"{label} · {source.id}" in group["characteristic_requirements"] for group in shown["groups"])
 
 
 def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):

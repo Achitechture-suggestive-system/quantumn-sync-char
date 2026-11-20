@@ -7,7 +7,7 @@ const modeStyle = {
     SYNC: ["#a74635", []], ASYNC: ["#007765", [7, 4]], UNKNOWN: ["#65746e", [2, 4]],
     DATA: ["#80968b", []], SPLIT: ["#966426", [3, 4]], APART: ["#866196", [2, 4]]
 };
-let options, model, positions, revision, selected, focusKey, tool, first, currentPlan, previousTop;
+let options, model, positions, revision, selected, focusKey, tool, first;
 let dirty = false;
 let submission = 0;
 let nextRequirement = 1;
@@ -106,6 +106,8 @@ function markDirty() {
     if (!dirty) {
         dirty = true;
         emit("dirty");
+        renderOutput();
+        scheduleWires();
     }
     $("message").textContent = "";
     $("inspector").querySelector(".matching-output")?.remove();
@@ -233,7 +235,7 @@ function inputWires() {
 }
 
 function activePlan() {
-    return options.plans.find(plan => plan.id === currentPlan);
+    return dirty ? undefined : options.plans.find(plan => plan.id === options.active_plan);
 }
 
 function outputWires() {
@@ -580,13 +582,8 @@ function quantumCharacteristics(plan, group, names, requirements) {
 
 function renderOutput() {
     const area = $("quanta");
-    const chooser = $("plan");
-    chooser.replaceChildren();
-    chooser.disabled = !options.plans.length;
-    for (const plan of options.plans) chooser.append(new Option(plan.label, plan.id));
-    chooser.value = currentPlan || "";
     const plan = activePlan();
-    $("output-count").textContent = plan ? plan.groups.length + " Quantum" : "";
+    $("output-count").textContent = plan?.label || "";
     area.replaceChildren();
     area.className = plan ? "quanta" : "empty";
     if (!plan) area.textContent = options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
@@ -679,7 +676,7 @@ function updateStatus() {
     $("wire-legend").hidden = !showLegend;
     $("unknown-legend").hidden = !plan?.interactions.some(edge => edge.mode === "UNKNOWN");
     $("output-hint").hidden = showLegend;
-    $("output-hint").textContent = dirty && options.plans.length ? "Mô hình đã đổi. Bấm Phân tích sơ đồ để cập nhật kết quả."
+    $("output-hint").textContent = dirty ? "Mô hình đã đổi. Bấm Phân tích sơ đồ để cập nhật kết quả."
         : "Chọn Phân tích sơ đồ để xem các Quantum.";
 }
 
@@ -732,7 +729,6 @@ $("add-requirement").onclick = () => {
 for (const [id, value] of [["connect", "connect"], ["separate", "apart"]]) {
     $(id).onclick = () => { tool = tool === value ? null : value; first = null; render(); };
 }
-$("plan").onchange = event => { currentPlan = event.target.value; render(); };
 $("reset").onclick = () => {
     model = clone(options.example);
     positions = {};
@@ -766,9 +762,6 @@ window.addEventListener("message", event => {
         dirty = options.pending;
         revision = options.revision;
     }
-    const top = options.plans[0]?.id;
-    if (newRevision || top !== previousTop || !options.plans.some(plan => plan.id === currentPlan)) currentPlan = top;
-    previousTop = top;
     setMessage(options.error || "");
     if (newRevision) render();
     else {

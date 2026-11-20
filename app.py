@@ -17,6 +17,7 @@ from eqcr.quantum_tradeoff import (
 )
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
+from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
 from eqcr.studio_views import (
     candidate_card, constraint_cards, cost_matrix, diagram_header, interaction_cards,
@@ -118,13 +119,9 @@ def calculate(architecture: Architecture, preferences: Preferences, ranking: Ran
     return analyze(architecture, preferences, ranking=ranking)
 
 
-def show_traceability(architecture: Architecture, plans: dict, names: dict[str, str]) -> None:
+def show_traceability(architecture: Architecture, plan: dict, names: dict[str, str]) -> None:
     st.header("Hồ sơ và truy vết", anchor="studio-trace")
-    plan_id = st.selectbox(
-        "Phương án để truy vết", list(plans), format_func=lambda item: plans[item]["label"],
-        key=f"trace_plan_{st.session_state.editor_version}",
-    )
-    plan = plans[plan_id]
+    st.caption(f"Theo sơ đồ đang hiển thị · {plan['label']}")
     groups, edges, stores, requirements = st.tabs(["Quantum", "Tương tác", "Kho và ràng buộc", "Requirements"])
     with groups:
         st.html(quantum_cards(plan, names))
@@ -144,6 +141,7 @@ def show_nfr_review(architecture: Architecture, plans: list[dict]) -> None:
     with st.expander(f"Ánh xạ NFR vào {ISO_EDITION}", expanded=True):
         requirement = nfrs[st.selectbox("NFR nguồn", list(nfrs))]
         suggested = quality_suggestions(requirement.text)
+        model_suggestion = requirement.model_suggestion
         names = {item.id: item.name for item in architecture.components}
         mentions = component_mentions(requirement.text, names)
         confirmed = {item.characteristic: item for item in requirement.quality_allocations}
@@ -160,7 +158,7 @@ def show_nfr_review(architecture: Architecture, plans: list[dict]) -> None:
             components, origin = list(mentions), "Theo tên hoặc mã component xuất hiện trong nguồn"
         else:
             components, origin = [], "Chưa xác định được component từ dữ liệu nguồn"
-        default = next(iter(suggested or confirmed), None)
+        default = next(iter(confirmed), model_suggestion[0] if model_suggestion else next(iter(suggested), None))
         labels = list(QualityCharacteristic)
         generation = st.session_state.editor_version
         label = st.selectbox("Characteristic ISO", labels, index=labels.index(default) if default else None,
@@ -186,10 +184,49 @@ def show_nfr_review(architecture: Architecture, plans: list[dict]) -> None:
             target = next(item for item in model["requirements"] if item["id"] == requirement.id)
             target["quality_allocations"] = [item for item in target["quality_allocations"] if item["characteristic"] != label]
             if confirmed_now:
+                quote = model_suggestion[1] if model_suggestion and model_suggestion[0] == label else suggested.get(label, "")
                 target["quality_allocations"].append({
-                    "characteristic": label, "component_ids": selected, "source_quote": suggested.get(label, ""),
+                    "characteristic": label, "component_ids": selected, "source_quote": quote,
                 })
             st.session_state.architecture = Architecture.model_validate(model)
+            st.session_state.editor_version += 1
+            st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+            st.rerun()
+
+
+def show_requirement_cases(architecture: Architecture) -> None:
+    with st.expander("Thêm requirement từ Ollama"):
+        if st.session_state.studio_pending:
+            st.info("Bấm Phân tích sơ đồ để lưu chỉnh sửa đang làm rồi nạp requirement LLM.")
+            return
+        cases = ticket_requirement_cases()
+        case = cases[st.selectbox("Kịch bản Ticket Support", list(cases), format_func=lambda key: cases[key]["title"])]
+        available = {item.id: item for item in new_case_requirements(architecture, case)}
+        st.caption(f"Ollama {case['ollama_version']} · {case['model']} · {case['created_at'][:10]} UTC · "
+                   f"{case['generated_tokens']} token đầu ra · SHA-256 {case['response_sha256'][:16]}…")
+        st.write(case["brief"])
+        if not available:
+            st.info("Các requirement của gói đã được nạp hoặc sơ đồ thiếu component tương ứng trong mẫu Ticket Support.")
+            return
+        remaining = 40 - len(architecture.requirements)
+        if remaining == 0:
+            st.info("Sơ đồ đã đủ 40 requirement. Gỡ bớt requirement trước khi nạp thêm.")
+            return
+        st.dataframe([
+            {"Mã": item.id, "Loại": item.kind, "Yêu cầu giả lập": item.text,
+             "Component": ", ".join(item.component_ids),
+             "Nhãn LLM có đoạn trích": item.model_suggestion[0].value if item.model_suggestion else "—"}
+            for item in available.values()
+        ], hide_index=True, width="stretch")
+        selected = st.multiselect("Requirement để nạp vào sơ đồ", list(available),
+                                  default=list(available)[:remaining], max_selections=remaining,
+                                  key=f"studio_pack_{case['id']}_{st.session_state.editor_version}")
+        st.caption("Bản nháp tổng hợp. NFR chỉ góp vào điểm phân nhóm sau khi bạn xác nhận ánh xạ ISO.")
+        if st.button("Nạp requirement đã chọn", disabled=not selected):
+            data = architecture.model_dump(mode="json")
+            data["requirements"].extend(available[item].model_dump(mode="json") for item in selected)
+            st.session_state.architecture = Architecture.model_validate(data)
+            st.session_state.studio_analyzed = True
             st.session_state.editor_version += 1
             st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
             st.rerun()
@@ -235,14 +272,14 @@ def show_review(comparison: dict, candidates: list[Candidate]) -> None:
         )
 
 
-def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
+def show_comparison(architecture: Architecture, details_panel, evidence_panel) -> tuple[list[dict], bool, str | None]:
     st.header("So sánh phương án", anchor="studio-tradeoffs")
     preferences = st.session_state.studio_weights
     ranking = st.session_state.studio_ranking
-    for column, (label, preset) in zip(st.columns(len(REVIEW_PRESETS)), REVIEW_PRESETS.items(), strict=True):
-        active = preset == (preferences, ranking)
-        column.button(label, on_click=set_review_priority, args=preset, type="primary" if active else "secondary", width="stretch")
-    with st.expander("Tùy chỉnh trọng số"):
+    with st.expander("Ưu tiên phân nhóm và trọng số"):
+        for column, (label, preset) in zip(st.columns(len(REVIEW_PRESETS)), REVIEW_PRESETS.items(), strict=True):
+            active = preset == (preferences, ranking)
+            column.button(label, on_click=set_review_priority, args=preset, type="primary" if active else "secondary", width="stretch")
         for column, (name, label) in zip(st.columns(4), WEIGHT_FIELDS, strict=True):
             key = f"studio_weight_{name}"
             st.session_state.setdefault(key, getattr(st.session_state.studio_weights, name))
@@ -251,28 +288,28 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     if not result.ranked:
         st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
         st.caption("Kiểm tra xung đột giữa cặp bắt buộc tách, giao dịch cục bộ và kho phải giữ chung.")
-        return [], True
+        return [], True, None
     best = result.ranked[0]
     if ranking == "SYNC_FIRST":
-        st.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
-                   "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
+        details_panel.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
+                              "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
         if best.sync:
-            st.info(f"Chi phí SYNC thấp nhất qua ranh giới là {best.sync} với các ràng buộc đang bật.")
+            details_panel.info(f"Chi phí SYNC thấp nhất qua ranh giới là {best.sync} với các ràng buộc đang bật.")
     elif ranking == "CHARACTERISTIC_FIRST":
-        st.caption("Đang chia theo characteristics. Bộ giải giảm đặc tính rải nhiều Quantum trước, "
-                   "sau đó giảm trộn đặc tính trong một Quantum, rồi mới so điểm trọng số.")
+        details_panel.caption("Đang chia theo characteristics. Bộ giải giảm đặc tính rải nhiều Quantum trước, "
+                              "sau đó giảm trộn đặc tính trong một Quantum, rồi mới so điểm trọng số.")
         if best.sync:
-            st.info(f"Phương án này có chi phí SYNC qua ranh giới là {best.sync}. Xem các luồng bên dưới để review.")
+            details_panel.info(f"Phương án này có chi phí SYNC qua ranh giới là {best.sync}. Xem các luồng trong phần truy vết.")
     else:
-        st.caption("Đang xếp theo điểm trọng số. Cạnh SYNC qua ranh giới góp vào tổng điểm.")
-    summaries = st.columns(4)
+        details_panel.caption("Đang xếp theo điểm trọng số. Cạnh SYNC qua ranh giới góp vào tổng điểm.")
+    summaries = details_panel.columns(4)
     for column, (label, value) in zip(summaries, (
         ("Đã xét", result.enumerated), ("Khả thi", len(result.feasible)),
         ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best.score(preferences)} điểm"),
     ), strict=True):
         column.metric(label, value)
     if any(edge.mode == "UNKNOWN" for edge in architecture.interactions):
-        st.warning("Quan hệ UNKNOWN chưa góp vào điểm. Kiểm tra các quan hệ này trước khi chọn phương án.")
+        details_panel.warning("Quan hệ UNKNOWN chưa góp vào điểm. Kiểm tra các quan hệ này trước khi chọn phương án.")
     names = {item.id: item.name for item in architecture.components}
     best_plan = plan_graph(architecture, best)
 
@@ -292,11 +329,11 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     options = other_feasible if show_all else list(dict.fromkeys([*result.ranked, *defaults]))
     choices = {item.id: item for item in options}
     if len(defaults) < 3:
-        st.info(f"Chỉ có {len(defaults)} phương án khả thi theo ràng buộc hiện tại.")
+        details_panel.info(f"Chỉ có {len(defaults)} phương án khả thi theo ràng buộc hiện tại.")
     elif any(item.id not in frontier_ids for item in defaults):
-        st.caption("Biên Pareto có ít hơn ba phương án. Studio bổ sung phương án khả thi ngoài biên để so sánh.")
+        details_panel.caption("Biên Pareto có ít hơn ba phương án. Studio bổ sung phương án khả thi ngoài biên để so sánh.")
     if ranking == "WEIGHTED" and best.id != initial_left.id:
-        st.info(f"Ưu tiên hiện tại đổi phương án xếp đầu từ {initial_left.id} sang {best.id} · {initial_left.score(preferences)} → {best.score(preferences)} điểm với cùng bộ trọng số.")
+        details_panel.info(f"Ưu tiên hiện tại đổi phương án xếp đầu từ {initial_left.id} sang {best.id} · {initial_left.score(preferences)} → {best.score(preferences)} điểm với cùng bộ trọng số.")
     generation = st.session_state.editor_version
     columns = st.columns(len(defaults))
     slots = "ABC"[:len(defaults)]
@@ -313,10 +350,14 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     plans = {best.id: best_plan, **{item.id: plan_graph(architecture, item) for item in candidates if item.id != best.id}}
     for slot, item in zip(slots, candidates, strict=True):
         plans[item.id]["label"] = f"{slot} · {option(item)}"
+    initial_slot = slots[candidates.index(best)] if best in candidates else slots[0]
+    active_slot = st.radio("Phương án hiển thị trên sơ đồ", list(slots), index=slots.index(initial_slot),
+                           horizontal=True, key="studio_output_slot")
+    active_id = candidates[slots.index(active_slot)].id
 
     axis_weights = preferences.vector
     baseline = candidates[0]
-    st.html(cost_matrix(AXES, axis_weights, candidates, slots))
+    details_panel.html(cost_matrix(AXES, axis_weights, candidates, slots))
     deltas = {
         item.id: {label: b - a for label, a, b in zip(AXES, baseline.vector, item.vector, strict=True)}
         for item in candidates
@@ -331,17 +372,18 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     cards = "".join(
         candidate_card(slot, item, baseline=baseline, axes=AXES, weights=axis_weights, points=details[item.id],
                        plan=plans[item.id], names=names, ranked=item.id == best.id, frontier=item.id in frontier_ids,
-                       dominator=dominated_by.get(item.id), scale=scale)
+                       displayed=item.id == active_id, dominator=dominated_by.get(item.id), scale=scale)
         for slot, item in zip(slots, candidates, strict=True)
     )
-    st.html(f'<div class="qs-candidate-grid">{cards}</div>')
-    st.caption("Điểm so sánh là chi phí thiết kế. Độ trễ và độ tin cậy cần được đo riêng.")
+    details_panel.html(f'<div class="qs-candidate-grid">{cards}</div>')
+    details_panel.caption("Điểm so sánh là chi phí thiết kế. Độ trễ và độ tin cậy cần được đo riêng.")
 
     comparison = {
         "status": "PROPOSED_NOT_VERIFIED",
         "quality_standard": ISO_EDITION,
         "quality_measurement_status": "NOT_MEASURED",
-        "input_provenance": "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED",
+        "input_provenance": ("MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
+                             else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED"),
         "architecture": architecture.model_dump(mode="json"),
         "preferences": preferences.model_dump(mode="json"),
         "ranking": ranking,
@@ -352,6 +394,7 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
         "recommended_under_weights": min(result.frontier, key=lambda item: ranking_key(item, preferences, "WEIGHTED")).id,
         "recommended_candidate": best.id,
         "recommended_plan": best_plan,
+        "displayed_candidate": active_id,
         "comparison": [{"id": item.id, "slot": slot, "groups": item.groups, "score": item.score(preferences),
                         "pareto": item.id in frontier_ids, "dominated_by": dominated_by.get(item.id),
                         "cost_delta_vs_a": deltas[item.id],
@@ -360,7 +403,7 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
                         "interaction_routing": plans[item.id]["interactions"]}
                        for slot, item in zip(slots, candidates, strict=True)],
     }
-    with st.expander("Danh sách phương án Pareto"):
+    with details_panel.expander("Danh sách phương án Pareto"):
         st.dataframe(
             [{"Phương án": option(item), "Điểm": item.score(preferences),
               "Nhóm": " | ".join(", ".join(group) for group in item.groups),
@@ -368,13 +411,14 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
              for item in result.ranked],
             hide_index=True, width="stretch",
         )
-    show_traceability(architecture, plans, names)
-    show_review(comparison, candidates)
-    st.download_button(
-        "Tải bản so sánh JSON", json.dumps(comparison, ensure_ascii=False, indent=2),
-        file_name="quantum-comparison.json", mime="application/json",
-    )
-    return list(plans.values()), False
+    with evidence_panel:
+        show_traceability(architecture, plans[active_id], names)
+        show_review(comparison, candidates)
+        st.download_button(
+            "Tải bản so sánh JSON", json.dumps(comparison, ensure_ascii=False, indent=2),
+            file_name="quantum-comparison.json", mime="application/json",
+        )
+    return list(plans.values()), False, active_id
 
 
 example = ticket_example()
@@ -388,28 +432,39 @@ st.session_state.setdefault("studio_ranking", "SYNC_FIRST")
 architecture = st.session_state.architecture
 
 header = st.empty()
-st.html('<span id="studio-diagrams" class="qs-anchor"></span>')
-board = st.container()
+workspace = st.container(key="studio_workspace", border=st.session_state.studio_analyzed and not st.session_state.studio_pending)
+comparison_panel = workspace.container()
+board = workspace.container()
+details_panel = workspace.container()
+samples_panel = st.container()
+nfr_panel = st.container()
+evidence_panel = st.container()
+plans, no_solution, active_plan = [], False, None
 if st.session_state.studio_analyzed and not st.session_state.studio_pending:
-    nfr_panel = st.container()
-    st.session_state.studio_plans, st.session_state.studio_no_solution = show_comparison(architecture)
+    with comparison_panel:
+        plans, no_solution, active_plan = show_comparison(architecture, details_panel, evidence_panel)
     with nfr_panel:
-        show_nfr_review(architecture, st.session_state.studio_plans)
+        show_nfr_review(architecture, sorted(plans, key=lambda plan: plan['id'] != active_plan))
 elif st.session_state.studio_pending:
-    st.info("Bấm Phân tích sơ đồ để cập nhật trade-off và tiếp tục Human Review.")
+    comparison_panel.info("Bấm Phân tích sơ đồ để cập nhật trade-off và tiếp tục Human Review.")
+
+with samples_panel:
+    st.html('<span id="studio-ollama" class="qs-anchor"></span>')
+    show_requirement_cases(architecture)
 
 header.html(diagram_header(
     architecture, example=architecture == example, analyzed=st.session_state.studio_analyzed,
-    pending=st.session_state.studio_pending, feasible=bool(st.session_state.get("studio_plans")),
+    pending=st.session_state.studio_pending, feasible=bool(plans),
 ))
 
 with board:
+    st.html('<span id="studio-diagrams" class="qs-anchor"></span>')
     if architecture == example:
         st.caption("Mẫu Ticket Support · Nhãn Sync/Async, đặc tính và chính sách dữ liệu là giả định minh họa có thể chỉnh.")
     event = render_board(
         model=architecture.model_dump(mode="json"), example=example.model_dump(mode="json"),
         layout=st.session_state.studio_layout, revision=st.session_state.get("studio_canvas_commit", 0),
-        plans=st.session_state.get("studio_plans", []), no_solution=st.session_state.get("studio_no_solution", False),
+        plans=plans, no_solution=no_solution, active_plan=active_plan,
         error=st.session_state.get("studio_canvas_error", ""), pending=st.session_state.studio_pending,
     )
 if isinstance(event, dict) and event.get("token") != st.session_state.get("studio_submission"):

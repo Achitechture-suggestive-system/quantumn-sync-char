@@ -5,8 +5,8 @@
 1. Mở app và kéo component hoặc kho trong **Sơ đồ đầu vào**. Bấm component để sửa tập characteristics. Dùng **Nối** rồi chọn hai đầu để tạo cạnh. Bấm nhãn cạnh để đổi Sync/Async, mức ảnh hưởng và căn cứ. Dùng **Bắt buộc tách** để thêm cặp có ràng buộc.
 2. Mở **Requirements** dưới sơ đồ đầu vào rồi bấm **+ Requirement**. Chọn loại **NFR**, ghi nội dung, chọn **Component phụ trách** và bấm **Phân tích sơ đồ**. Bạn cũng có thể gắn nguồn cho characteristic thủ công trong trình chỉnh component.
 3. Trong **Ánh xạ NFR vào ISO/IEC 25010:2023**, chọn NFR và xem bảng **Tuyến ánh xạ component → Quantum** theo từng phương án. Sửa danh sách **Component ứng viên** rồi bấm **Xác nhận gán ISO** để tính lại cách phân nhóm. Chọn **Chia theo characteristics** để ưu tiên cách nhóm theo đặc tính. **Chia theo SYNC** là chế độ mặc định.
-4. **Ma trận chi phí** hiện số đơn vị của A/B/C và chênh lệch so với A. Thanh màu trong từng thẻ cho biết các khoản đóng góp vào điểm trọng số. Mở **Điểm phát sinh từ đâu** để đọc căn cứ từng khoản.
-5. Trong **Hồ sơ và truy vết**, chọn một phương án rồi mở thẻ **Quantum**, **Tương tác**, **Kho và ràng buộc** hoặc **Requirements**. Thẻ Requirements nối đặc tính với component và Quantum, đồng thời đánh dấu mã chưa gắn. Bạn cũng có thể bấm mã requirement ngay trên sơ đồ để mở nguồn.
+4. Ngay đầu vùng **So sánh phương án**, chọn ứng viên cho A/B/C rồi chọn ô cần vẽ ở **Phương án hiển thị trên sơ đồ**. Sơ đồ đầu ra và hồ sơ truy vết dùng chung lựa chọn đó. Mở **Ưu tiên phân nhóm và trọng số** để đổi cách xếp hạng. **Ma trận chi phí** bên dưới sơ đồ hiện số đơn vị của A/B/C và chênh lệch so với A.
+5. Trong **Hồ sơ và truy vết**, mở thẻ **Quantum**, **Tương tác**, **Kho và ràng buộc** hoặc **Requirements**. Thẻ Requirements nối đặc tính với component và Quantum, đồng thời đánh dấu mã chưa gắn. Bạn cũng có thể bấm mã requirement ngay trên sơ đồ để mở nguồn.
 6. Trong **Human Review**, bấm **Chọn A**, **Chọn B**, **Chọn C** hoặc nhập điều cần sửa rồi chọn **Yêu cầu chỉnh**. Biên bản hiện lựa chọn, thời điểm và ghi chú. Nút tải xuất hồ sơ JSON.
 
 ## Pipeline
@@ -49,7 +49,7 @@ Studio liệt kê hết phân hoạch trong phạm vi tám component, lọc ràn
 
 Điểm trọng số bằng tổng chi phí nhân với hệ số tương ứng. Hai chi phí về characteristic cùng dùng trọng số **Tập trung đặc tính**. Trong hai chế độ chia, điểm trọng số quyết định thứ hạng khi hai tiêu chí ưu tiên bằng nhau. Chế độ characteristics có thể chấp nhận thêm chi phí SYNC qua ranh giới để giảm rải hoặc trộn đặc tính. Điều kiện giao dịch cục bộ, kho giữ chung và cặp bắt buộc tách được áp dụng trước bước xếp hạng.
 
-Phần **Điểm phát sinh từ đâu** truy từng khoản điểm về cạnh, kho hoặc characteristic gốc và nêu Quantum liên quan. Các khoản này dùng cùng phép tính với bộ giải và có trong JSON review. Dropdown trên sơ đồ nhận ứng viên do bộ giải tìm từ dữ liệu đang nhập. Hai hình tham chiếu chỉ cung cấp cách minh họa ví dụ Ticket Support.
+Phần **Điểm phát sinh từ đâu** truy từng khoản điểm về cạnh, kho hoặc characteristic gốc và nêu Quantum liên quan. Các khoản này dùng cùng phép tính với bộ giải và có trong JSON review. Bộ chọn A/B/C ở đầu vùng làm việc nhận ứng viên do bộ giải tìm từ dữ liệu đang nhập. Hai hình tham chiếu cung cấp bố cục minh họa cho ví dụ Ticket Support.
 
 ## Mẫu Ticket Support
 
@@ -77,3 +77,7 @@ Mẫu có ba requirement `REQ-01` đến `REQ-03` và ba NFR minh họa. `NFR-03
 P031 và P011 hòa ở chi phí rải và trộn, dù đặc tính bị rải khác nhau. Điểm phân xử ở bước tiếp theo là 7 và 12. Giữ kho chung tiết kiệm 6 điểm trong cấu hình mặc định, còn giữ ASYNC nội bộ trả thêm 1 điểm. Các điểm này phản ánh mô hình thiết kế và trọng số do Studio dùng.
 
 Review lưu cục bộ dưới `runs/quantum-studio/reviews/`. JSON chứa `architecture.requirements` với nội dung nguồn, `quality_allocations` đã xác nhận, `characteristic_requirements` theo Quantum và dữ kiện so sánh A/B/C. `quality_measurement_status` ghi `NOT_MEASURED`.
+
+## Thử thêm đầu vào do Ollama tạo
+
+Chọn **Requirement Ollama** ở thanh điều hướng, mở **Thêm requirement từ Ollama**, chọn dữ liệu rồi bấm **Nạp requirement đã chọn**. Ba gói gồm tải cao, gián đoạn và tích hợp, có thể nạp riêng hoặc cùng nhau. Tất cả đều nạp dưới dạng requirement nháp. Sau đó chọn mã `LLM-…` ở phần ánh xạ ISO để kiểm tra nhãn, đoạn trích và component, rồi tự xác nhận nếu phù hợp. [Thí nghiệm, nguồn gốc và kết quả](LLM_REQUIREMENT_EVALUATION.md)

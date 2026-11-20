@@ -1,0 +1,202 @@
+[
+  {
+    "id": "CAPACITY",
+    "title": "Tải cao và xử lý ticket",
+    "brief": "Mùa cao điểm. Xét gửi lặp khi nhấp hai lần, điều phối viên đổi nhóm xử lý, mở rộng ngang khâu tạo ticket, công bằng khi hàng đợi dồn tải, báo cáo chạy đồng thời với việc tiếp nhận, và phục hồi khi worker ngừng.",
+    "created_at": "2026-11-20T15:09:46.5208717Z",
+    "ollama_version": "0.40.16",
+    "model": "qwen3:4b",
+    "model_digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+    "request_sha256": "fa49dcbc5ec2736f63116e4b1bb42401d382f79a0927d62b8c278d2c690c55fb",
+    "response_sha256": "2f83859a56339cc402987ae7053ee5e1780d1b9e86b51a910e9b1d9317545ca3",
+    "generated_tokens": 549,
+    "proposals": [
+      {
+        "proposal_number": 1,
+        "kind": "FR",
+        "text": "Hệ thống phải đảm bảo rằng việc gửi lặp khi nhấn hai lần nút tạo ticket không ảnh hưởng đến quá trình xử lý, đảm bảo tính nhất quán của trạng thái ticket.",
+        "component_ids": [
+          "CREATE"
+        ],
+        "characteristic": null,
+        "quote": ""
+      },
+      {
+        "proposal_number": 2,
+        "kind": "FR",
+        "text": "Điều phối viên phải có khả năng thay đổi nhóm xử lý cho ticket trước khi kỹ thuật viên nhận công việc, đảm bảo sự linh hoạt trong phân công.",
+        "component_ids": [
+          "ROUTE"
+        ],
+        "characteristic": null,
+        "quote": ""
+      },
+      {
+        "proposal_number": 4,
+        "kind": "NFR",
+        "text": "Thời gian từ khi gửi ticket đến khi được giao cho nhóm xử lý phải đảm bảo trong vòng 45 giây trong suốt chiến dịch xử lý.",
+        "component_ids": [
+          "CREATE",
+          "ROUTE"
+        ],
+        "characteristic": "Performance efficiency",
+        "quote": "trong vòng 45 giây"
+      },
+      {
+        "proposal_number": 5,
+        "kind": "NFR",
+        "text": "Khi báo cáo hoạt động chạy đồng thời với việc tiếp nhận ticket, tốc độ xử lý ticket phải không giảm dưới 80% so với mức bình thường.",
+        "component_ids": [
+          "REPORT",
+          "CREATE"
+        ],
+        "characteristic": "Performance efficiency",
+        "quote": "tốc độ xử lý ticket không giảm dưới 80%"
+      },
+      {
+        "proposal_number": 6,
+        "kind": "NFR",
+        "text": "Trong trường hợp worker ngừng hoạt động trong quá trình hoàn thành ticket, hệ thống phải tự động phục hồi và đảm bảo ticket không bị mất.",
+        "component_ids": [
+          "COMPLETE"
+        ],
+        "characteristic": "Reliability",
+        "quote": "tự động phục hồi và đảm bảo ticket không bị mất"
+      },
+      {
+        "proposal_number": 7,
+        "kind": "NFR",
+        "text": "Khi hệ thống chịu tải cao, việc tạo và giao ticket phải đảm bảo tỷ lệ lỗi không vượt quá 1%.",
+        "component_ids": [
+          "CREATE",
+          "ROUTE"
+        ],
+        "characteristic": "Reliability",
+        "quote": "tỷ lệ lỗi không vượt quá 1%"
+      }
+    ]
+  },
+  {
+    "id": "RECOVERY",
+    "title": "Gián đoạn và khôi phục",
+    "brief": "Gián đoạn từng phần. Xét phát lại bản ghi, cảnh báo tồn đọng, khôi phục ticket sau mất kết nối, kiểm tra phân quyền người xem dấu vết, kho báo cáo không truy cập được, và tỷ lệ phát lại trùng.",
+    "created_at": "2026-11-20T15:09:53.5121991Z",
+    "ollama_version": "0.40.16",
+    "model": "qwen3:4b",
+    "model_digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+    "request_sha256": "7f424e7fc66056ef4d25bae7a9fa7c2b503bdedbddb035777e803cea7f4c2a86",
+    "response_sha256": "42df0c0c7ef9714e9344107880e90206e5fbcb4ec080054f33f458e0b9669b0f",
+    "generated_tokens": 573,
+    "proposals": [
+      {
+        "proposal_number": 1,
+        "kind": "FR",
+        "text": "Sau khi hệ thống bị gián đoạn, hệ thống phải tự động phát lại các bản ghi chưa được xử lý để đảm bảo không có dữ liệu bị mất trong quá trình phục hồi.",
+        "component_ids": [
+          "ROUTE",
+          "COMPLETE"
+        ],
+        "characteristic": null,
+        "quote": ""
+      },
+      {
+        "proposal_number": 2,
+        "kind": "FR",
+        "text": "Người quản lý phải có khả năng tải xuống lịch sử theo dõi trạng thái của các yêu cầu đã được xử lý để kiểm tra và xác minh tính chính xác của hệ thống.",
+        "component_ids": [
+          "REPORT"
+        ],
+        "characteristic": null,
+        "quote": ""
+      },
+      {
+        "proposal_number": 4,
+        "kind": "NFR",
+        "text": "Khi phát lại bản ghi giữa quá trình định tuyến và hoàn thành, hệ thống phải đảm bảo không có trạng thái ticket bị lặp lại hoặc bị bỏ qua để tránh sai sót trong quản lý.",
+        "component_ids": [
+          "ROUTE",
+          "COMPLETE"
+        ],
+        "characteristic": "Reliability",
+        "quote": "không bị lặp lại"
+      },
+      {
+        "proposal_number": 6,
+        "kind": "NFR",
+        "text": "Khi hệ thống báo cáo đang hoạt động ngoại tuyến, hệ thống vẫn phải hoàn thành các yêu cầu ticket mà không bị gián đoạn trong quá trình xử lý.",
+        "component_ids": [
+          "ROUTE",
+          "COMPLETE"
+        ],
+        "characteristic": "Reliability",
+        "quote": "không bị gián đoạn"
+      },
+      {
+        "proposal_number": 7,
+        "kind": "NFR",
+        "text": "Thời gian phản hồi từ việc tích lũy backlog định tuyến đến khi hiển thị trên bảng điều khiển báo cáo phải dưới 15 giây để đảm bảo tính kịp thời trong giám sát.",
+        "component_ids": [
+          "ROUTE",
+          "REPORT"
+        ],
+        "characteristic": "Performance efficiency",
+        "quote": "dưới 15 giây"
+      }
+    ]
+  },
+  {
+    "id": "CHANGE",
+    "title": "Thay đổi và tích hợp",
+    "brief": "Thay đổi và tích hợp. Xét xuất dữ liệu báo cáo, lịch hẹn bảo trì trên hồ sơ, hệ thống đối tác đọc dữ liệu, thao tác bằng bàn phím, kiểm thử khi đổi luật định tuyến và tương thích với hợp đồng dữ liệu phiên bản cũ.",
+    "created_at": "2026-11-20T15:09:59.1243516Z",
+    "ollama_version": "0.40.16",
+    "model": "qwen3:4b",
+    "model_digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+    "request_sha256": "63fb05d3afd5cf6a9a58b7572a828ae5793f81582a0d2d4293ac0fdcd061c69b",
+    "response_sha256": "697073474c50a70d785ad58d1d6651f878c94deaf2c67ff08039ff442ea21f69",
+    "generated_tokens": 440,
+    "proposals": [
+      {
+        "proposal_number": 1,
+        "kind": "FR",
+        "text": "Khách hàng có thể thay đổi lịch hẹn bảo trì trên hồ sơ của họ",
+        "component_ids": [
+          "PROFILE"
+        ],
+        "characteristic": null,
+        "quote": ""
+      },
+      {
+        "proposal_number": 2,
+        "kind": "FR",
+        "text": "Quản lý có thể lọc và xuất báo cáo các ghi chép hoàn thành của vé",
+        "component_ids": [
+          "REPORT"
+        ],
+        "characteristic": null,
+        "quote": ""
+      },
+      {
+        "proposal_number": 3,
+        "kind": "NFR",
+        "text": "Đối tác có thể đọc các báo cáo xuất khẩu ở cả hai phiên bản hợp đồng cũ và mới",
+        "component_ids": [
+          "REPORT"
+        ],
+        "characteristic": "Compatibility",
+        "quote": "đọc được cả hai phiên bản hợp đồng"
+      },
+      {
+        "proposal_number": 4,
+        "kind": "NFR",
+        "text": "Khách hàng có thể đăng nhập và tạo vé chỉ sử dụng bàn phím",
+        "component_ids": [
+          "LOGIN",
+          "CREATE"
+        ],
+        "characteristic": "Interaction capability",
+        "quote": "chỉ sử dụng bàn phím"
+      }
+    ]
+  }
+]

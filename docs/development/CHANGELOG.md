@@ -1,5 +1,12 @@
 # Changelog
 
+## NFR theo ISO/IEC 25010 và ba phương án Quantum — 2026-11-20
+
+- Thêm đề xuất nhãn ISO/IEC 25010:2023 từ NFR, đoạn chữ khớp và component được nêu trong văn bản. Ánh xạ được xác nhận mới tham gia phân hoạch, truy vết theo NFR và xuất JSON. Các chỉ số vận hành vẫn `NOT_MEASURED`.
+- So sánh và lưu lựa chọn A/B/C theo các chi phí có thể truy vết. Studio ưu tiên biên Pareto và ghi rõ phương án trội hơn khi bổ sung một phương án ngoài biên.
+- Browser smoke xác nhận NFR-01 làm đổi phương án xếp đầu từ P011 sang P031 ở chế độ characteristics. Ba phương án là P031, P011 và P029. Kiểm tra thêm một NFR tự nhập cho Customer Login nhận hai nhãn đề xuất và chỉ cập nhật sơ đồ sau xác nhận.
+- 149 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44714611105)
+
 ## Truy vết requirement và chia theo characteristics — 2026-11-20
 
 - Studio nhập requirement có mã và cho gắn mỗi nguồn vào characteristic của component. Sơ đồ đầu ra hiển thị mã có thể bấm để mở nội dung nguồn. Bảng truy vết và JSON review cho biết đường từ requirement đến Quantum.

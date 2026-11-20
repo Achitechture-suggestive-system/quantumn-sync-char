@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## NFR theo ISO/IEC 25010 và ba phương án Quantum — 2026-11-20
+
+- Commit `bd8b620299a6eb65b0365e8d5186b67ccddfd877` đã push lên `feat/quantum-tradeoff-workbench`. Remote ref khớp SHA. SHA của `main` và tag P0 khớp các giá trị đã ghi bên dưới.
+- 149 tests, compileall, cú pháp JavaScript, staged diff và secret scan qua. CI kết thúc thành công trên đúng commit. [GitHub Actions 44714611105](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44714611105)
+- Xác minh trên cổng 8501 bằng dữ liệu minh họa và một NFR nhập thêm. Test cô lập xác minh lưu lựa chọn C. Các ánh xạ và kết quả này chưa có phép đo thực nghiệm hoặc nhãn tham chiếu độc lập.
+
 ## Truy vết requirement và chia theo characteristics — 2026-11-20
 
 - Commit `6a5e236c0974048666123fd0c08af93242d4de4c` đã push lên `feat/quantum-tradeoff-workbench`. Remote ref khớp SHA. SHA của `main` và tag P0 khớp các giá trị đã ghi bên dưới.

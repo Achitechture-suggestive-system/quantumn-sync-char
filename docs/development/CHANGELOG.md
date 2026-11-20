@@ -1,5 +1,17 @@
 # Changelog
 
+## Hoàn tác bản nghiên cứu ISO trên cổng 8502 — 2026-11-20
+
+- Hoàn tác bản triển khai `4446cbb`, khôi phục mã trước đó tại `f041afb` và dừng phiên nghiên cứu trên cổng 8502.
+- Kiểm tra trên cổng 8501 xác nhận sơ đồ đầu ra hiện đặc tính trong từng Quantum, cùng ánh xạ ISO và ba lựa chọn A/B/C. 149 bài kiểm tra cục bộ và CI đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44750146560)
+
+## Phân rã Quantum theo chất lượng có truy vết — 2026-11-20
+
+- Thêm registry ISO/IEC 25010:2023 gồm 9 characteristics và 40 subcharacteristics, và registry driver riêng. Phân loại requirement nguyên tử giữ span, provenance và review.
+- Luồng nghiên cứu tự chọn tạo scenario matrix, trace P4, exposure theo chiều coupling và profile từng ứng viên. Policy kiểm căn cứ hard rule, bảo toàn UNKNOWN và đưa preference chất lượng hoặc tương tác đã review vào optimizer hiện hữu.
+- Ca đặt thiết bị trả ba ứng viên P004, P001 và P002 từ 52 phân hoạch. Bổ sung span timing chuyển I-RESERVE từ UNRESOLVED sang đề xuất SYNC_REQUEST_RESPONSE, với J và phân hoạch giữ nguyên. Bundle, graph JSON và Draw.io đã xuất và kiểm. Studio mở Quality Profile ở panel riêng.
+- 174 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44749579232)
+
 ## NFR theo ISO/IEC 25010 và ba phương án Quantum — 2026-11-20
 
 - Thêm đề xuất nhãn ISO/IEC 25010:2023 từ NFR, đoạn chữ khớp và component được nêu trong văn bản. Ánh xạ được xác nhận mới tham gia phân hoạch, truy vết theo NFR và xuất JSON. Các chỉ số vận hành vẫn `NOT_MEASURED`.

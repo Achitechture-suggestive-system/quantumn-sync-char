@@ -1,5 +1,17 @@
 # Nhật ký publish GitHub
 
+## Hoàn tác bản nghiên cứu ISO trên cổng 8502 — 2026-11-20
+
+- Commit `fc9fd2e77890effc3bcce8f81c66d1cb3d9feb11` đã push lên `feat/quantum-tradeoff-workbench`. Cây mã tại commit bằng cây tại `f041afb`. Remote branch, `main` và tag P0 đã được đối chiếu.
+- 149 tests, compileall, cú pháp JavaScript, staged diff và secret scan qua. CI kết thúc thành công trên commit hoàn tác. [GitHub Actions 44750146560](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44750146560)
+- Dừng phiên trên cổng 8502 và kiểm tra lại Studio 8501 trên trình duyệt. Thư mục kết quả chạy vẫn lưu tại `runs/`.
+
+## Phân rã Quantum theo chất lượng có truy vết — 2026-11-20
+
+- Commit `4446cbb59dd36d643fa853d652bb2bfc9bac98e0` đã push lên `feat/quantum-tradeoff-workbench`. Remote branch, `main` và tag P0 đã được đối chiếu.
+- 174 tests, compileall, cú pháp JavaScript, staged diff và secret scan qua. CI kết thúc thành công trên đúng commit. [GitHub Actions 44749579232](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44749579232)
+- Research UI cổng 8502 kiểm shortlist, profile Quantum, profile tương tác và nút tải. Studio cổng 8501 kiểm profile tách khỏi sơ đồ. CLI chạy lại cùng input cho JSON trùng và qua kiểm checksum bundle. Kết quả minh họa giữ `NOT_MEASURED` và Tutor vẫn chờ independent annotation.
+
 ## NFR theo ISO/IEC 25010 và ba phương án Quantum — 2026-11-20
 
 - Commit `bd8b620299a6eb65b0365e8d5186b67ccddfd877` đã push lên `feat/quantum-tradeoff-workbench`. Remote ref khớp SHA. SHA của `main` và tag P0 khớp các giá trị đã ghi bên dưới.

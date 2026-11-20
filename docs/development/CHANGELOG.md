@@ -1,5 +1,11 @@
 # Changelog
 
+## Khôi phục luồng Quantum Studio — 2026-11-20
+
+- Khôi phục bộ giải, chính sách SYNC/ASYNC và so sánh A/B của `e10bd81`. Gỡ bảng độ nhạy và phân tích Ollama khỏi Studio. Phần **Characteristics** trong từng Quantum vẫn hiện đặc tính, component phụ trách và các nhóm cùng phụ trách.
+- Kiểm tra trực tiếp trên cổng 8501. **Phân tích sơ đồ** hiển thị P011 và ánh xạ Q1–Q3. **Ưu tiên giữ dữ liệu** xếp P031 đầu, nơi Q1 và Q2 cùng phụ trách Trải nghiệm khách hàng. Human Review hiển thị và lỗi `omit_axis` không xuất hiện.
+- 144 bài kiểm tra cục bộ và CI trên commit khôi phục đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44676901252)
+
 ## Ollama và characteristics trong sơ đồ Quantum — 2026-11-20
 
 - Đầu ra hiển thị từng characteristic, component phụ trách và Quantum cùng phụ trách. Bảng độ nhạy thử bỏ lần lượt điểm rải và điểm trộn đặc tính. Chi phí ASYNC giữ chung chỉ tính khi bật ưu tiên tách và ghi căn cứ.

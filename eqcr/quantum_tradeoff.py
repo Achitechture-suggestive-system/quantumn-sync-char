@@ -15,6 +15,7 @@ from .pipeline import _partitions
 Key = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")]
 Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 Cost = Annotated[int, Field(ge=0, le=10)]
+Ranking = Literal["SYNC_FIRST", "WEIGHTED"]
 
 
 class InputModel(BaseModel):
@@ -210,7 +211,14 @@ def _evaluate(architecture: Architecture, groups: tuple[tuple[str, ...], ...], i
     return Candidate(f"P{index:03d}", groups, *totals)
 
 
-def analyze(architecture: Architecture, weights: Preferences) -> Analysis:
+def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking) -> tuple:
+    weighted_order = (candidate.score(weights), len(candidate.groups), candidate.id)
+    if ranking == "SYNC_FIRST":
+        return (candidate.sync, candidate.async_seam, *weighted_order)
+    return weighted_order
+
+
+def analyze(architecture: Architecture, weights: Preferences, *, ranking: Ranking = "WEIGHTED") -> Analysis:
     """Visit all partitions, filter hard rules, and retain the exact Pareto frontier."""
     feasible = []
     count = 0
@@ -226,5 +234,5 @@ def analyze(architecture: Architecture, weights: Preferences) -> Analysis:
             frontier_vectors.append(vector)
     eligible = set(frontier_vectors)
     frontier = tuple(candidate for candidate in feasible if candidate.vector in eligible)
-    ranked = tuple(sorted(frontier, key=lambda item: (item.score(weights), len(item.groups), item.id)))
+    ranked = tuple(sorted(frontier, key=lambda item: ranking_key(item, weights, ranking)))
     return Analysis(count, tuple(feasible), frontier, ranked)

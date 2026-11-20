@@ -11,7 +11,10 @@ import streamlit as st
 from pydantic import ValidationError
 
 from eqcr.quantum_example import ticket_example
-from eqcr.quantum_tradeoff import Architecture, Candidate, Preferences, analyze, characteristic_index, explain_candidate, group_index
+from eqcr.quantum_tradeoff import (
+    Architecture, Candidate, Preferences, Ranking, analyze, characteristic_index,
+    explain_candidate, group_index, ranking_key,
+)
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
 
@@ -28,9 +31,9 @@ AXIS_EFFECTS = (
     "Một Quantum chịu trách nhiệm cho nhiều đặc tính.",
 )
 REVIEW_PRESETS = {
-    "Ưu tiên giữ dữ liệu": Preferences(),
-    "Ưu tiên tập trung đặc tính": Preferences(characteristics=4),
-    "Ưu tiên giữ SYNC trong nhóm": Preferences(sync=8),
+    "Chia theo SYNC": (Preferences(), "SYNC_FIRST"),
+    "Ưu tiên giữ dữ liệu": (Preferences(), "WEIGHTED"),
+    "Ưu tiên tập trung đặc tính": (Preferences(characteristics=4), "WEIGHTED"),
 }
 WEIGHT_FIELDS = (
     ("sync", "SYNC qua ranh giới"),
@@ -40,8 +43,9 @@ WEIGHT_FIELDS = (
 )
 
 
-def set_review_priority(preferences: Preferences) -> None:
+def set_review_priority(preferences: Preferences, ranking: Ranking) -> None:
     st.session_state.studio_weights = preferences
+    st.session_state.studio_ranking = ranking
     for name, value in preferences.model_dump().items():
         st.session_state[f"studio_weight_{name}"] = value
 
@@ -91,22 +95,71 @@ def candidate_costs(architecture: Architecture, candidate: Candidate, preference
 
 
 def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
-    assignment = group_index(candidate.groups)
-    _, labels = characteristic_index(architecture, assignment)
+    indexes = group_index(candidate.groups)
+    assignment = {item: f"Q{group}" for item, group in indexes.items()}
+    _, labels = characteristic_index(architecture, indexes)
+    characteristics = {component.id: set(component.characteristics) for component in architecture.components}
+    groups = []
+    for index, group in enumerate(candidate.groups, 1):
+        characteristic_sources = {
+            label: [component for component in group if label in characteristics[component]]
+            for label in sorted(labels.get(index, set()))
+        }
+        groups.append({
+            "id": f"Q{index}", "components": list(group), "characteristics": list(characteristic_sources),
+            "characteristic_sources": characteristic_sources,
+        })
     return {
         "id": candidate.id,
         "label": f"{candidate.id} · {len(candidate.groups)} Quantum",
-        "assignment": {item: f"Q{group}" for item, group in assignment.items()},
-        "groups": [
-            {"id": f"Q{index}", "components": list(group), "characteristics": sorted(labels.get(index, set()))}
-            for index, group in enumerate(candidate.groups, 1)
+        "assignment": assignment,
+        "groups": groups,
+        "interactions": [
+            {
+                **edge.model_dump(mode="json"),
+                "from_quantum": assignment[edge.source], "to_quantum": assignment[edge.target],
+                "placement": "INTERNAL" if assignment[edge.source] == assignment[edge.target] else "CROSS_QUANTUM",
+            }
+            for edge in architecture.interactions
         ],
     }
 
 
 @st.cache_data(show_spinner=False)
-def calculate(architecture: Architecture, preferences: Preferences):
-    return analyze(architecture, preferences)
+def calculate(architecture: Architecture, preferences: Preferences, ranking: Ranking):
+    return analyze(architecture, preferences, ranking=ranking)
+
+
+def show_quantum_allocation(architecture: Architecture, plan: dict, names: dict[str, str]) -> None:
+    with st.expander("Đầu vào dùng để chia"):
+        st.table([
+            {"Component": component.name, "ID": component.id,
+             "Characteristics": ", ".join(component.characteristics) or "Chưa khai báo"}
+            for component in architecture.components
+        ])
+    with st.expander(f"Characteristics và luồng theo Quantum · {plan['id']}", expanded=True):
+        st.table([
+            {"Quantum": group["id"], "Component": ", ".join(names[item] for item in group["components"]),
+             "Characteristic ← Component phụ trách": " · ".join(
+                 f"{characteristic} ← {', '.join(names[item] for item in owners)}"
+                 for characteristic, owners in group["characteristic_sources"].items()
+             ) or "Chưa khai báo"}
+            for group in plan["groups"]
+        ])
+        if plan["interactions"]:
+            st.table([
+                {
+                    "Kiểu": edge["mode"],
+                    "Luồng": f"{names[edge['source']]} → {names[edge['target']]}",
+                    "Quantum": edge["from_quantum"] if edge["placement"] == "INTERNAL"
+                    else f"{edge['from_quantum']} → {edge['to_quantum']}",
+                    "Phân nhóm": "Nội bộ" if edge["placement"] == "INTERNAL" else "Qua ranh giới",
+                    "Mức ảnh hưởng": edge["weight"],
+                }
+                for edge in sorted(plan["interactions"], key=lambda row: (row["mode"] != "SYNC", row["mode"]))
+            ])
+        else:
+            st.caption("Đầu vào chưa có quan hệ giữa các component.")
 
 
 def show_review(comparison: dict, left: Candidate, right: Candidate) -> None:
@@ -150,45 +203,55 @@ def show_review(comparison: dict, left: Candidate, right: Candidate) -> None:
 
 
 def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
-    heading("So sánh phương án", "Chỉnh trọng số để xem khi nào việc giữ dữ liệu chung quan trọng hơn việc cô lập đặc tính.")
+    heading("So sánh phương án", "Chọn cách xếp hạng để xem đánh đổi khi giữ các phụ thuộc SYNC trong cùng Quantum.")
     for column, (label, preset) in zip(st.columns(3), REVIEW_PRESETS.items(), strict=True):
-        column.button(label, on_click=set_review_priority, args=(preset,), width="stretch")
+        column.button(label, on_click=set_review_priority, args=preset, width="stretch")
     with st.expander("Tùy chỉnh trọng số"):
         for column, (name, label) in zip(st.columns(4), WEIGHT_FIELDS, strict=True):
             key = f"studio_weight_{name}"
             st.session_state.setdefault(key, getattr(st.session_state.studio_weights, name))
             column.slider(label, 0, 10, key=key, on_change=save_slider_weights)
     preferences = st.session_state.studio_weights
-    result = calculate(architecture, preferences)
+    ranking = st.session_state.studio_ranking
+    result = calculate(architecture, preferences, ranking)
     if not result.ranked:
         st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
         st.caption("Kiểm tra xung đột giữa cặp bắt buộc tách, giao dịch cục bộ và kho phải giữ chung.")
         return [], True
     best = result.ranked[0]
+    if ranking == "SYNC_FIRST":
+        st.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
+                   "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
+        if best.sync:
+            st.info(f"Chi phí SYNC thấp nhất qua ranh giới là {best.sync} với các ràng buộc đang bật.")
+    else:
+        st.caption("Đang xếp theo điểm trọng số. Cạnh SYNC qua ranh giới góp vào tổng điểm.")
     summaries = st.columns(4)
     for column, (label, value) in zip(summaries, (
         ("Đã xét", result.enumerated), ("Khả thi", len(result.feasible)),
-        ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu theo trọng số", f"{best.id} · {best.score(preferences)} điểm"),
+        ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best.score(preferences)} điểm"),
     ), strict=True):
         column.metric(label, value)
-    st.caption("Điểm càng thấp càng tốt. Trên biên Pareto, cải thiện một tiêu chí sẽ đánh đổi ít nhất một tiêu chí khác, nếu có phương án với bộ chi phí khác.")
+    st.caption("Điểm trọng số càng thấp càng tốt khi so tiêu chí này. Trên biên Pareto, hai phương án có bộ chi phí khác nhau sẽ đánh đổi ít nhất một tiêu chí.")
     if any(edge.mode == "UNKNOWN" for edge in architecture.interactions):
         st.warning("Quan hệ UNKNOWN chưa góp vào điểm. Kiểm tra các quan hệ này trước khi chọn phương án.")
     names = {item.id: item.name for item in architecture.components}
+    best_plan = plan_graph(architecture, best)
+    show_quantum_allocation(architecture, best_plan, names)
 
     def option(candidate: Candidate) -> str:
         return f"{candidate.id} · {len(candidate.groups)} Quantum"
 
     show_all = st.checkbox("Bao gồm các phương án khả thi ngoài biên Pareto")
-    options = sorted(result.feasible, key=lambda item: (item.score(preferences), len(item.groups), item.id)) if show_all else list(result.ranked)
+    options = sorted(result.feasible, key=lambda item: ranking_key(item, preferences, ranking)) if show_all else list(result.ranked)
     choices = {item.id: item for item in options}
     left_col, right_col = st.columns(2)
     # Keep the same pair visible as weights move. The ranking above updates independently.
     ids = sorted(choices)
-    default_order = sorted(result.frontier, key=lambda item: (item.score(Preferences()), len(item.groups), item.id))
+    default_order = sorted(result.frontier, key=lambda item: ranking_key(item, Preferences(), "WEIGHTED"))
     initial_left = default_order[0].id
     initial_right = next((item.id for item in default_order if item.id != initial_left), initial_left)
-    if best.id != initial_left:
+    if ranking == "WEIGHTED" and best.id != initial_left:
         st.info(f"Ưu tiên hiện tại đổi phương án xếp đầu từ {initial_left} sang {best.id} · {choices[initial_left].score(preferences)} → {best.score(preferences)} điểm với cùng bộ trọng số.")
     generation = st.session_state.editor_version
     left_id = left_col.selectbox("Phương án A", ids, index=ids.index(initial_left), format_func=lambda key: option(choices[key]),
@@ -196,6 +259,8 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     right_id = right_col.selectbox("Phương án B", ids, index=ids.index(initial_right), format_func=lambda key: option(choices[key]),
                                   key=f"compare_b_{generation}_{show_all}")
     left, right = choices[left_id], choices[right_id]
+    plans = {item.id: plan_graph(architecture, item) for item in (left, right) if item.id != best.id}
+    plans = {best.id: best_plan, **plans}
 
     axis_weights = preferences.vector
     st.table([
@@ -232,14 +297,17 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
         "input_provenance": "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED",
         "architecture": architecture.model_dump(mode="json"),
         "preferences": preferences.model_dump(mode="json"),
+        "ranking": ranking,
         "enumerated": result.enumerated,
         "feasible": len(result.feasible),
         "pareto": len(result.frontier),
         "baseline_under_default_weights": initial_left,
-        "recommended_under_weights": best.id,
+        "recommended_under_weights": min(result.frontier, key=lambda item: ranking_key(item, preferences, "WEIGHTED")).id,
+        "recommended_candidate": best.id,
         "comparison": [{"id": item.id, "groups": item.groups, "score": item.score(preferences),
                         "costs": dict(zip(AXES, item.vector, strict=True)), "cost_drivers": details[item.id],
-                        "assignment": plan_graph(architecture, item)["assignment"]}
+                        "assignment": plans[item.id]["assignment"], "quantum_profiles": plans[item.id]["groups"],
+                        "interaction_routing": plans[item.id]["interactions"]}
                        for item in (left, right)],
     }
     show_review(comparison, left, right)
@@ -256,7 +324,7 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
         "Tải bản so sánh JSON", json.dumps(comparison, ensure_ascii=False, indent=2),
         file_name="quantum-comparison.json", mime="application/json",
     )
-    return [plan_graph(architecture, item) for item in {row.id: row for row in (best, left, right)}.values()], False
+    return list(plans.values()), False
 
 
 example = ticket_example()
@@ -266,6 +334,7 @@ st.session_state.setdefault("studio_layout", {})
 st.session_state.setdefault("studio_analyzed", False)
 st.session_state.setdefault("studio_pending", False)
 st.session_state.setdefault("studio_weights", Preferences())
+st.session_state.setdefault("studio_ranking", "SYNC_FIRST")
 architecture = st.session_state.architecture
 
 st.html("""

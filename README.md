@@ -1,6 +1,6 @@
 # Quantum Studio · EQCR + QAME
 
-Quantum Studio nhận component, characteristics, quan hệ Sync/Async và kho dữ liệu. App đề xuất các cách chia Quantum, vẽ hai phương án cạnh nhau, tính trade-off và ghi quyết định khi người review chọn phương án.
+Quantum Studio nhận component, characteristics, quan hệ Sync/Async và kho dữ liệu. Mặc định bộ giải ưu tiên giữ SYNC trong cùng Quantum, sau đó xét cơ hội tách ASYNC. App hiện component phụ trách từng characteristic và các luồng nội bộ hoặc qua ranh giới, tính trade-off và lưu lựa chọn Human Review.
 
 ## Chạy nhanh (Windows / PowerShell)
 

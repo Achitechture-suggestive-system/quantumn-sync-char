@@ -53,23 +53,6 @@ def test_cross_group_sync_soft_cost_unknown_edge_and_hard_conflict():
         Architecture.model_validate(raw)
 
 
-def test_async_separation_preference_is_opt_in_and_needs_basis():
-    raw = ticket_example().model_dump(mode="json")
-    raw["interactions"][0].pop("prefer_async_separation")
-    previous_input = Architecture.model_validate(raw)
-    assert all(candidate.async_seam == 0 for candidate in analyze(previous_input, Preferences()).feasible)
-    raw["interactions"][0].update(prefer_async_separation=True, basis="")
-    with pytest.raises(ValidationError, match="Ưu tiên tách"):
-        Architecture.model_validate(raw)
-    raw["interactions"][0]["basis"] = "Independent routing deployment is desired."
-    architecture = Architecture.model_validate(raw)
-    result = analyze(architecture, Preferences())
-    keep_data = result.ranked[0]
-    assert keep_data.async_seam == 1
-    assert keep_data.score(Preferences(), omit_axis=3) == 3
-    assert keep_data.score(Preferences(), omit_axis=4) == 3
-
-
 def test_sync_first_retains_stronger_sync_under_hard_separation():
     architecture = Architecture.model_validate({
         "components": [

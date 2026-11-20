@@ -1,6 +1,6 @@
 # Quantum Studio · EQCR + QAME
 
-Quantum Studio nhận component, characteristics, quan hệ Sync/Async và kho dữ liệu. Bộ giải ưu tiên giữ SYNC trong cùng Quantum, sau đó xét các cạnh ASYNC có căn cứ ưu tiên tách. Sơ đồ đầu ra hiện mỗi characteristic cùng component phụ trách. Phân tích trade-off bằng Ollama là tùy chọn trong Human Review.
+Quantum Studio nhận component, characteristics, quan hệ Sync/Async và kho dữ liệu. Mặc định bộ giải ưu tiên giữ SYNC trong cùng Quantum, sau đó xét cơ hội tách ASYNC. Sơ đồ đầu ra hiển thị characteristic và component phụ trách ngay trong từng Quantum. App hiện các luồng nội bộ hoặc qua ranh giới, tính trade-off và lưu lựa chọn Human Review.
 
 ## Chạy nhanh (Windows / PowerShell)
 
@@ -14,8 +14,6 @@ python -m streamlit run app.py
 ```
 
 Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket Support. Kéo hoặc bấm component để chỉnh sơ đồ, rồi bấm **Phân tích sơ đồ**. Chọn phương án bên đầu ra và bấm một component để xem ánh xạ vào Quantum. Đổi ưu tiên và lưu quyết định trong **Human Review**. Xem [cách tính và kịch bản demo](docs/demo/QUANTUM_STUDIO.md).
-
-Để dùng **Phân tích trade-off với qwen3:4b**, chạy Ollama và cài model bằng `ollama pull qwen3:4b` nếu chưa có. Studio dùng `OLLAMA_HOST` hoặc địa chỉ mặc định `127.0.0.1:11434`.
 
 ## Chạy giao diện nghiên cứu lưu trữ
 

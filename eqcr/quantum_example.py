@@ -14,8 +14,8 @@ def ticket_example() -> Architecture:
             {"id": "REPORT", "name": "Operations Reporting", "characteristics": ["Cô lập tải báo cáo"]},
         ],
         "interactions": [
-            {"source": "CREATE", "target": "ROUTE", "mode": "ASYNC", "weight": 1, "prefer_async_separation": True,
-             "basis": "Giả định demo: định tuyến sau khi tiếp nhận và ưu tiên triển khai định tuyến độc lập."},
+            {"source": "CREATE", "target": "ROUTE", "mode": "ASYNC", "weight": 1,
+             "basis": "Hình có đường nét đứt. Giả định demo: có thể định tuyến sau khi tiếp nhận ticket."},
             {"source": "ROUTE", "target": "COMPLETE", "mode": "SYNC", "weight": 2,
              "basis": "Giả định demo: hai component trao đổi trạng thái ticket trước khi trả kết quả."},
         ],

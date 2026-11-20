@@ -386,20 +386,12 @@ function renderInspector() {
         selectField(fields, "Kiểu tương tác", item.mode, ["SYNC", "ASYNC", "UNKNOWN"], value => {
             item.mode = value;
             if (value !== "SYNC") item.local_transaction = false;
-            if (value !== "ASYNC") item.prefer_async_separation = false;
         });
         weightField(fields, item);
         const check = element("input");
         check.type = "checkbox"; check.checked = item.local_transaction; check.disabled = item.mode !== "SYNC";
         field(fields, "Giao dịch cục bộ", check);
         check.onchange = () => { item.local_transaction = check.checked; markDirty(); };
-        if (item.mode === "ASYNC") {
-            const preference = element("input");
-            preference.type = "checkbox";
-            preference.checked = item.prefer_async_separation === true;
-            field(fields, "Ưu tiên tách ASYNC (ghi căn cứ bên dưới)", preference);
-            preference.onchange = () => { item.prefer_async_separation = preference.checked; markDirty(); };
-        }
     } else if (type === "store") {
         selectField(fields, "Chính sách kho", item.policy, ["KEEP_SHARED", "SPLITTABLE"], value => { item.policy = value; });
         weightField(fields, item);

@@ -34,7 +34,6 @@ class Interaction(InputModel):
     mode: Literal["SYNC", "ASYNC", "UNKNOWN"]
     weight: Cost = 1
     local_transaction: bool = False
-    prefer_async_separation: bool = False
     basis: str = Field(default="", max_length=240)
 
     @model_validator(mode="after")
@@ -43,8 +42,6 @@ class Interaction(InputModel):
             raise ValueError("Hai đầu của quan hệ phải là component khác nhau.")
         if self.local_transaction and (self.mode != "SYNC" or not self.basis.strip()):
             raise ValueError("Giao dịch cục bộ cần quan hệ SYNC và căn cứ rõ ràng.")
-        if self.prefer_async_separation and (self.mode != "ASYNC" or not self.basis.strip()):
-            raise ValueError("Ưu tiên tách cần quan hệ ASYNC và căn cứ rõ ràng.")
         return self
 
 
@@ -131,12 +128,8 @@ class Candidate:
     def vector(self) -> tuple[int, ...]:
         return self.sync, self.data, self.async_seam, self.characteristic_spread, self.characteristic_mix
 
-    def score(self, weights: Preferences, *, omit_axis: int | None = None) -> int:
-        return sum(
-            units * weight
-            for index, (units, weight) in enumerate(zip(self.vector, weights.vector, strict=True))
-            if index != omit_axis
-        )
+    def score(self, weights: Preferences) -> int:
+        return sum(units * weight for units, weight in zip(self.vector, weights.vector, strict=True))
 
 
 @dataclass(frozen=True)
@@ -181,7 +174,7 @@ def _cost_drivers(architecture: Architecture, assignment: dict[str, int]) -> Ite
             continue
         if edge.mode == "SYNC" and crosses:
             yield CostDriver(0, f"{edge.source} → {edge.target}", pair, quanta, edge.weight)
-        if edge.prefer_async_separation and not crosses:
+        if edge.mode == "ASYNC" and not crosses:
             yield CostDriver(2, f"{edge.source} → {edge.target}", pair, quanta, edge.weight)
     for store in architecture.stores:
         quanta = tuple(sorted({assignment[member] for member in store.members}))
@@ -218,8 +211,8 @@ def _evaluate(architecture: Architecture, groups: tuple[tuple[str, ...], ...], i
     return Candidate(f"P{index:03d}", groups, *totals)
 
 
-def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking, *, omit_axis: int | None = None) -> tuple:
-    weighted_order = (candidate.score(weights, omit_axis=omit_axis), len(candidate.groups), candidate.id)
+def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking) -> tuple:
+    weighted_order = (candidate.score(weights), len(candidate.groups), candidate.id)
     if ranking == "SYNC_FIRST":
         return (candidate.sync, candidate.async_seam, *weighted_order)
     return weighted_order

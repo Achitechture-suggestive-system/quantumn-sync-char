@@ -1,5 +1,11 @@
 # Changelog
 
+## Chia Quantum theo SYNC — 2026-11-20
+
+- Studio xếp các phương án khả thi theo chi phí SYNC qua ranh giới, chi phí ASYNC giữ chung rồi điểm trọng số. Các chế độ theo trọng số vẫn có trên màn so sánh.
+- Kết quả truy characteristic về từng component phụ trách và phân luồng SYNC/ASYNC/UNKNOWN thành nội bộ hoặc qua ranh giới. JSON review lưu cách xếp hạng và các ánh xạ theo phương án.
+- Ticket Support mặc định chọn P011. Kiểm tra trình duyệt xác nhận SYNC nội bộ Q2, ASYNC từ Q1 đến Q2 và đổi thứ hạng khi chọn giữ dữ liệu. 144 bài kiểm tra và [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44667341488) qua trên commit `1f3ee3348f30f99827e735c13b6bf315c36bdca8`.
+
 ## Sơ đồ tương tác Quantum Studio — 2026-11-19
 
 - Thay tab nhập bảng bằng sơ đồ kéo thả. Chỉnh component, tập characteristics, kho và quan hệ ngay trong sơ đồ. Tách tọa độ bố cục khỏi `Architecture`.

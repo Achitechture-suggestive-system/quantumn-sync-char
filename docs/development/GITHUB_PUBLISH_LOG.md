@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Ollama và characteristics trong sơ đồ Quantum — 2026-11-20
+
+- Commit `756f69567f7d976e56ec79562c52711e966ccd70` đã push lên `feat/quantum-tradeoff-workbench`. Remote ref khớp SHA. SHA của `main` và tag P0 khớp các giá trị đã ghi bên dưới.
+- 151 tests, compileall, kiểm tra cú pháp JavaScript, staged diff và secret scan qua. CI kết thúc thành công trên đúng commit. [GitHub Actions 44674102902](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44674102902)
+- Live smoke trên `127.0.0.1:8503` gọi Ollama `0.40.16` với `qwen3:4b`. Kiểm tra hiển thị đặc tính trên Q1–Q3, kết quả có mã `F_AXIS_3`, `F_AXIS_2` và `F_EDGE_1`, cùng trạng thái hết hiệu lực khi đổi ưu tiên. Đầu vào của lượt chạy là mẫu demo và các chỉ số vận hành vẫn `NOT_MEASURED`.
+
 ## Chia Quantum theo SYNC — 2026-11-20
 
 - Commit `1f3ee3348f30f99827e735c13b6bf315c36bdca8` đã push lên `feat/quantum-tradeoff-workbench`. SHA remote khớp commit và tag P0 giữ SHA đã ghi bên dưới.

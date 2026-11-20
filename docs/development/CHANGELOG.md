@@ -1,5 +1,12 @@
 # Changelog
 
+## Ollama và characteristics trong sơ đồ Quantum — 2026-11-20
+
+- Đầu ra hiển thị từng characteristic, component phụ trách và Quantum cùng phụ trách. Bảng độ nhạy thử bỏ lần lượt điểm rải và điểm trộn đặc tính. Chi phí ASYNC giữ chung chỉ tính khi bật ưu tiên tách và ghi căn cứ.
+- Ollama `qwen3:4b` chọn các dữ kiện và câu hỏi từ cặp A/B. Studio dựng câu giải thích từ số liệu đã tính. Cách này xử lý trường hợp thử nghiệm ban đầu mô hình đọc ngược chiều chi phí tách kho. Kết quả gắn với cặp phương án và cấu hình đã dùng, có trạng thái cần review.
+- Kiểm tra Ticket Support trên trình duyệt cho thấy P011 so với P031 giảm chi phí ASYNC ưu tiên tách nhưng giữ chung từ 1 xuống 0 và tăng chi phí tách dữ liệu từ 0 lên 1. Ollama chọn câu hỏi về giao nhận, độ trễ và lỗi khi `CREATE → ROUTE` qua ranh giới. Lượt kiểm tra cuối hiển thị đề xuất sau khoảng 1,6 giây. Đổi ưu tiên làm bản phân tích cũ hết hiệu lực. Sơ đồ cũng hiển thị Q1 và Q2 cùng phụ trách Trải nghiệm khách hàng trong P031.
+- 151 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44674102902)
+
 ## Chia Quantum theo SYNC — 2026-11-20
 
 - Studio xếp các phương án khả thi theo chi phí SYNC qua ranh giới, chi phí ASYNC giữ chung rồi điểm trọng số. Các chế độ theo trọng số vẫn có trên màn so sánh.

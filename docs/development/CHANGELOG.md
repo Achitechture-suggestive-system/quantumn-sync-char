@@ -1,5 +1,11 @@
 # Changelog
 
+## Đồng bộ giao diện Quantum Studio — 2026-11-20
+
+- Thêm điều hướng theo phần, cập nhật hai sơ đồ và đưa nút phân tích lên thanh công cụ. Ánh xạ ISO và quyết định review dùng thẻ nguồn và biên bản.
+- Ma trận A/B/C hiện mức chênh lệch theo từng trục, thanh đóng góp vào điểm và mục mở rộng cho từng khoản chi phí. Hồ sơ truy vết tách Quantum, tương tác, kho và ràng buộc, cùng Requirements theo phương án đang chọn.
+- Kiểm tra 8501 trên desktop và khổ 390 px, gồm xác nhận ISO, xem nguồn REQ-01 ở Q2 của P031, kiểm căn cứ Ticket DB, thay ưu tiên và tải JSON. 150 bài kiểm tra cục bộ và CI đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44754934853)
+
 ## Hoàn tác bản nghiên cứu ISO trên cổng 8502 — 2026-11-20
 
 - Hoàn tác bản triển khai `4446cbb`, khôi phục mã trước đó tại `f041afb` và dừng phiên nghiên cứu trên cổng 8502.

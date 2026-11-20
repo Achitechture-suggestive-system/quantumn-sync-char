@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Đồng bộ giao diện Quantum Studio — 2026-11-20
+
+- Commit `497f5b147ac3525ca6a17359aa00328f3f403d71` đã push lên `feat/quantum-tradeoff-workbench`. Remote branch, `main` và tag P0 đã được đối chiếu.
+- 150 tests, compileall, cú pháp JavaScript, staged diff và secret scan qua. CI kết thúc thành công trên commit triển khai. [GitHub Actions 44754934853](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44754934853)
+- Kiểm tra thực tế trên 8501 với Ticket Support, gồm thẻ ISO, so sánh và truy vết theo phương án, cùng tải `quantum-comparison.json`. Khổ 390 px trình bày đủ năm cột ma trận.
+
 ## Hoàn tác bản nghiên cứu ISO trên cổng 8502 — 2026-11-20
 
 - Commit `fc9fd2e77890effc3bcce8f81c66d1cb3d9feb11` đã push lên `feat/quantum-tradeoff-workbench`. Cây mã tại commit bằng cây tại `f041afb`. Remote branch, `main` và tag P0 đã được đối chiếu.

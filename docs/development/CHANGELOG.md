@@ -1,5 +1,11 @@
 # Changelog
 
+## Phạm vi requirement và tuyến Quantum — 2026-11-20
+
+- Requirement có thể khai báo component phụ trách ngay trong trình chỉnh sơ đồ. Ánh xạ ISO ưu tiên phạm vi này, rồi đến liên kết characteristic đã có và tên hoặc mã component xuất hiện trong văn bản.
+- Bảng tuyến ánh xạ hiện Quantum chứa từng component theo từng phương án trước và sau xác nhận. Mẫu mới NFR-03 cho thấy phạm vi khai báo định vị được Customer Profile ở Q1. Kiểm tra thêm REQ-04 từ giao diện cho thấy Operations Reporting ở Q3 trong A/B và Q1 trong C.
+- 153 bài kiểm tra cục bộ và CI đều qua. [CI trên commit triển khai](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44757122151)
+
 ## Đồng bộ giao diện Quantum Studio — 2026-11-20
 
 - Thêm điều hướng theo phần, cập nhật hai sơ đồ và đưa nút phân tích lên thanh công cụ. Ánh xạ ISO và quyết định review dùng thẻ nguồn và biên bản.

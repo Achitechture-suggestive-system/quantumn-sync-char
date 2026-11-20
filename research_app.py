@@ -13,6 +13,7 @@ import streamlit as st
 
 from eqcr.fixture import get_fixture
 from eqcr.drawio_export import architecture_graph_to_drawio
+from eqcr.quality_worked_example import get_quality_worked_example
 from eqcr.ollama import (
     OllamaError,
     apply_proposals_to_fixture,
@@ -474,24 +475,16 @@ with input_tab:
             st.session_state.notice = "Structured project JSON passed schema and reference checks; semantic decisions remain review-required."
         except (UnicodeDecodeError, json.JSONDecodeError, KeyError, ValueError) as exc:
             st.error(f"Could not load structured project JSON: {exc}")
-    load_col, tutor_col, run_col, ollama_col = st.columns(4)
+    load_col, tutor_col, quality_col, run_col, ollama_col = st.columns(5)
+    load_fixture = None
     if load_col.button("Load PetClinic demo data", width="stretch"):
-        st.session_state.fixture = get_fixture()
-        st.session_state.run_fixture = None
-        st.session_state.pending_model_fixture = None
-        st.session_state.artifacts = None
-        st.session_state.run_id = None
-        st.session_state.run_dir = None
-        st.session_state.snapshot_version = 0
-        st.session_state.ollama_proposals = None
-        st.session_state.p2_blind_annotation_lock = None
-        st.session_state.tutor_mode = "P2_BLIND_RESEARCH"
-        st.session_state.tutor_demo_acknowledged = False
-        st.session_state.review_preview = None
-        st.session_state.responsibility_preview = None
-        st.session_state.notice = "Loaded the PRECOMPUTED PetClinic mini-case input."
+        load_fixture = get_fixture
     if tutor_col.button("Load Tutor Support P2 case", width="stretch"):
-        st.session_state.fixture = get_tutor_support_fixture()
+        load_fixture = get_tutor_support_fixture
+    if quality_col.button("Load ISO quality worked example", width="stretch"):
+        load_fixture = get_quality_worked_example
+    if load_fixture:
+        st.session_state.fixture = load_fixture()
         st.session_state.run_fixture = None
         st.session_state.pending_model_fixture = None
         st.session_state.artifacts = None
@@ -504,7 +497,7 @@ with input_tab:
         st.session_state.tutor_demo_acknowledged = False
         st.session_state.review_preview = None
         st.session_state.responsibility_preview = None
-        st.session_state.notice = "Loaded the original Tutor Support P2 requirements case."
+        st.session_state.notice = f"Loaded {st.session_state.fixture['raw_requirements']['case_id']}."
     is_tutor_case = bool(
         st.session_state.fixture
         and st.session_state.fixture.get("raw_requirements", {}).get("case_id") == "TUTOR-SUPPORT-P2-01"
@@ -866,7 +859,32 @@ with quantum_tab:
         st.subheader("Selected display candidate — proposed, not verified")
         st.json(artifacts["quanta"], expanded=False)
 
-        architecture_graph = artifacts["quanta"]["architecture_graph"]
+        quality_report = artifacts.get("quality_decomposition")
+        quality_candidate = None
+        if quality_report:
+            st.subheader("Quality-driven candidate comparison")
+            st.caption(quality_report["note"])
+            candidates = {item["candidate_id"]: item for item in quality_report["candidates"]}
+            st.dataframe([
+                {"Candidate": item["candidate_id"], "Pareto": item["pareto"], "Dominated by": item["dominated_by"],
+                 **dict(zip(quality_report["cost_axes"], item["cost_vector"], strict=True))}
+                for item in candidates.values()
+            ], hide_index=True, width="stretch")
+            if candidates:
+                candidate_id = st.selectbox("Inspect quality-driven candidate", list(candidates))
+                quality_candidate = candidates[candidate_id]
+                _show_json("Trade-offs and policy evidence", {
+                    "comparison_to_first": quality_candidate["comparison_to_first"],
+                    "constraint_effects": quality_candidate["constraint_effects"],
+                    "operational_indicators": quality_candidate["operational_indicators"],
+                })
+            for title, report_key in (
+                ("FR and NFR classification", "classification"), ("Six-part scenario matrix", "quality_scenario_matrix"),
+                ("FR to responsibility trace", "fr_responsibility_trace"), ("Responsibility coupling evidence", "coupling"),
+                ("ISO/IEC 25010:2023 registry", "iso_registry"),
+            ):
+                _show_json(title, quality_report[report_key])
+        architecture_graph = quality_candidate["architecture_graph"] if quality_candidate else artifacts["quanta"]["architecture_graph"]
         graph_lines = ["digraph architecture {", "  rankdir=TB;", '  graph [fontname="Arial"];', '  node [shape=box, fontname="Arial"];']
         for node in architecture_graph["nodes"]:
             node_id = node["id"].replace('"', '\\"')
@@ -891,16 +909,29 @@ with quantum_tab:
             mime="application/xml",
             key="download_architecture_drawio",
         )
+        if quality_candidate:
+            st.download_button(
+                "Download architecture graph JSON", json.dumps(architecture_graph, ensure_ascii=False, indent=2),
+                file_name=f"{quality_candidate['candidate_id']}-architecture.json", mime="application/json",
+            )
         graph_left, graph_right = st.columns(2)
         with graph_left:
             node_ids = [item["id"] for item in architecture_graph["nodes"]]
             node_id = st.selectbox("Inspect graph node", node_ids)
             st.json(next(item for item in architecture_graph["nodes"] if item["id"] == node_id), expanded=False)
+            if quality_candidate:
+                profile = next((item for item in quality_candidate["quality_profiles"] if item["quantum_id"] == node_id), None)
+                if profile:
+                    _show_json("Quantum Quality Profile", profile)
         with graph_right:
             if architecture_graph["edges"]:
                 edge_ids = [item["id"] for item in architecture_graph["edges"]]
                 edge_id = st.selectbox("Inspect graph connection", edge_ids)
                 st.json(next(item for item in architecture_graph["edges"] if item["id"] == edge_id), expanded=False)
+                if quality_candidate:
+                    profile = next((item for item in quality_candidate["interaction_matrix"] if item["id"] == edge_id), None)
+                    if profile:
+                        _show_json("Interaction Quality Profile and contract", profile)
             else:
                 st.info("No graph connections are available for this candidate.")
         lower_left, lower_right = st.columns(2)

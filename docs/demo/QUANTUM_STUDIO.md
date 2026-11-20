@@ -5,7 +5,7 @@
 1. Mở app và kéo component hoặc kho trong **Sơ đồ đầu vào**. Bấm component để sửa tập characteristics. Dùng **Nối** rồi chọn hai đầu để tạo cạnh. Bấm nhãn cạnh để đổi Sync/Async, mức ảnh hưởng và căn cứ. Dùng **Bắt buộc tách** để thêm cặp có ràng buộc.
 2. Mở **Requirements** dưới sơ đồ đầu vào rồi bấm **+ Requirement**. Chọn loại **NFR**, ghi nội dung và bấm **Phân tích sơ đồ**. Có thể gắn nguồn cho characteristic thủ công trong trình chỉnh component.
 3. Trong **Ánh xạ NFR vào ISO/IEC 25010:2023**, chọn NFR. Kiểm tra nhãn và đoạn trích, sửa danh sách **Component ứng viên**, rồi bấm **Xác nhận gán ISO**. Chọn **Chia theo characteristics** để xếp lại. **Chia theo SYNC** là chế độ mặc định.
-4. So sánh A/B/C qua bảng chi phí và mục **Điểm phát sinh từ đâu**. Chọn phương án trên sơ đồ để xem component, characteristics và mã requirement trong từng Quantum. Bấm mã để mở nội dung nguồn bên đầu vào. Mục **Truy vết requirement** liệt kê liên kết và NFR chưa gắn của phương án xếp đầu.
+4. So sánh A/B/C qua bảng chi phí và mục **Điểm phát sinh từ đâu**. Bấm mã Quantum trên sơ đồ để xem characteristics và mã requirement trong panel **Quality Profile**. Bấm mã requirement để mở nội dung nguồn. Mục **Truy vết requirement** liệt kê liên kết và NFR chưa gắn của phương án xếp đầu.
 5. Trong **Human Review**, bấm **Chọn A**, **Chọn B**, **Chọn C** hoặc nhập điều cần sửa rồi chọn **Yêu cầu chỉnh**. Tải bản JSON nếu cần lưu cùng biên bản review.
 
 ## Pipeline

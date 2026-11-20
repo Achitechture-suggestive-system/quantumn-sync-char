@@ -1,22 +1,8 @@
 """ISO/IEC 25010:2023 product quality labels and reviewable text matches."""
 
-from enum import StrEnum
 import re
 
-
-class QualityCharacteristic(StrEnum):
-    FUNCTIONAL_SUITABILITY = "Functional suitability"
-    PERFORMANCE_EFFICIENCY = "Performance efficiency"
-    COMPATIBILITY = "Compatibility"
-    INTERACTION_CAPABILITY = "Interaction capability"
-    RELIABILITY = "Reliability"
-    SECURITY = "Security"
-    MAINTAINABILITY = "Maintainability"
-    FLEXIBILITY = "Flexibility"
-    SAFETY = "Safety"
-
-
-ISO_EDITION = "ISO/IEC 25010:2023"
+from .iso_quality import ISO_EDITION, QualityCharacteristic
 
 # Studio heuristics. These expressions suggest labels and preserve the matching text.
 SIGNALS = {

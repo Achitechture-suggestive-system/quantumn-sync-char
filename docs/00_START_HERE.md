@@ -4,6 +4,8 @@ Tài liệu này hướng dẫn đọc những gì checkout hiện thực sự t
 
 Giao diện mặc định là Quantum Studio. Xem [pipeline và kịch bản Ticket Support](demo/QUANTUM_STUDIO.md) để chạy từ component đến Human Review và trade-off. Phần đọc bên dưới mô tả pipeline nghiên cứu lưu trữ.
 
+[Phân rã Quantum theo ISO/IEC 25010:2023](research/ISO_QUALITY_DECOMPOSITION.md) có audit, đặc tả policy, ca minh họa, kết quả trước/sau và lệnh tái lập.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

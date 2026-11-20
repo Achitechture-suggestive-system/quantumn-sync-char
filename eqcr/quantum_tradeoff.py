@@ -10,6 +10,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from .pipeline import _partitions
+from .studio_quality import QualityCharacteristic
 
 
 Key = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")]
@@ -29,9 +30,17 @@ class Component(InputModel):
     characteristic_requirements: dict[Label, list[Key]] = Field(default_factory=dict)
 
 
+class QualityAllocation(InputModel):
+    characteristic: QualityCharacteristic
+    component_ids: list[Key] = Field(min_length=1, max_length=8)
+    source_quote: str = Field(default="", max_length=600)
+
+
 class Requirement(InputModel):
     id: Key
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    kind: Literal["UNSPECIFIED", "FR", "NFR"] = "UNSPECIFIED"
+    quality_allocations: list[QualityAllocation] = Field(default_factory=list, max_length=9)
 
 
 class Interaction(InputModel):
@@ -91,6 +100,17 @@ class Architecture(InputModel):
         requirement_ids = {requirement.id for requirement in self.requirements}
         if len(requirement_ids) != len(self.requirements):
             raise ValueError("ID requirement phải duy nhất.")
+        for requirement in self.requirements:
+            allocations = requirement.quality_allocations
+            if allocations and requirement.kind != "NFR":
+                raise ValueError(f"{requirement.id} phải là NFR để gắn characteristic ISO.")
+            if len({item.characteristic for item in allocations}) != len(allocations):
+                raise ValueError(f"{requirement.id} có characteristic ISO trùng.")
+            for item in allocations:
+                if not set(item.component_ids) <= ids or len(set(item.component_ids)) != len(item.component_ids):
+                    raise ValueError(f"{requirement.id} có component ISO trùng hoặc chưa khai báo.")
+                if item.source_quote and item.source_quote not in requirement.text:
+                    raise ValueError(f"{requirement.id} có đoạn trích ISO không khớp nội dung nguồn.")
         for component in self.components:
             for label, linked_ids in component.characteristic_requirements.items():
                 if label not in component.characteristics:
@@ -172,18 +192,35 @@ def group_index(groups: tuple[tuple[str, ...], ...]) -> dict[str, int]:
     return {component_id: index for index, group in enumerate(groups, 1) for component_id in group}
 
 
-def characteristic_index(architecture: Architecture, assignment: dict[str, int]) -> tuple[dict[str, set[int]], dict[int, set[str]]]:
+def component_profiles(architecture: Architecture) -> dict[str, dict[str, list[str]]]:
+    """Combine manual characteristics and ISO allocations scoped to one source NFR."""
+    profiles = {
+        component.id: {label: list(component.characteristic_requirements.get(label, []))
+                       for label in component.characteristics}
+        for component in architecture.components
+    }
+    for requirement in architecture.requirements:
+        for allocation in requirement.quality_allocations:
+            label = f"{allocation.characteristic} · {requirement.id}"
+            for component_id in allocation.component_ids:
+                sources = profiles[component_id].setdefault(label, [])
+                if requirement.id not in sources:
+                    sources.append(requirement.id)
+    return profiles
+
+
+def characteristic_index(profiles: dict[str, dict[str, list[str]]], assignment: dict[str, int]) -> tuple[dict[str, set[int]], dict[int, set[str]]]:
     locations: dict[str, set[int]] = defaultdict(set)
     labels: dict[int, set[str]] = defaultdict(set)
-    for component in architecture.components:
-        group = assignment[component.id]
-        for characteristic in component.characteristics:
+    for component, characteristics in profiles.items():
+        group = assignment[component]
+        for characteristic in characteristics:
             locations[characteristic].add(group)
             labels[group].add(characteristic)
     return dict(locations), dict(labels)
 
 
-def _cost_drivers(architecture: Architecture, assignment: dict[str, int]) -> Iterator[CostDriver]:
+def _cost_drivers(architecture: Architecture, profiles: dict[str, dict[str, list[str]]], assignment: dict[str, int]) -> Iterator[CostDriver]:
     """Trace each contribution back to the input edge, store, or characteristic."""
     for edge in architecture.interactions:
         pair = (edge.source, edge.target)
@@ -199,10 +236,10 @@ def _cost_drivers(architecture: Architecture, assignment: dict[str, int]) -> Ite
         quanta = tuple(sorted({assignment[member] for member in store.members}))
         if len(quanta) > 1 and store.weight:
             yield CostDriver(1, store.name, tuple(store.members), quanta, store.weight * (len(quanta) - 1))
-    locations, labels = characteristic_index(architecture, assignment)
+    locations, labels = characteristic_index(profiles, assignment)
     for label, quanta in sorted(locations.items()):
         if len(quanta) > 1:
-            members = tuple(item.id for item in architecture.components if label in item.characteristics)
+            members = tuple(component for component, characteristics in profiles.items() if label in characteristics)
             yield CostDriver(3, label, members, tuple(sorted(quanta)), len(quanta) - 1)
     for group, characteristics in sorted(labels.items()):
         if len(characteristics) > 1:
@@ -211,10 +248,11 @@ def _cost_drivers(architecture: Architecture, assignment: dict[str, int]) -> Ite
 
 
 def explain_candidate(architecture: Architecture, candidate: Candidate) -> tuple[CostDriver, ...]:
-    return tuple(_cost_drivers(architecture, group_index(candidate.groups)))
+    return tuple(_cost_drivers(architecture, component_profiles(architecture), group_index(candidate.groups)))
 
 
-def _evaluate(architecture: Architecture, groups: tuple[tuple[str, ...], ...], index: int) -> Candidate | None:
+def _evaluate(architecture: Architecture, profiles: dict[str, dict[str, list[str]]],
+              groups: tuple[tuple[str, ...], ...], index: int) -> Candidate | None:
     assignment = group_index(groups)
     if any(assignment[rule.left] == assignment[rule.right] for rule in architecture.keep_apart):
         return None
@@ -225,7 +263,7 @@ def _evaluate(architecture: Architecture, groups: tuple[tuple[str, ...], ...], i
            for store in architecture.stores):
         return None
     totals = [0] * 5
-    for driver in _cost_drivers(architecture, assignment):
+    for driver in _cost_drivers(architecture, profiles, assignment):
         totals[driver.axis] += driver.units
     return Candidate(f"P{index:03d}", groups, *totals)
 
@@ -242,9 +280,10 @@ def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking) ->
 def analyze(architecture: Architecture, weights: Preferences, *, ranking: Ranking = "WEIGHTED") -> Analysis:
     """Visit all partitions, filter hard rules, and retain the exact Pareto frontier."""
     feasible = []
+    profiles = component_profiles(architecture)
     count = 0
     for count, groups in enumerate(_partitions([item.id for item in architecture.components]), 1):
-        candidate = _evaluate(architecture, groups, count)
+        candidate = _evaluate(architecture, profiles, groups, count)
         if candidate is not None:
             feasible.append(candidate)
 

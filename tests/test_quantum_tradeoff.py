@@ -7,7 +7,8 @@ from streamlit.testing.v1 import AppTest
 
 from eqcr import storage, studio_canvas
 from eqcr.quantum_example import ticket_example
-from eqcr.quantum_tradeoff import Architecture, Preferences, analyze, explain_candidate, group_index
+from eqcr.quantum_tradeoff import Architecture, Preferences, analyze, component_profiles, explain_candidate, group_index
+from eqcr.studio_quality import QualityCharacteristic, component_mentions, quality_suggestions
 
 
 def test_ticket_example_reproduces_both_tradeoffs_and_reverses_ranking():
@@ -101,6 +102,41 @@ def test_invalid_requirement_links_are_rejected(links, message):
         })
 
 
+def test_nfr_suggestions_are_multi_label_and_return_verbatim_evidence():
+    text = "Ticket Router phải đạt p95 200 ms, xác thực yêu cầu và khôi phục sau lỗi."
+    assert quality_suggestions(text) == {
+        QualityCharacteristic.PERFORMANCE_EFFICIENCY: "p95",
+        QualityCharacteristic.RELIABILITY: "khôi phục",
+        QualityCharacteristic.SECURITY: "xác thực",
+    }
+    assert component_mentions(text, {"ROUTE": "Ticket Router", "ROUTER": "Router Worker", "PORT": "Port"}) == {
+        "ROUTE": "Ticket Router",
+    }
+    assert not quality_suggestions("The solution should feel modern.")
+
+
+def test_nfr_confirmation_scopes_the_optimizer_inputs_and_rejects_stale_evidence():
+    original = ticket_example()
+    raw = original.model_dump(mode="json")
+    source = next(item for item in raw["requirements"] if item["id"] == "NFR-01")
+    assignment = {"characteristic": "Performance efficiency", "component_ids": ["CREATE", "ROUTE"],
+                  "source_quote": "thời gian phản hồi"}
+    source["quality_allocations"] = [assignment]
+    confirmed = Architecture.model_validate(raw)
+    profiles = component_profiles(confirmed)
+    label = "Performance efficiency · NFR-01"
+    assert profiles["CREATE"][label] == profiles["ROUTE"][label] == ["NFR-01"]
+    assert label not in profiles["COMPLETE"]
+    assert analyze(original, Preferences(), ranking="CHARACTERISTIC_FIRST").ranked[0].id == "P011"
+    assert analyze(confirmed, Preferences(), ranking="CHARACTERISTIC_FIRST").ranked[0].id == "P031"
+    assignment["source_quote"] = "mốc không có trong NFR"
+    with pytest.raises(ValidationError, match="đoạn trích ISO không khớp"):
+        Architecture.model_validate(raw)
+    assignment.update(source_quote="", component_ids=["IMAGINED"])
+    with pytest.raises(ValidationError, match="component ISO trùng hoặc chưa khai báo"):
+        Architecture.model_validate(raw)
+
+
 def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
     event = {"token": "test-1", "action": "analyze", "model": ticket_example().model_dump(mode="json")}
@@ -141,12 +177,19 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert review["baseline_under_default_weights"] == "P031"
     assert review["preferences"]["characteristics"] == 4
     assert review["note"] == "AppTest-only decision"
-    assert [item["score"] for item in review["comparison"]] == [9, 6]
+    assert [item["score"] for item in review["comparison"][:2]] == [9, 6]
+    assert len({item["id"] for item in review["comparison"]}) == 3
+    third = review["comparison"][2]
+    assert third["slot"] == "C" and not third["pareto"] and third["dominated_by"]
     assert review["comparison"][1]["cost_drivers"][0]["subject"] == "Ticket DB"
     assert review["comparison"][1]["interaction_routing"] == plan["interactions"]
     assert review["architecture"]["requirements"][1]["id"] == "REQ-02"
     assert review["recommended_plan"]["groups"][1]["characteristic_requirements"] == ticket_trace
     assert review["comparison"][1]["quantum_profiles"][1]["characteristic_requirements"] == ticket_trace
+    next(button for button in app.button if button.label == f"Chọn C · {third['id']}").click().run()
+    assert not app.exception
+    saved = [json.loads(item.read_text(encoding="utf-8")) for item in tmp_path.rglob("review-*.json")]
+    assert {item["selected_candidate"] for item in saved} == {"P011", third["id"]}
 
 
 def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):

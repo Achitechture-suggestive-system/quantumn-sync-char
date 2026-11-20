@@ -155,11 +155,18 @@ function selectNode(node) {
     render();
 }
 
+function approvedIsoLabels(component, architecture) {
+    return architecture.requirements.flatMap(requirement => (requirement.quality_allocations ?? [])
+        .filter(allocation => allocation.component_ids.includes(component.id))
+        .map(allocation => allocation.characteristic + " · " + requirement.id));
+}
+
 function makeNode(node, outputId) {
     const button = element("button", undefined, "node" + (node.type === "store" ? " store" : ""));
     button.dataset.node = outputId || node.key;
     button.dataset.origin = node.key;
-    const tags = node.item.characteristics?.join(" · ") || (node.type === "store" ? node.item.policy : "Chưa có đặc tính");
+    const tags = node.type === "store" ? node.item.policy :
+        [...node.item.characteristics, ...approvedIsoLabels(node.item, outputId ? options.model : model)].join(" · ") || "Chưa có đặc tính";
     button.title = node.item.name + " · " + tags;
     button.setAttribute("aria-label", (outputId ? "Đầu ra " : "") + node.item.name);
     button.append(element("strong", node.item.name), element("small", tags));
@@ -356,7 +363,18 @@ function renderRequirements() {
     $("add-requirement").disabled = model.requirements.length >= 40;
     for (const requirement of model.requirements) {
         const row = element("div", undefined, "requirement-row");
+        const meta = element("div", undefined, "requirement-meta");
         const label = element("label", requirement.id, "requirement-id");
+        const kind = element("select");
+        kind.append(new Option("Chưa phân loại", "UNSPECIFIED"), new Option("FR", "FR"), new Option("NFR", "NFR"));
+        kind.value = requirement.kind ?? "UNSPECIFIED";
+        kind.setAttribute("aria-label", "Loại " + requirement.id);
+        kind.onchange = () => {
+            requirement.kind = kind.value;
+            requirement.quality_allocations = [];
+            markDirty();
+            render();
+        };
         const input = element("textarea");
         input.id = "source-" + requirement.id;
         label.htmlFor = input.id;
@@ -364,7 +382,12 @@ function renderRequirements() {
         input.rows = 2;
         input.maxLength = 600;
         input.value = requirement.text;
-        input.oninput = () => { requirement.text = input.value; markDirty(); };
+        input.oninput = () => {
+            requirement.text = input.value;
+            requirement.quality_allocations = [];
+            markDirty();
+            renderInput();
+        };
         const remove = element("button", "Xóa", "requirement-remove");
         remove.setAttribute("aria-label", "Xóa " + requirement.id + " và các liên kết");
         remove.onclick = () => {
@@ -378,7 +401,8 @@ function renderRequirements() {
             markDirty();
             render();
         };
-        row.append(label, input, remove);
+        meta.append(label, kind);
+        row.append(meta, input, remove);
         list.append(row);
     }
 }
@@ -422,6 +446,11 @@ function removeSelection() {
         model.interactions = model.interactions.filter(row => row.source !== item.id && row.target !== item.id);
         model.keep_apart = model.keep_apart.filter(row => row.left !== item.id && row.right !== item.id);
         model.stores.forEach(store => { store.members = store.members.filter(id => id !== item.id); });
+        for (const requirement of model.requirements) {
+            requirement.quality_allocations = (requirement.quality_allocations ?? []).map(allocation => ({
+                ...allocation, component_ids: allocation.component_ids.filter(id => id !== item.id),
+            })).filter(allocation => allocation.component_ids.length);
+        }
     } else {
         const list = {store: "stores", edge: "interactions", apart: "keep_apart"}[type];
         model[list] = model[list].filter(row => row !== item);
@@ -460,6 +489,8 @@ function renderInspector() {
             }, 1200, true);
         renderCharacteristicLinks(links, item);
         fields.append(links);
+        const iso = approvedIsoLabels(item, model);
+        if (iso.length) fields.append(element("p", "ISO đã gán · " + iso.join(" / "), "wide"));
     } else if (type === "edge") {
         selectField(fields, "Kiểu tương tác", item.mode, ["SYNC", "ASYNC", "UNKNOWN"], value => {
             item.mode = value;
@@ -568,7 +599,10 @@ function renderOutput() {
     if (!source || dirty || !groups.length) trace.append(element("p", "Bấm một component hoặc kho trên hai sơ đồ để xem nhóm tương ứng."));
     else {
         trace.append(element("p", source.item.name + " → " + groups.join(", ")));
-        if (source.type === "component") trace.append(element("p", "Đặc tính phụ trách: " + (source.item.characteristics.join(" · ") || "chưa khai báo")));
+        if (source.type === "component") {
+            const labels = [...source.item.characteristics, ...approvedIsoLabels(source.item, model)];
+            trace.append(element("p", "Đặc tính phụ trách · " + (labels.join(" / ") || "chưa khai báo")));
+        }
     }
 }
 

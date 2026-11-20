@@ -1,6 +1,6 @@
 # Quantum Studio · EQCR + QAME
 
-Quantum Studio nhận component, characteristics, requirements, quan hệ Sync/Async và kho dữ liệu. Chọn chia theo SYNC hoặc theo characteristics rồi so sánh trade-off trong Human Review. Sơ đồ đầu ra truy vết từng characteristic trong Quantum về component phụ trách và mã requirement đã gắn.
+Quantum Studio nhận component, characteristics, requirements, quan hệ Sync/Async và kho dữ liệu. Studio đề xuất ánh xạ NFR vào ISO/IEC 25010:2023 và các component có căn cứ trong văn bản. Sau khi xác nhận, người dùng so sánh và chọn ba phương án Quantum nếu có đủ nghiệm khả thi.
 
 ## Chạy nhanh (Windows / PowerShell)
 

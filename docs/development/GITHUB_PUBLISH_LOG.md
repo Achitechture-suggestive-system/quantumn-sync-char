@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Kịch bản requirement Ollama và sơ đồ so sánh — 2026-11-20
+
+- Commit `8d0b01cbecb17dc2cf70b2f2058f6878896ffd0c` đã push lên `feat/quantum-tradeoff-workbench`. Remote branch, `main` và tag P0 đã được đối chiếu.
+- 154 tests, compileall, cú pháp JavaScript, staged diff và secret scan qua. Job `test` trên GitHub Actions hoàn thành thành công. [GitHub Actions 44761972312](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44761972312)
+- Kiểm tra cổng 8501 gồm chọn A/B/C, đối chiếu sơ đồ và truy vết, nạp ba gói thành 21 requirement tổng cộng, xác nhận thử `LLM-RECOVERY-07` và đối chiếu P030 trên sơ đồ và truy vết.
+
 ## Phạm vi requirement và tuyến Quantum — 2026-11-20
 
 - Commit `690d0d3a6772d2ec64b0390198428b014a9f1da3` đã push lên `feat/quantum-tradeoff-workbench`. Remote branch, `main` và tag P0 đã được đối chiếu.

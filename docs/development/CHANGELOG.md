@@ -1,5 +1,11 @@
 # Changelog
 
+## Kịch bản requirement Ollama và sơ đồ so sánh — 2026-11-20
+
+- Gộp bộ chọn A/B/C, sơ đồ và ma trận trong một vùng làm việc. Một lựa chọn điều khiển cả sơ đồ đầu ra và hồ sơ truy vết.
+- Thêm 15 requirement giả lập từ ba phản hồi Ollama `qwen3:4b`. Kiểm tra request, response và từng trường gốc. Sáu ánh xạ có đoạn trích khớp được dùng trong phép thử what-if. Khi chỉ nạp nháp, 37 nghiệm khả thi giữ nguyên điểm và phân nhóm.
+- 154 bài kiểm tra cục bộ và CI đều qua. Đã kiểm tra luồng 8501 trên desktop và khổ 400 px. [Báo cáo đánh giá](../demo/LLM_REQUIREMENT_EVALUATION.md) · [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44761972312)
+
 ## Phạm vi requirement và tuyến Quantum — 2026-11-20
 
 - Requirement có thể khai báo component phụ trách ngay trong trình chỉnh sơ đồ. Ánh xạ ISO ưu tiên phạm vi này, rồi đến liên kết characteristic đã có và tên hoặc mã component xuất hiện trong văn bản.

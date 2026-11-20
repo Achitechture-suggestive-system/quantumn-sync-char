@@ -40,6 +40,7 @@ class Requirement(InputModel):
     id: Key
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
     kind: Literal["UNSPECIFIED", "FR", "NFR"] = "UNSPECIFIED"
+    component_ids: list[Key] = Field(default_factory=list, max_length=8)
     quality_allocations: list[QualityAllocation] = Field(default_factory=list, max_length=9)
 
 
@@ -101,6 +102,9 @@ class Architecture(InputModel):
         if len(requirement_ids) != len(self.requirements):
             raise ValueError("ID requirement phải duy nhất.")
         for requirement in self.requirements:
+            scope = set(requirement.component_ids)
+            if not scope <= ids or len(scope) != len(requirement.component_ids):
+                raise ValueError(f"{requirement.id} có component phụ trách trùng hoặc chưa khai báo.")
             allocations = requirement.quality_allocations
             if allocations and requirement.kind != "NFR":
                 raise ValueError(f"{requirement.id} phải là NFR để gắn characteristic ISO.")

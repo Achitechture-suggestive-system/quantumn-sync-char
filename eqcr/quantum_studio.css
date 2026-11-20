@@ -71,6 +71,7 @@
     padding: .17rem .37rem; font-size: .72rem; font-weight: 660; line-height: 1.4; overflow-wrap: anywhere;
 }
 .qs-tags { display: flex; flex-wrap: wrap; gap: .27rem; }
+.qs-scope { margin-block: .32rem .55rem; }
 .qs-tag--neutral { color: #3f5650; background: #eaf0eb; border-color: #d4dfd7; }
 .qs-tag--accent, .qs-tag--better { color: #14594b; background: #e0f1e8; border-color: #c2dfd0; }
 .qs-tag--warn { color: #6a461b; background: #faecd2; border-color: #edd8b5; }

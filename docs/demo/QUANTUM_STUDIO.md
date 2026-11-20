@@ -3,8 +3,8 @@
 ## Demo trong 60 giây
 
 1. Mở app và kéo component hoặc kho trong **Sơ đồ đầu vào**. Bấm component để sửa tập characteristics. Dùng **Nối** rồi chọn hai đầu để tạo cạnh. Bấm nhãn cạnh để đổi Sync/Async, mức ảnh hưởng và căn cứ. Dùng **Bắt buộc tách** để thêm cặp có ràng buộc.
-2. Mở **Requirements** dưới sơ đồ đầu vào rồi bấm **+ Requirement**. Chọn loại **NFR**, ghi nội dung và bấm **Phân tích sơ đồ**. Có thể gắn nguồn cho characteristic thủ công trong trình chỉnh component.
-3. Trong **Ánh xạ NFR vào ISO/IEC 25010:2023**, chọn NFR để xem thẻ trích dẫn, component có tên trong nguồn và ánh xạ đã xác nhận. Sửa danh sách **Component ứng viên**, rồi bấm **Xác nhận gán ISO**. Chọn **Chia theo characteristics** để xếp lại. **Chia theo SYNC** là chế độ mặc định.
+2. Mở **Requirements** dưới sơ đồ đầu vào rồi bấm **+ Requirement**. Chọn loại **NFR**, ghi nội dung, chọn **Component phụ trách** và bấm **Phân tích sơ đồ**. Bạn cũng có thể gắn nguồn cho characteristic thủ công trong trình chỉnh component.
+3. Trong **Ánh xạ NFR vào ISO/IEC 25010:2023**, chọn NFR và xem bảng **Tuyến ánh xạ component → Quantum** theo từng phương án. Sửa danh sách **Component ứng viên** rồi bấm **Xác nhận gán ISO** để tính lại cách phân nhóm. Chọn **Chia theo characteristics** để ưu tiên cách nhóm theo đặc tính. **Chia theo SYNC** là chế độ mặc định.
 4. **Ma trận chi phí** hiện số đơn vị của A/B/C và chênh lệch so với A. Thanh màu trong từng thẻ cho biết các khoản đóng góp vào điểm trọng số. Mở **Điểm phát sinh từ đâu** để đọc căn cứ từng khoản.
 5. Trong **Hồ sơ và truy vết**, chọn một phương án rồi mở thẻ **Quantum**, **Tương tác**, **Kho và ràng buộc** hoặc **Requirements**. Thẻ Requirements nối đặc tính với component và Quantum, đồng thời đánh dấu mã chưa gắn. Bạn cũng có thể bấm mã requirement ngay trên sơ đồ để mở nguồn.
 6. Trong **Human Review**, bấm **Chọn A**, **Chọn B**, **Chọn C** hoặc nhập điều cần sửa rồi chọn **Yêu cầu chỉnh**. Biên bản hiện lựa chọn, thời điểm và ghi chú. Nút tải xuất hồ sơ JSON.
@@ -23,6 +23,8 @@
 Kéo vị trí chỉ đổi bố cục. Khi bấm **Phân tích sơ đồ**, app lưu bố cục trong phiên làm việc và gửi riêng mô hình để giải. Khi sửa thuộc tính, kết quả trước vẫn xem được trong sơ đồ đầu ra với cảnh báo chờ cập nhật. Bảng trade-off và Human Review xuất hiện lại sau khi phân tích mô hình mới hợp lệ.
 
 Các characteristic trùng tên trên nhiều component được tính là cùng một đặc tính. Requirement lưu nội dung nguồn và liên kết do người dùng khai báo. Điểm phân nhóm dùng tập characteristics trên component. Khi đổi tên đặc tính, chọn lại mã requirement cho tên mới. Mô hình đã tạo trước khi có requirements vẫn chạy được và hiển thị **Chưa gắn requirement** ở các đặc tính thiếu liên kết.
+
+Studio ưu tiên phạm vi component đã khai báo trong requirement. Nếu phạm vi để trống, Studio xét liên kết characteristic đã có rồi đến tên hoặc mã xuất hiện trong văn bản. Bảng xem trước đọc vị trí từ từng phân hoạch hiện tại. Sau khi xác nhận đặc tính, vị trí Quantum được tính lại từ mô hình mới. Đổi phạm vi trong trình chỉnh requirement cần xác nhận lại ánh xạ. Phạm vi này cũng nằm trong hồ sơ JSON.
 
 ### ISO/IEC 25010:2023 và cách phân tích NFR
 
@@ -64,7 +66,7 @@ Hai sơ đồ được dựng từ nghiệm do bộ giải tìm. Thay đầu và
 
 **Chia theo SYNC** xếp P011 đầu. Hai phương án đều có chi phí SYNC bằng 0. P011 chuyển cạnh ASYNC `CREATE → ROUTE` qua ranh giới Q1 → Q2, trong khi cạnh SYNC `ROUTE → COMPLETE` vẫn trong Q2. Đặc tính của Q1 là *Trải nghiệm khách hàng*, Q2 là *Nhất quán luồng ticket*, Q3 là *Cô lập tải báo cáo*. Đánh đổi là phải thiết kế đồng bộ Ticket DB giữa Q1 và Q2.
 
-Mẫu có ba requirement `REQ-01` đến `REQ-03` và hai NFR minh họa `NFR-01` và `NFR-02`. Trong **Chia theo characteristics**, xác nhận đề xuất *Performance efficiency* của `NFR-01` cho Ticket Creation và Ticket Router. Kết quả xếp đầu đổi từ P011 sang P031. Bộ chi phí dưới đây theo thứ tự **SYNC, tách kho, ASYNC giữ chung, rải, trộn** với trọng số mặc định **3, 6, 1, 2, 2**.
+Mẫu có ba requirement `REQ-01` đến `REQ-03` và ba NFR minh họa. `NFR-03` yêu cầu mã hóa dữ liệu hồ sơ khi truyền. Phạm vi khai báo chọn Customer Profile, nên Studio đề xuất tuyến đến Q1 trong các phương án mặc định. Trong **Chia theo characteristics**, xác nhận đề xuất *Performance efficiency* của `NFR-01` cho Ticket Creation và Ticket Router. Kết quả xếp đầu đổi từ P011 sang P031. Bộ chi phí dưới đây theo thứ tự **SYNC, tách kho, ASYNC giữ chung, rải, trộn** với trọng số mặc định **3, 6, 1, 2, 2**.
 
 | Phương án | Quantum | Chi phí | Điểm | Trade-off sau xác nhận NFR-01 |
 |---|---:|---|---:|---|

@@ -208,6 +208,39 @@ def test_studio_visual_report_keeps_user_text_literal():
         assert "&lt;custom-note" in html and "&gt;" in html
 
 
+@pytest.mark.parametrize("scope", [["MISSING"], ["PROFILE", "PROFILE"]])
+def test_requirement_rejects_invalid_component_scope(scope):
+    data = ticket_example().model_dump(mode="json")
+    data["requirements"][-1]["component_ids"] = scope
+    with pytest.raises(ValidationError, match="component phụ trách trùng hoặc chưa khai báo"):
+        Architecture.model_validate(data)
+
+
+def test_declared_requirement_scope_feeds_iso_review_and_quantum_trace(monkeypatch):
+    architecture = ticket_example()
+    event = {"token": "scope-fixture", "action": "analyze", "model": architecture.model_dump(mode="json")}
+    views = []
+
+    def board(**kwargs):
+        views.append(kwargs)
+        return event
+
+    monkeypatch.setattr(studio_canvas, "render_board", board)
+    app = AppTest.from_file(Path(__file__).parents[1] / "app.py").run()
+    next(widget for widget in app.selectbox if widget.label == "NFR nguồn").select("NFR-03").run()
+    assert not app.exception
+    assert next(widget for widget in app.multiselect if widget.label == "Component ứng viên").value == ["PROFILE"]
+    assert not any("Security · NFR-03" in group["characteristic_requirements"]
+                   for plan in views[-1]["plans"] for group in plan["groups"])
+
+    next(widget for widget in app.button if widget.label == "Xác nhận gán ISO").click().run()
+    assert not app.exception
+    for plan in views[-1]["plans"]:
+        group_id = plan["assignment"]["PROFILE"]
+        group = next(item for item in plan["groups"] if item["id"] == group_id)
+        assert group["characteristic_requirements"]["Security · NFR-03"] == {"PROFILE": ["NFR-03"]}
+
+
 def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):
     model = {
         "requirements": [{"id": "REQ-01", "text": "Index and serve new content promptly."}],

@@ -9,11 +9,18 @@ def ticket_example() -> Architecture:
     reporting_isolation = "Cô lập tải báo cáo"
     return Architecture.model_validate({
         "requirements": [
-            {"id": "REQ-01", "kind": "FR", "text": "Khách hàng có thể đăng nhập, quản lý hồ sơ và gửi ticket trong luồng tự phục vụ."},
-            {"id": "REQ-02", "text": "Định tuyến và hoàn tất phải sử dụng trạng thái nhất quán của cùng một ticket."},
-            {"id": "REQ-03", "text": "Quản lý có thể xem báo cáo vận hành với tải báo cáo được cô lập khỏi luồng xử lý ticket."},
-            {"id": "NFR-01", "kind": "NFR", "text": "Ở tải cao, luồng qua Ticket Creation và Ticket Router phải có thời gian phản hồi p95 tối đa 200 ms."},
-            {"id": "NFR-02", "kind": "NFR", "text": "Operations Reporting phải khôi phục trong vòng 10 phút sau khi tiến trình bị dừng."},
+            {"id": "REQ-01", "kind": "FR", "component_ids": ["LOGIN", "PROFILE", "CREATE"],
+             "text": "Khách hàng có thể đăng nhập, quản lý hồ sơ và gửi ticket trong luồng tự phục vụ."},
+            {"id": "REQ-02", "component_ids": ["ROUTE", "COMPLETE"],
+             "text": "Định tuyến và hoàn tất phải sử dụng trạng thái nhất quán của cùng một ticket."},
+            {"id": "REQ-03", "component_ids": ["REPORT"],
+             "text": "Quản lý có thể xem báo cáo vận hành với tải báo cáo được cô lập khỏi luồng xử lý ticket."},
+            {"id": "NFR-01", "kind": "NFR", "component_ids": ["CREATE", "ROUTE"],
+             "text": "Ở tải cao, luồng qua Ticket Creation và Ticket Router phải có thời gian phản hồi p95 tối đa 200 ms."},
+            {"id": "NFR-02", "kind": "NFR", "component_ids": ["REPORT"],
+             "text": "Operations Reporting phải khôi phục trong vòng 10 phút sau khi tiến trình bị dừng."},
+            {"id": "NFR-03", "kind": "NFR", "component_ids": ["PROFILE"],
+             "text": "Dữ liệu hồ sơ cá nhân phải được mã hóa khi gửi và nhận qua mạng."},
         ],
         "components": [
             {"id": "LOGIN", "name": "Customer Login", "characteristics": [customer_experience],

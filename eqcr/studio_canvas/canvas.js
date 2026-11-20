@@ -356,6 +356,35 @@ function focusRequirement(id) {
     $("source-" + id)?.focus();
 }
 
+function renderRequirementScope(area, requirement) {
+    area.replaceChildren(element("strong", "Component phụ trách"));
+    const scoped = requirement.component_ids ?? [];
+    const names = new Map(model.components.map(item => [item.id, item.name]));
+    const update = ids => {
+        requirement.component_ids = ids;
+        requirement.quality_allocations = [];
+        markDirty();
+        renderInput();
+        renderRequirementScope(area, requirement);
+        area.querySelector("select")?.focus();
+    };
+    for (const id of scoped) {
+        const chip = element("button", names.get(id) + " ×", "requirement-chip");
+        chip.setAttribute("aria-label", "Gỡ " + id + " khỏi phạm vi " + requirement.id);
+        chip.onclick = () => update(scoped.filter(item => item !== id));
+        area.append(chip);
+    }
+    const available = model.components.filter(item => !scoped.includes(item.id));
+    if (available.length) {
+        const picker = element("select");
+        picker.setAttribute("aria-label", "Gắn component cho " + requirement.id);
+        picker.append(new Option("Chọn component…", ""));
+        for (const item of available) picker.append(new Option(item.name + " · " + item.id, item.id));
+        picker.onchange = () => { if (picker.value) update([...scoped, picker.value]); };
+        area.append(picker);
+    }
+}
+
 function renderRequirements() {
     const list = $("requirement-list");
     list.replaceChildren();
@@ -402,7 +431,11 @@ function renderRequirements() {
             render();
         };
         meta.append(label, kind);
-        row.append(meta, input, remove);
+        const fields = element("div", undefined, "requirement-fields");
+        const scope = element("div", undefined, "requirement-scope");
+        renderRequirementScope(scope, requirement);
+        fields.append(input, scope);
+        row.append(meta, fields, remove);
         list.append(row);
     }
 }
@@ -447,6 +480,7 @@ function removeSelection() {
         model.keep_apart = model.keep_apart.filter(row => row.left !== item.id && row.right !== item.id);
         model.stores.forEach(store => { store.members = store.members.filter(id => id !== item.id); });
         for (const requirement of model.requirements) {
+            requirement.component_ids = (requirement.component_ids ?? []).filter(id => id !== item.id);
             requirement.quality_allocations = (requirement.quality_allocations ?? []).map(allocation => ({
                 ...allocation, component_ids: allocation.component_ids.filter(id => id !== item.id),
             })).filter(allocation => allocation.component_ids.length);

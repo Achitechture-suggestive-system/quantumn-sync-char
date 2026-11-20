@@ -20,7 +20,7 @@ from eqcr.studio_canvas import read_layout, render_board
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
 from eqcr.studio_views import (
     candidate_card, constraint_cards, cost_matrix, diagram_header, interaction_cards,
-    iso_evidence, quantum_cards, requirement_cards, review_receipt,
+    iso_evidence, iso_route_preview, quantum_cards, requirement_cards, review_receipt,
 )
 
 
@@ -136,7 +136,7 @@ def show_traceability(architecture: Architecture, plans: dict, names: dict[str, 
         st.html(requirement_cards(architecture, plan, names))
 
 
-def show_nfr_review(architecture: Architecture) -> None:
+def show_nfr_review(architecture: Architecture, plans: list[dict]) -> None:
     nfrs = {item.id: item for item in architecture.requirements if item.kind == "NFR"}
     if not nfrs:
         return
@@ -148,16 +148,36 @@ def show_nfr_review(architecture: Architecture) -> None:
         mentions = component_mentions(requirement.text, names)
         confirmed = {item.characteristic: item for item in requirement.quality_allocations}
         st.html(iso_evidence(requirement, suggested, mentions, confirmed, names))
+        linked = [
+            item.id for item in architecture.components
+            if any(requirement.id in references for references in item.characteristic_requirements.values())
+        ]
+        if requirement.component_ids:
+            components, origin = requirement.component_ids, "Theo phạm vi khai báo trong requirement"
+        elif linked:
+            components, origin = linked, "Theo các liên kết characteristic đã gắn requirement"
+        elif mentions:
+            components, origin = list(mentions), "Theo tên hoặc mã component xuất hiện trong nguồn"
+        else:
+            components, origin = [], "Chưa xác định được component từ dữ liệu nguồn"
         default = next(iter(suggested or confirmed), None)
         labels = list(QualityCharacteristic)
         generation = st.session_state.editor_version
         label = st.selectbox("Characteristic ISO", labels, index=labels.index(default) if default else None,
                              key=f"quality_label_{requirement.id}_{generation}")
         if label is None:
+            st.html(iso_route_preview(components, names, plans, origin=origin, applied=False))
             return
+        saved = confirmed.get(label)
         selected = st.multiselect("Component ứng viên", list(names),
-                                  default=confirmed[label].component_ids if label in confirmed else list(mentions),
+                                  default=saved.component_ids if saved else components,
                                   format_func=names.__getitem__, key=f"quality_components_{requirement.id}_{labels.index(label)}_{generation}")
+        applied = saved is not None and set(selected) == set(saved.component_ids)
+        if applied:
+            origin = "Theo danh sách component đã xác nhận"
+        elif set(selected) != set(components):
+            origin = "Theo danh sách component bạn đang chọn"
+        st.html(iso_route_preview(selected, names, plans, origin=origin, applied=applied))
         apply, remove = st.columns(2)
         confirmed_now = apply.button("Xác nhận gán ISO", disabled=not selected)
         removed_now = remove.button("Gỡ ánh xạ ISO", disabled=label not in confirmed)
@@ -371,8 +391,10 @@ header = st.empty()
 st.html('<span id="studio-diagrams" class="qs-anchor"></span>')
 board = st.container()
 if st.session_state.studio_analyzed and not st.session_state.studio_pending:
-    show_nfr_review(architecture)
+    nfr_panel = st.container()
     st.session_state.studio_plans, st.session_state.studio_no_solution = show_comparison(architecture)
+    with nfr_panel:
+        show_nfr_review(architecture, st.session_state.studio_plans)
 elif st.session_state.studio_pending:
     st.info("Bấm Phân tích sơ đồ để cập nhật trade-off và tiếp tục Human Review.")
 

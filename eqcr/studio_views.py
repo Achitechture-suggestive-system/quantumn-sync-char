@@ -55,6 +55,7 @@ def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str,
     )
     named = "".join(f'<li><strong>{escape(names[item])}</strong><q>{escape(quote)}</q></li>'
                     for item, quote in mentions.items())
+    scope = "".join(tag(names[item], "accent") for item in requirement.component_ids)
     allocations = "".join(
         f'<li><strong>{escape(label.value)}</strong><span class="qs-muted">'
         f'{escape(", ".join(names[item] for item in item_allocation.component_ids))}</span>'
@@ -68,15 +69,50 @@ def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str,
             <div class="qs-card-top"><span class="qs-code">{escape(requirement.id)}</span>{state}</div>
             <h3>Requirement gốc</h3>
             <blockquote>{escape(requirement.text)}</blockquote>
+            <h4>Phạm vi component khai báo</h4>
+            {f'<div class="qs-tags qs-scope">{scope}</div>' if scope else '<p class="qs-muted">Chưa chọn trực tiếp trong requirement.</p>'}
             <h4>Component có tên trong nguồn</h4>
-            {f'<ul class="qs-evidence-list">{named}</ul>' if named else '<p class="qs-muted">Chưa xác định từ văn bản.</p>'}
+            {f'<ul class="qs-evidence-list">{named}</ul>' if named else '<p class="qs-muted">Văn bản chưa ghi tên hoặc mã component.</p>'}
         </article>
         <article class="qs-card">
             <h3>Đề xuất từ văn bản</h3>
             {f'<ul class="qs-evidence-list">{signals}</ul>' if signals else '<p class="qs-muted">Chưa tìm thấy đoạn khớp. Bạn có thể chọn nhãn bên dưới.</p>'}
             <h4>Ánh xạ đã xác nhận</h4>
-            {f'<ul class="qs-evidence-list">{allocations}</ul>' if allocations else '<p class="qs-muted">Chưa có ánh xạ đưa vào phân nhóm.</p>'}
+            {f'<ul class="qs-evidence-list">{allocations}</ul>' if allocations else '<p class="qs-muted">Xem tuyến bên dưới rồi xác nhận để đưa đặc tính vào phân nhóm.</p>'}
         </article>
+    </div>
+    """
+
+
+def iso_route_preview(component_ids, names, plans, *, origin: str, applied: bool) -> str:
+    state = tag("Đã xác nhận" if applied else "Xem trước", "accent" if applied else "warn")
+    if not component_ids:
+        body = '<p class="qs-muted">Chọn component phụ trách để xem Quantum chứa component đó.</p>'
+    elif not plans:
+        body = '<p class="qs-muted">Chưa có phân hoạch khả thi để xác định Quantum.</p>'
+    else:
+        headers = "".join(
+            f'<th scope="col">{escape(" · ".join(plan["label"].split(" · ")[:2]))}</th>' for plan in plans
+        )
+        rows = []
+        for component_id in component_ids:
+            cells = "".join(f'<td>{tag(plan["assignment"].get(component_id, "Chưa xếp"), "accent")}</td>'
+                            for plan in plans)
+            rows.append(f'<tr><th scope="row">{escape(names[component_id])}</th>{cells}</tr>')
+        body = f"""
+        <div class="qs-scroll qs-scope" tabindex="0" role="region" aria-label="Bảng vị trí Quantum theo phương án">
+            <table><thead><tr><th scope="col">Component phụ trách</th>{headers}</tr></thead>
+            <tbody>{"".join(rows)}</tbody></table>
+        </div>
+        """
+    explanation = "Vị trí theo các phương án đang xem."
+    if not applied:
+        explanation += " Xác nhận đặc tính sẽ tính lại cách phân nhóm."
+    return f"""
+    <div class="qs-matrix">
+        <div class="qs-card-top"><h3>Tuyến ánh xạ component → Quantum</h3>{state}</div>
+        <p class="qs-muted">{escape(origin)}. {escape(explanation)}</p>
+        {body}
     </div>
     """
 
@@ -252,11 +288,14 @@ def requirement_cards(architecture, plan, names) -> str:
             for label, owner, group in links
         )
         kind = requirement.kind if requirement.kind != "UNSPECIFIED" else "Chưa phân loại"
-        status = f"{len(links)} liên kết" if links else "Chưa gắn"
+        status = f"{len(links)} liên kết đặc tính" if links else "Chưa gắn đặc tính"
+        scoped = "".join(tag(f"{names[item]} → {plan['assignment'][item]}")
+                         for item in requirement.component_ids)
         cards.append(f"""
         <article class="qs-card qs-requirement">
             <div class="qs-card-top"><h3>{escape(requirement.id)}</h3><div class="qs-tags">{tag(kind)}{tag(status, "accent" if links else "warn")}</div></div>
             <p>{escape(requirement.text)}</p>
+            {f'<div class="qs-tags qs-scope" aria-label="Phạm vi component khai báo">{scoped}</div>' if scoped else ''}
             {f'<ul class="qs-chain" aria-label="Đặc tính, component và Quantum">{body}</ul>' if body else ''}
         </article>
         """)

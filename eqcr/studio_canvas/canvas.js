@@ -8,7 +8,6 @@ const modeStyle = {
     DATA: ["#80968b", []], SPLIT: ["#966426", [3, 4]], APART: ["#866196", [2, 4]]
 };
 let options, model, positions, revision, selected, focusKey, tool, first, currentPlan, previousTop;
-let profileSelection;
 let dirty = false;
 let submission = 0;
 let nextRequirement = 1;
@@ -166,8 +165,8 @@ function makeNode(node, outputId) {
     const button = element("button", undefined, "node" + (node.type === "store" ? " store" : ""));
     button.dataset.node = outputId || node.key;
     button.dataset.origin = node.key;
-    const tags = node.type === "store" ? node.item.policy : outputId ? node.item.id :
-        [...node.item.characteristics, ...approvedIsoLabels(node.item, model)].join(" · ") || "Chưa có đặc tính";
+    const tags = node.type === "store" ? node.item.policy :
+        [...node.item.characteristics, ...approvedIsoLabels(node.item, outputId ? options.model : model)].join(" · ") || "Chưa có đặc tính";
     button.title = node.item.name + " · " + tags;
     button.setAttribute("aria-label", (outputId ? "Đầu ra " : "") + node.item.name);
     button.append(element("strong", node.item.name), element("small", tags));
@@ -545,38 +544,6 @@ function quantumCharacteristics(plan, group, names, requirements) {
     return section;
 }
 
-function renderQualityProfile(plan) {
-    const panel = $("quality-profile");
-    panel.hidden = !plan;
-    if (!plan) return;
-    const chooser = $("profile-select");
-    const names = new Map(options.model.components.map(item => [item.id, item.name]));
-    const requirements = new Map(options.model.requirements.map(item => [item.id, item.text]));
-    const interactions = plan.interactions.map(edge => [edge.source + ":" + edge.target, edge]);
-    chooser.replaceChildren(
-        new Option("Chọn Quantum hoặc tương tác", ""),
-        ...plan.groups.map(group => new Option("Quantum " + group.id, group.id)),
-        ...interactions.map(([id, edge]) => new Option(names.get(edge.source) + " → " + names.get(edge.target), id))
-    );
-    chooser.value = profileSelection ?? "";
-    if (chooser.selectedIndex < 0) chooser.value = "";
-    const content = $("profile-content");
-    content.replaceChildren();
-    const group = plan.groups.find(item => item.id === chooser.value);
-    const edge = interactions.find(([id]) => id === chooser.value)?.[1];
-    if (group) {
-        content.append(quantumCharacteristics(plan, group, names, requirements));
-        content.append(element("p", "Đo lường · NOT_MEASURED", "profile-status"));
-    } else if (edge) {
-        const declared = edge.mode === "UNKNOWN" ? "UNRESOLVED" : edge.mode;
-        content.append(
-            element("p", "Mode đầu vào · " + declared + " · " + edge.from_quantum + " → " + edge.to_quantum),
-            element("p", edge.basis || "Chưa khai báo căn cứ."),
-            element("p", "Hợp đồng vận hành · INSUFFICIENT_EVIDENCE", "profile-status")
-        );
-    }
-}
-
 function renderOutput() {
     const area = $("quanta");
     const chooser = $("plan");
@@ -589,6 +556,8 @@ function renderOutput() {
     area.className = plan ? "quanta" : "empty";
     if (!plan) area.textContent = options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
     if (plan) {
+        const names = new Map(options.model.components.map(item => [item.id, item.name]));
+        const requirements = new Map(options.model.requirements.map(item => [item.id, item.text]));
         const selectedGroups = new Set();
         for (const id of Object.keys(plan.assignment)) {
             if (highlighted(componentKey(id))) selectedGroups.add(plan.assignment[id]);
@@ -599,14 +568,7 @@ function renderOutput() {
         }
         for (const group of plan.groups) {
             const region = element("div", undefined, "quantum" + (selectedGroups.has(group.id) ? " active" : ""));
-            const heading = element("button", group.id, "quantum-profile-link");
-            heading.setAttribute("aria-label", "Xem Quality Profile " + group.id);
-            heading.onclick = () => {
-                profileSelection = group.id;
-                renderQualityProfile(plan);
-                $("profile-select").focus();
-            };
-            region.append(heading);
+            region.append(element("h3", group.id), quantumCharacteristics(plan, group, names, requirements));
             for (const id of group.components) {
                 const item = options.model.components.find(row => row.id === id);
                 region.append(makeNode({type: "component", item, key: componentKey(id)}, componentKey(id)));
@@ -620,7 +582,6 @@ function renderOutput() {
             area.append(region);
         }
     }
-    renderQualityProfile(plan);
     const trace = $("trace");
     trace.replaceChildren();
     if (!plan) return;
@@ -707,7 +668,6 @@ for (const [id, value] of [["connect", "connect"], ["separate", "apart"]]) {
     $(id).onclick = () => { tool = tool === value ? null : value; first = null; render(); };
 }
 $("plan").onchange = event => { currentPlan = event.target.value; render(); };
-$("profile-select").onchange = event => { profileSelection = event.target.value; renderQualityProfile(activePlan()); };
 $("reset").onclick = () => {
     model = clone(options.example);
     positions = {};

@@ -199,10 +199,6 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
                 scenario_id,
                 "QUALITY_SCENARIO_CONTEXT",
             )
-    quality_decomposition = artifacts.get("quality_decomposition", {})
-    for document in quality_decomposition.get("source_documents", []):
-        ref = {"source_id": document["id"], "start": 0, "end": len(document["text"]), "quote": document["text"]}
-        add_input_source(ref, kind="REQUIREMENT_DOCUMENT", text=document["text"])
 
     requirement_ids = {item["id"] for item in raw["requirements"]}
     workflow_ids = {item["id"] for item in raw["workflows"]}
@@ -993,38 +989,6 @@ def build_traceability_graph(artifacts: dict[str, Any]) -> dict[str, Any]:
             if artifact_node not in node_ids:
                 add_node(artifact_node, "ARTIFACT_COLLECTION", artifact=artifact_name)
             add_edge(revision_node, artifact_node, "AFFECTS_ARTIFACT")
-
-    for document in quality_decomposition.get("classification", {}).get("documents", []):
-        for atom in document["atoms"]:
-            atom_id = f"atomic-requirement:{atom['atomic_id']}"
-            add_node(atom_id, "ATOMIC_REQUIREMENT", **atom)
-            add_edge(f"source:{document['source_id']}", atom_id, "CLASSIFIED_AS")
-    for scenario in quality_decomposition.get("quality_scenario_matrix", []):
-        scenario_id = f"classified-quality-scenario:{scenario['id']}"
-        add_node(scenario_id, "QUALITY_SCENARIO", scenario_id=scenario["id"], scope_status=scenario["scope_status"])
-        add_edge(f"atomic-requirement:{scenario['nfr_id']}", scenario_id, "SPECIFIES")
-        for role in scenario["responsibility_ids"]:
-            add_edge(scenario_id, f"responsibility:{role}", "APPLIES_TO")
-    for candidate in quality_decomposition.get("candidates", []):
-        for interaction in candidate["interaction_matrix"]:
-            interaction_id = f"candidate-interaction:{candidate['candidate_id']}:{interaction['id']}"
-            add_node(interaction_id, "CANDIDATE_INTERACTION_DECISION", mode=interaction["mode"],
-                     status=interaction["status"], verification_status=interaction["verification_status"])
-            add_edge(f"partition:{candidate['candidate_id']}", interaction_id, "HAS_INTERACTION")
-            add_edge(f"responsibility:{interaction['caller']}", interaction_id, "CALLER_FOR")
-            add_edge(interaction_id, f"responsibility:{interaction['callee']}", "CALLS")
-            contract = interaction["contract"]
-            for reference in [*contract["source_refs"], *contract["basis_refs"].values()]:
-                add_citation(interaction_id, reference, owner_provenance=interaction["provenance"])
-            for scenario_id in interaction["scenario_ids"]:
-                add_edge(f"classified-quality-scenario:{scenario_id}", interaction_id, "SCOPE_INCLUDES_INTERACTION")
-        for profile in candidate["quality_profiles"]:
-            profile_id = f"candidate-quality:{candidate['candidate_id']}:{profile['quantum_id']}"
-            add_node(profile_id, "CANDIDATE_QUANTUM_QUALITY_PROFILE", quantum_id=profile["quantum_id"],
-                     status=profile["status"], measurement_status=profile["measurement_status"])
-            add_edge(f"partition:{candidate['candidate_id']}", profile_id, "HAS_QUALITY_PROFILE")
-            for scenario in profile["quality_scenarios"]:
-                add_edge(f"classified-quality-scenario:{scenario['scenario_id']}", profile_id, "ALLOCATES_QUALITY_SCOPE")
 
     assertions = {
         "node_ids_are_unique": len(nodes) == len(node_ids),

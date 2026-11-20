@@ -24,9 +24,6 @@ from .interaction_contracts import (
     apply_interaction_contract_overrides,
     make_unresolved_contract,
 )
-from .quality_decomposition import (
-    QualityDecompositionInput, build_quality_candidate_report, prepare_quality_decomposition,
-)
 from .traceability import refresh_traceability_artifact
 
 
@@ -796,10 +793,6 @@ def run_pipeline(
 ) -> dict[str, Any]:
     """Run deterministic steps 01-10 and return serializable, traceable artifacts."""
     raw = RawRequirements.model_validate(fixture["raw_requirements"])
-    quality_input = (
-        QualityDecompositionInput.model_validate(fixture["quality_decomposition"])
-        if "quality_decomposition" in fixture else None
-    )
     responsibilities = [Responsibility.model_validate(item) for item in fixture["responsibilities"]]
     evidence = [EvidenceRecord.model_validate(item) for item in fixture["evidence"]]
     relation_annotations = [
@@ -827,11 +820,6 @@ def run_pipeline(
     constraint_source_texts.update(
         {item.source_ref.source_id: item.source_ref.quote for item in raw.scenarios}
     )
-    if quality_input is not None:
-        extra_sources = quality_input.source_texts()
-        if extra_sources.keys() & constraint_source_texts.keys():
-            raise ValueError("Quality source documents must use IDs distinct from existing pipeline sources.")
-        constraint_source_texts.update(extra_sources)
     for responsibility in responsibilities:
         unknown_requirements = set(responsibility.requirement_ids) - known_requirement_ids
         if unknown_requirements:
@@ -941,14 +929,6 @@ def run_pipeline(
         unknown_evidence = set(constraint.evidence_ids) - known_evidence_ids
         if unknown_evidence:
             raise ValueError(f"{constraint.id} references unknown evidence IDs: {sorted(unknown_evidence)}.")
-    prepared_quality = None
-    if quality_input is not None:
-        prepared_quality = prepare_quality_decomposition(
-            quality_input, raw, responsibilities, evidence, set(evidence_audit["blocked_evidence_ids"]),
-            constraints, constraint_source_texts,
-            prepared_fixture=fixture["fixture_label"].startswith("PREPARED") or fixture["fixture_label"] == "PRECOMPUTED",
-        )
-        constraints = prepared_quality.constraints
     raw_dict = raw.model_dump(mode="json")
     responsibility_dicts = [item.model_dump(mode="json") for item in responsibilities]
     evidence_dicts = [item.model_dump(mode="json") for item in evidence]
@@ -1027,7 +1007,11 @@ def run_pipeline(
             f"Enumerated {optimization['enumerated_partition_count']} partitions; "
             f"{optimization['optimal_candidate_count']} optimal candidates."
         )
-    source_texts = constraint_source_texts
+    source_texts = {
+        item.source_ref.source_id: item.text for item in raw.requirements
+    }
+    source_texts.update({item.source_ref.source_id: item.text for item in raw.workflows})
+    source_texts.update({item.source_ref.source_id: item.source_ref.quote for item in raw.scenarios})
     raw_source_spans_valid = all(
         ref.source_id == expected_source_id
         and text[ref.start:ref.end] == ref.quote
@@ -1285,23 +1269,6 @@ def run_pipeline(
         artifacts["metadata"]["demo_status"] = (
             "AWAITING_DEMO_REVIEW" if not decisions else "DEMO_REVIEW_RECORDED"
         )
-    if prepared_quality is not None:
-        report = build_quality_candidate_report(prepared_quality, optimization)
-        for candidate in report["candidates"]:
-            groups = _build_quanta(responsibilities, candidate["groups"])
-            for quantum, profile in zip(groups["quanta"], candidate["quality_profiles"], strict=True):
-                quantum["relevant_evidence_ids"] = profile["boundary_evidence_ids"]
-            candidate_edges = {edge["id"]: edge for edge in _build_interactions(groups, raw, responsibilities)["edges"]}
-            for edge in candidate["interaction_matrix"]:
-                candidate_edges[edge["id"]] = {
-                    **edge, "label": f"{edge['mode']} · {edge['status']}" if edge["mode"] != "UNRESOLVED" else edge["mode"],
-                    "rationale": edge["risk"],
-                    "source_refs": edge["contract"]["source_refs"],
-                }
-            candidate["architecture_graph"] = _build_architecture_graph(
-                raw, groups, {"edges": list(candidate_edges.values())}, evidence,
-            )
-        artifacts["quality_decomposition"] = report
     refresh_traceability_artifact(artifacts)
     validation_report["assertions"]["traceability_workflow_mappings_explicit"] = artifacts["traceability"][
         "assertions"
@@ -1390,13 +1357,6 @@ def run_pipeline(
         ),
         "metadata": ("LOCAL_RUN_METADATA", [], "PASS", "Execution-mode and input-label record only."),
     }
-    if prepared_quality is not None:
-        provenance_specs["quality_decomposition"] = (
-            "SOURCE_DECLARATIONS_AND_REVIEWED_QUALITY_POLICY",
-            ["raw_requirements", "responsibilities", "evidence", "constraints", "partitions"],
-            "REVIEW_REQUIRED",
-            "Exact span, typed policy, and candidate checks only. No inferred performance or deployability.",
-        )
     for artifact_name, spec in provenance_specs.items():
         artifacts[artifact_name]["artifact_metadata"] = {
             "provenance": {

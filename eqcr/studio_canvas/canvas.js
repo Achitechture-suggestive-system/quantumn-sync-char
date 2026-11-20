@@ -386,12 +386,20 @@ function renderInspector() {
         selectField(fields, "Kiểu tương tác", item.mode, ["SYNC", "ASYNC", "UNKNOWN"], value => {
             item.mode = value;
             if (value !== "SYNC") item.local_transaction = false;
+            if (value !== "ASYNC") item.prefer_async_separation = false;
         });
         weightField(fields, item);
         const check = element("input");
         check.type = "checkbox"; check.checked = item.local_transaction; check.disabled = item.mode !== "SYNC";
         field(fields, "Giao dịch cục bộ", check);
         check.onchange = () => { item.local_transaction = check.checked; markDirty(); };
+        if (item.mode === "ASYNC") {
+            const preference = element("input");
+            preference.type = "checkbox";
+            preference.checked = item.prefer_async_separation === true;
+            field(fields, "Ưu tiên tách ASYNC (ghi căn cứ bên dưới)", preference);
+            preference.onchange = () => { item.prefer_async_separation = preference.checked; markDirty(); };
+        }
     } else if (type === "store") {
         selectField(fields, "Chính sách kho", item.policy, ["KEEP_SHARED", "SPLITTABLE"], value => { item.policy = value; });
         weightField(fields, item);
@@ -403,6 +411,22 @@ function renderInspector() {
     remove.disabled = type === "component" && model.components.length <= 1;
     remove.onclick = removeSelection;
     area.append(remove);
+}
+
+function quantumCharacteristics(plan, group, names) {
+    const section = element("section", undefined, "quantum-characteristics");
+    section.setAttribute("aria-label", "Characteristics của " + group.id);
+    section.append(element("h4", "Characteristics"));
+    const characteristics = Object.entries(group.characteristic_sources);
+    if (!characteristics.length) section.append(element("p", "Chưa gắn đặc tính"));
+    for (const [label, owners] of characteristics) {
+        const entry = element("div", undefined, "characteristic");
+        entry.append(element("strong", label), element("p", owners.map(id => names.get(id) || id).join(", ")));
+        const shared = plan.groups.filter(other => other.id !== group.id && other.characteristics.includes(label));
+        if (shared.length) entry.append(element("small", "Cùng phụ trách: " + shared.map(other => other.id).join(", ")));
+        section.append(entry);
+    }
+    return section;
 }
 
 function renderOutput() {
@@ -417,6 +441,7 @@ function renderOutput() {
     area.className = plan ? "quanta" : "empty";
     if (!plan) area.textContent = options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
     if (plan) {
+        const names = new Map(options.model.components.map(item => [item.id, item.name]));
         const selectedGroups = new Set();
         for (const id of Object.keys(plan.assignment)) {
             if (highlighted(componentKey(id))) selectedGroups.add(plan.assignment[id]);
@@ -427,7 +452,7 @@ function renderOutput() {
         }
         for (const group of plan.groups) {
             const region = element("div", undefined, "quantum" + (selectedGroups.has(group.id) ? " active" : ""));
-            region.append(element("h3", group.id), element("p", group.characteristics.join(" · ") || "Chưa gắn đặc tính"));
+            region.append(element("h3", group.id), quantumCharacteristics(plan, group, names));
             for (const id of group.components) {
                 const item = options.model.components.find(row => row.id === id);
                 region.append(makeNode({type: "component", item, key: componentKey(id)}, componentKey(id)));

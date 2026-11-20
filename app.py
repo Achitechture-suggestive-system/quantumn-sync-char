@@ -10,6 +10,7 @@ from uuid import uuid4
 import streamlit as st
 from pydantic import ValidationError
 
+from eqcr.ollama import OllamaError
 from eqcr.quantum_example import ticket_example
 from eqcr.quantum_tradeoff import (
     Architecture, Candidate, Preferences, Ranking, analyze, characteristic_index,
@@ -17,16 +18,17 @@ from eqcr.quantum_tradeoff import (
 )
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
+from eqcr.studio_llm import MODEL, analyze_tradeoff, comparison_sha256
 
 
 st.set_page_config(page_title="Quantum Studio", layout="wide")
 st.html(Path(__file__).with_name("eqcr") / "quantum_studio.css")
 
-AXES = ("SYNC qua ranh giới", "Tách dữ liệu", "ASYNC giữ chung", "Characteristic rải nhiều nhóm", "Quantum trộn đặc tính")
+AXES = ("SYNC qua ranh giới", "Tách dữ liệu", "ASYNC ưu tiên tách nhưng giữ chung", "Characteristic rải nhiều nhóm", "Quantum trộn đặc tính")
 AXIS_EFFECTS = (
     "Phụ thuộc qua Quantum làm tăng nhu cầu quản lý timeout, độ trễ và lỗi lan truyền.",
     "Cần quyết định quyền ghi, độ trễ đồng bộ và cách đối soát dữ liệu.",
-    "Chưa dùng cơ hội cô lập hai component tại ranh giới ASYNC này.",
+    "Hai component còn giữ chung dù đầu vào đã ghi căn cứ ưu tiên tách.",
     "Một đặc tính cần phối hợp giữa nhiều Quantum.",
     "Một Quantum chịu trách nhiệm cho nhiều đặc tính.",
 )
@@ -82,6 +84,7 @@ def candidate_costs(architecture: Architecture, candidate: Candidate, preference
     return [
         {
             "axis": AXES[item.axis],
+            "axis_index": item.axis,
             "subject": item.subject,
             "components": list(item.components),
             "quanta": [f"Q{group}" for group in item.quanta],
@@ -202,6 +205,38 @@ def show_review(comparison: dict, left: Candidate, right: Candidate) -> None:
         )
 
 
+def show_llm_analysis(comparison: dict) -> dict | None:
+    st.subheader("Phân tích trade-off bằng LLM")
+    st.caption(f"{MODEL} chọn dữ kiện và câu hỏi đáng review. Studio hiển thị chiều tăng, giảm và số liệu từ bộ giải.")
+    comparison_id = comparison_sha256(comparison)
+    if st.button(f"Phân tích trade-off với {MODEL}", type="primary"):
+        st.session_state.pop("studio_llm_analysis", None)
+        with st.spinner("Đang phân tích dữ kiện A/B bằng Ollama…"):
+            try:
+                st.session_state.studio_llm_analysis = analyze_tradeoff(comparison)
+            except OllamaError as exc:
+                st.error(str(exc))
+    report = st.session_state.get("studio_llm_analysis")
+    if not report:
+        return None
+    if report["comparison_sha256"] != comparison_id:
+        st.info("Phương án hoặc trọng số đã đổi. Chạy lại để xem phân tích cho kết quả hiện tại.")
+        return None
+    st.caption(f"{report['model']} · Đề xuất cần review")
+    for key, label in (
+        ("benefit", "Lợi ích có điều kiện"),
+        ("tradeoff", "Đánh đổi"),
+        ("review_question", "Câu hỏi cần xác nhận"),
+    ):
+        item = report["findings"][key]
+        st.markdown(f"**{label}**")
+        st.text(item["text"])
+        st.caption("Dữ kiện: " + ", ".join(item["fact_ids"]))
+    with st.expander("Dữ kiện dùng cho phân tích LLM"):
+        st.json(report["facts"])
+    return report
+
+
 def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     heading("So sánh phương án", "Chọn cách xếp hạng để xem đánh đổi khi giữ các phụ thuộc SYNC trong cùng Quantum.")
     for column, (label, preset) in zip(st.columns(3), REVIEW_PRESETS.items(), strict=True):
@@ -221,7 +256,7 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
     best = result.ranked[0]
     if ranking == "SYNC_FIRST":
         st.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
-                   "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
+                   "sau đó giảm ASYNC được đánh dấu ưu tiên tách nhưng còn giữ chung, rồi mới so điểm trọng số.")
         if best.sync:
             st.info(f"Chi phí SYNC thấp nhất qua ranh giới là {best.sync} với các ràng buộc đang bật.")
     else:
@@ -310,6 +345,19 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
                         "interaction_routing": plans[item.id]["interactions"]}
                        for item in (left, right)],
     }
+    sensitivity = []
+    for axis, label in ((None, "Giữ công thức"), (3, "Bỏ phạt rải characteristic"), (4, "Bỏ phạt trộn characteristic")):
+        candidate = min(result.feasible, key=lambda item: ranking_key(item, preferences, ranking, omit_axis=axis))
+        sensitivity.append({
+            "Thử nghiệm": label, "Xếp đầu": candidate.id,
+            "Điểm trong thử nghiệm": candidate.score(preferences, omit_axis=axis),
+        })
+    with st.expander("Độ nhạy với điểm characteristic"):
+        st.caption("Mỗi hàng xếp lại toàn bộ phương án khả thi theo cách xếp hiện tại. Hai thử nghiệm lần lượt bỏ một khoản điểm.")
+        st.table(sensitivity)
+    comparison["characteristic_sensitivity"] = sensitivity
+    if llm_report := show_llm_analysis(comparison):
+        comparison["llm_analysis"] = llm_report
     show_review(comparison, left, right)
 
     with st.expander("Danh sách phương án Pareto"):

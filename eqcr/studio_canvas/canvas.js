@@ -552,6 +552,7 @@ function renderOutput() {
     for (const plan of options.plans) chooser.append(new Option(plan.label, plan.id));
     chooser.value = currentPlan || "";
     const plan = activePlan();
+    $("output-count").textContent = plan ? plan.groups.length + " Quantum" : "";
     area.replaceChildren();
     area.className = plan ? "quanta" : "empty";
     if (!plan) area.textContent = options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
@@ -568,7 +569,9 @@ function renderOutput() {
         }
         for (const group of plan.groups) {
             const region = element("div", undefined, "quantum" + (selectedGroups.has(group.id) ? " active" : ""));
-            region.append(element("h3", group.id), quantumCharacteristics(plan, group, names, requirements));
+            const groupHeader = element("div", undefined, "quantum-head");
+            groupHeader.append(element("h3", group.id), element("small", group.components.length + " component"));
+            region.append(groupHeader, quantumCharacteristics(plan, group, names, requirements));
             for (const id of group.components) {
                 const item = options.model.components.find(row => row.id === id);
                 region.append(makeNode({type: "component", item, key: componentKey(id)}, componentKey(id)));
@@ -582,14 +585,30 @@ function renderOutput() {
             area.append(region);
         }
     }
+    renderTrace(plan);
+}
+
+function traceDetails(trace, entries) {
+    const fields = element("dl", undefined, "trace-fields");
+    for (const [label, value] of entries) fields.append(element("dt", label), element("dd", value));
+    trace.append(fields);
+}
+
+function renderTrace(plan) {
     const trace = $("trace");
     trace.replaceChildren();
     if (!plan) return;
     trace.append(element("h3", "Truy vết đầu vào → đầu ra"));
     if (!dirty && selected?.type === "edge") {
-        const {source, target, mode} = selected.item;
-        trace.append(element("p", source + " → " + target + " · " + mode + " · " +
-            plan.assignment[source] + " → " + plan.assignment[target]));
+        const {source, target, mode, weight, basis} = selected.item;
+        const names = new Map(model.components.map(item => [item.id, item.name]));
+        trace.append(element("p", names.get(source) + " → " + names.get(target), "trace-title"));
+        traceDetails(trace, [
+            ["Vị trí", plan.assignment[source] === plan.assignment[target] ? "Nội bộ " + plan.assignment[source]
+                : plan.assignment[source] + " → " + plan.assignment[target]],
+            ["Kiểu & ảnh hưởng", mode + " · " + weight],
+            ["Căn cứ", basis || "Chưa khai báo"],
+        ]);
         return;
     }
     const source = graphNodes().find(node => node.key === focusKey);
@@ -598,10 +617,17 @@ function renderOutput() {
         : [plan.assignment[source?.item.id]].filter(Boolean);
     if (!source || dirty || !groups.length) trace.append(element("p", "Bấm một component hoặc kho trên hai sơ đồ để xem nhóm tương ứng."));
     else {
-        trace.append(element("p", source.item.name + " → " + groups.join(", ")));
+        trace.append(element("p", source.item.name, "trace-title"));
         if (source.type === "component") {
             const labels = [...source.item.characteristics, ...approvedIsoLabels(source.item, model)];
-            trace.append(element("p", "Đặc tính phụ trách · " + (labels.join(" / ") || "chưa khai báo")));
+            traceDetails(trace, [["Quantum", groups.join(", ")], ["Đặc tính phụ trách", labels.join(" / ") || "Chưa khai báo"]]);
+        } else {
+            traceDetails(trace, [
+                ["Quantum dùng kho", groups.join(", ")],
+                ["Chính sách", source.item.policy === "KEEP_SHARED" ? "Giữ chung"
+                    : groups.length > 1 ? "Tách kho · cần đồng bộ" : "Cho phép tách"],
+                ["Căn cứ", source.item.basis || "Chưa khai báo"],
+            ]);
         }
     }
 }
@@ -614,14 +640,19 @@ function updateStatus() {
     $("hint").textContent = tool
         ? (first ? "Đã chọn " + first.item.name + ". Chọn đầu còn lại." : "Chọn phần tử đầu tiên trên sơ đồ.")
         : "Kéo thả để đổi bố cục. Bấm component để sửa đặc tính, bấm nhãn cạnh để sửa quan hệ.";
+    const plan = activePlan();
+    const showLegend = Boolean(plan) && !dirty;
+    $("wire-legend").hidden = !showLegend;
+    $("unknown-legend").hidden = !plan?.interactions.some(edge => edge.mode === "UNKNOWN");
+    $("output-hint").hidden = showLegend;
     $("output-hint").textContent = dirty && options.plans.length ? "Mô hình đã đổi. Bấm Phân tích sơ đồ để cập nhật kết quả."
-        : activePlan() ? "Đỏ: SYNC · xanh nét đứt: ASYNC · chấm nâu: kho cần đồng bộ."
-        : "Chạy phân tích để tạo Quantum từ sơ đồ bên trái.";
+        : "Chọn Phân tích sơ đồ để xem các Quantum.";
 }
 
 function renderInput() {
     arrangeDefaults();
     $("input-nodes").replaceChildren(...graphNodes().map(node => makeNode(node)));
+    $("input-count").textContent = model.components.length + " component · " + model.stores.length + " kho";
     $("add-component").disabled = model.components.length >= 8;
     $("add-store").disabled = model.stores.length >= 16;
     scheduleWires();

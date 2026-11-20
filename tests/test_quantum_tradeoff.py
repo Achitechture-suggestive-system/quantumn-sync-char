@@ -9,6 +9,7 @@ from eqcr import storage, studio_canvas
 from eqcr.quantum_example import ticket_example
 from eqcr.quantum_tradeoff import Architecture, Preferences, analyze, component_profiles, explain_candidate, group_index
 from eqcr.studio_quality import QualityCharacteristic, component_mentions, quality_suggestions
+from eqcr.studio_views import requirement_cards, review_receipt
 
 
 def test_ticket_example_reproduces_both_tradeoffs_and_reverses_ranking():
@@ -190,6 +191,21 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert not app.exception
     saved = [json.loads(item.read_text(encoding="utf-8")) for item in tmp_path.rglob("review-*.json")]
     assert {item["selected_candidate"] for item in saved} == {"P011", third["id"]}
+
+
+def test_studio_visual_report_keeps_user_text_literal():
+    raw = '<custom-note title="draft">Nội dung</custom-note>'
+    architecture = Architecture.model_validate({
+        "components": [{"id": "A", "name": "Component A"}],
+        "requirements": [{"id": "REQ-01", "text": raw}],
+    })
+    trace = requirement_cards(architecture, {"groups": []}, {})
+    receipt = review_receipt({
+        "selected_candidate": None, "comparison": [], "note": raw, "recorded_at": "2026-01-01T08:00:00+00:00",
+    })
+    for html in (trace, receipt):
+        assert raw not in html
+        assert "&lt;custom-note" in html and "&gt;" in html
 
 
 def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):

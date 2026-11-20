@@ -18,6 +18,10 @@ from eqcr.quantum_tradeoff import (
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
+from eqcr.studio_views import (
+    candidate_card, constraint_cards, cost_matrix, diagram_header, interaction_cards,
+    iso_evidence, quantum_cards, requirement_cards, review_receipt,
+)
 
 
 st.set_page_config(page_title="Quantum Studio", layout="wide")
@@ -56,28 +60,6 @@ def save_slider_weights() -> None:
     st.session_state.studio_weights = Preferences(
         **{name: st.session_state[f"studio_weight_{name}"] for name, _ in WEIGHT_FIELDS}
     )
-
-
-def heading(title: str, detail: str) -> None:
-    st.header(title)
-    st.caption(detail)
-
-
-def describe_partition(architecture: Architecture, candidate: Candidate) -> None:
-    assignment = group_index(candidate.groups)
-    locations, labels = characteristic_index(component_profiles(architecture), assignment)
-    one_to_one = (
-        bool(locations)
-        and len(labels) == len(candidate.groups)
-        and all(len(items) == 1 for items in locations.values())
-        and all(len(items) == 1 for items in labels.values())
-    )
-    st.caption("Ánh xạ đặc tính ↔ Quantum đạt 1:1." if one_to_one else "Ánh xạ đặc tính ↔ Quantum chưa đạt 1:1.")
-    for characteristic, groups in sorted(locations.items()):
-        st.write(f"**{characteristic}** · {', '.join(f'Q{group}' for group in sorted(groups))}")
-    for edge in architecture.interactions:
-        if edge.mode == "ASYNC" and assignment[edge.source] != assignment[edge.target]:
-            st.write(f"**{edge.source} → {edge.target}** tách qua ASYNC. Cần thiết kế giao nhận, retry và xử lý trùng.")
 
 
 def candidate_costs(architecture: Architecture, candidate: Candidate, preferences: Preferences) -> list[dict]:
@@ -136,73 +118,36 @@ def calculate(architecture: Architecture, preferences: Preferences, ranking: Ran
     return analyze(architecture, preferences, ranking=ranking)
 
 
-def show_quantum_allocation(architecture: Architecture, plan: dict, names: dict[str, str]) -> None:
-    with st.expander("Đầu vào dùng để chia"):
-        profiles = component_profiles(architecture)
-        st.table([
-            {"Component": component.name, "ID": component.id,
-             "Characteristics": ", ".join(profiles[component.id]) or "Chưa khai báo"}
-            for component in architecture.components
-        ])
-    with st.expander(f"Characteristics và luồng theo Quantum · {plan['id']}", expanded=True):
-        st.table([
-            {"Quantum": group["id"], "Component": ", ".join(names[item] for item in group["components"]),
-             "Characteristic ← Component phụ trách": " · ".join(
-                 f"{characteristic} ← {', '.join(names[item] for item in owners)}"
-                 for characteristic, owners in group["characteristic_sources"].items()
-             ) or "Chưa khai báo"}
-            for group in plan["groups"]
-        ])
-        if plan["interactions"]:
-            st.table([
-                {
-                    "Kiểu": edge["mode"],
-                    "Luồng": f"{names[edge['source']]} → {names[edge['target']]}",
-                    "Quantum": edge["from_quantum"] if edge["placement"] == "INTERNAL"
-                    else f"{edge['from_quantum']} → {edge['to_quantum']}",
-                    "Phân nhóm": "Nội bộ" if edge["placement"] == "INTERNAL" else "Qua ranh giới",
-                    "Mức ảnh hưởng": edge["weight"],
-                }
-                for edge in sorted(plan["interactions"], key=lambda row: (row["mode"] != "SYNC", row["mode"]))
-            ])
-        else:
-            st.caption("Đầu vào chưa có quan hệ giữa các component.")
-    if architecture.requirements:
-        with st.expander(f"Truy vết requirement · {plan['id']}"):
-            traces = {item.id: [] for item in architecture.requirements}
-            for group in plan["groups"]:
-                for label, owners in group["characteristic_requirements"].items():
-                    for component, requirement_ids in owners.items():
-                        for requirement_id in requirement_ids:
-                            traces[requirement_id].append(f"{label} → {names[component]} → {group['id']}")
-            st.table([
-                {"Requirement": item.id, "Nội dung": item.text,
-                 "Characteristic → Component → Quantum": " · ".join(traces[item.id]) or "Chưa gắn"}
-                for item in architecture.requirements
-            ])
+def show_traceability(architecture: Architecture, plans: dict, names: dict[str, str]) -> None:
+    st.header("Hồ sơ và truy vết", anchor="studio-trace")
+    plan_id = st.selectbox(
+        "Phương án để truy vết", list(plans), format_func=lambda item: plans[item]["label"],
+        key=f"trace_plan_{st.session_state.editor_version}",
+    )
+    plan = plans[plan_id]
+    groups, edges, stores, requirements = st.tabs(["Quantum", "Tương tác", "Kho và ràng buộc", "Requirements"])
+    with groups:
+        st.html(quantum_cards(plan, names))
+    with edges:
+        st.html(interaction_cards(plan, names))
+    with stores:
+        st.html(constraint_cards(architecture, plan, names))
+    with requirements:
+        st.html(requirement_cards(architecture, plan, names))
 
 
 def show_nfr_review(architecture: Architecture) -> None:
     nfrs = {item.id: item for item in architecture.requirements if item.kind == "NFR"}
     if not nfrs:
         return
+    st.html('<span id="studio-iso" class="qs-anchor"></span>')
     with st.expander(f"Ánh xạ NFR vào {ISO_EDITION}", expanded=True):
         requirement = nfrs[st.selectbox("NFR nguồn", list(nfrs))]
-        st.text(requirement.text)
         suggested = quality_suggestions(requirement.text)
         names = {item.id: item.name for item in architecture.components}
         mentions = component_mentions(requirement.text, names)
-        if suggested:
-            st.table([{"Characteristic đề xuất": label.value, "Đoạn khớp": quote}
-                      for label, quote in suggested.items()])
-        else:
-            st.caption("Chưa tìm thấy tín hiệu rõ ràng. Chọn characteristic sau khi đọc NFR.")
-        st.caption("Component được nhắc trong NFR · " + (", ".join(f"{names[item]} [{quote}]" for item, quote in mentions.items())
-                   or "Chưa xác định. Chọn component phụ trách bên dưới."))
         confirmed = {item.characteristic: item for item in requirement.quality_allocations}
-        if confirmed:
-            st.table([{"Đã xác nhận": label.value, "Component": ", ".join(names[item] for item in allocation.component_ids)}
-                      for label, allocation in confirmed.items()])
+        st.html(iso_evidence(requirement, suggested, mentions, confirmed, names))
         default = next(iter(suggested or confirmed), None)
         labels = list(QualityCharacteristic)
         generation = st.session_state.editor_version
@@ -231,7 +176,8 @@ def show_nfr_review(architecture: Architecture) -> None:
 
 
 def show_review(comparison: dict, candidates: list[Candidate]) -> None:
-    st.subheader("Human Review")
+    st.header("Human Review", anchor="studio-review")
+    st.caption("Lưu phương án bạn ưu tiên cùng mô hình, trọng số và ghi chú tại thời điểm review.")
     with st.form("quick_review"):
         note = st.text_input("Ghi chú review", placeholder="Ví dụ: chấp nhận đồng bộ Ticket DB để giữ một đặc tính cho mỗi nhóm",
                              max_chars=400)
@@ -262,10 +208,7 @@ def show_review(comparison: dict, candidates: list[Candidate]) -> None:
             st.session_state.studio_last_review = review
     recorded = st.session_state.get("studio_last_review")
     if recorded and recorded["architecture"] == comparison["architecture"]:
-        selection = recorded["selected_candidate"]
-        st.success(f"Đã lưu lựa chọn {selection}." if selection else "Đã lưu yêu cầu chỉnh.")
-        if recorded["note"]:
-            st.write(recorded["note"])
+        st.html(review_receipt(recorded))
         st.download_button(
             "Tải quyết định review", json.dumps(recorded, ensure_ascii=False, indent=2),
             file_name=f"{recorded['id']}.json", mime="application/json",
@@ -273,16 +216,17 @@ def show_review(comparison: dict, candidates: list[Candidate]) -> None:
 
 
 def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
-    heading("So sánh phương án", "Đổi cách xếp hạng để xem Quantum và các trade-off tương ứng.")
+    st.header("So sánh phương án", anchor="studio-tradeoffs")
+    preferences = st.session_state.studio_weights
+    ranking = st.session_state.studio_ranking
     for column, (label, preset) in zip(st.columns(len(REVIEW_PRESETS)), REVIEW_PRESETS.items(), strict=True):
-        column.button(label, on_click=set_review_priority, args=preset, width="stretch")
+        active = preset == (preferences, ranking)
+        column.button(label, on_click=set_review_priority, args=preset, type="primary" if active else "secondary", width="stretch")
     with st.expander("Tùy chỉnh trọng số"):
         for column, (name, label) in zip(st.columns(4), WEIGHT_FIELDS, strict=True):
             key = f"studio_weight_{name}"
             st.session_state.setdefault(key, getattr(st.session_state.studio_weights, name))
             column.slider(label, 0, 10, key=key, on_change=save_slider_weights)
-    preferences = st.session_state.studio_weights
-    ranking = st.session_state.studio_ranking
     result = calculate(architecture, preferences, ranking)
     if not result.ranked:
         st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
@@ -307,12 +251,10 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
         ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best.score(preferences)} điểm"),
     ), strict=True):
         column.metric(label, value)
-    st.caption("Điểm trọng số càng thấp càng tốt khi so tiêu chí này. Trên biên Pareto, hai phương án có bộ chi phí khác nhau sẽ đánh đổi ít nhất một tiêu chí.")
     if any(edge.mode == "UNKNOWN" for edge in architecture.interactions):
         st.warning("Quan hệ UNKNOWN chưa góp vào điểm. Kiểm tra các quan hệ này trước khi chọn phương án.")
     names = {item.id: item.name for item in architecture.components}
     best_plan = plan_graph(architecture, best)
-    show_quantum_allocation(architecture, best_plan, names)
 
     frontier_ids = {item.id for item in result.frontier}
 
@@ -354,47 +296,26 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
 
     axis_weights = preferences.vector
     baseline = candidates[0]
-    st.table([
-        {"Chi phí mô hình": label, "Hệ số": weight,
-         **{f"{slot} · {item.id}": item.vector[index] for slot, item in zip(slots, candidates, strict=True)}}
-        for index, (label, weight) in enumerate(zip(AXES, axis_weights, strict=True))
-    ])
+    st.html(cost_matrix(AXES, axis_weights, candidates, slots))
     deltas = {
         item.id: {label: b - a for label, a, b in zip(AXES, baseline.vector, item.vector, strict=True)}
         for item in candidates
     }
-    for item in candidates[1:]:
-        improvement = ", ".join(f"{label} ({delta:+d})" for label, delta in deltas[item.id].items() if delta < 0)
-        drawback = ", ".join(f"{label} ({delta:+d})" for label, delta in deltas[item.id].items() if delta > 0)
-        st.write(
-            f"**{item.id} so với {baseline.id}** · giảm {improvement or '0 tiêu chí'} · "
-            f"tăng {drawback or '0 tiêu chí'} · chênh {item.score(preferences) - baseline.score(preferences):+d} điểm · "
-            f"{len(baseline.groups)} → {len(item.groups)} Quantum."
-        )
-    st.caption("Điểm dùng để so sánh mô hình thiết kế. Độ trễ và độ tin cậy cần được đo riêng.")
     details = {item.id: candidate_costs(architecture, item, preferences) for item in candidates}
     dominated_by = {
         item.id: next((other.id for other in result.ranked if other.vector != item.vector and
                        all(a <= b for a, b in zip(other.vector, item.vector, strict=True))), None)
         for item in candidates if item.id not in frontier_ids
     }
-    for slot, column, candidate in zip(slots, columns, candidates, strict=True):
-        with column.container(border=True):
-            st.subheader(f"{slot} · {candidate.id} · {candidate.score(preferences)} điểm")
-            if dominator := dominated_by.get(candidate.id):
-                st.caption(f"Ngoài Pareto · {dominator} có chi phí thấp hơn ở ít nhất một tiêu chí và không cao hơn ở các tiêu chí còn lại.")
-            else:
-                st.caption("Trên biên Pareto")
-            for index, group in enumerate(candidate.groups, 1):
-                st.write(f"**Q{index}** · {', '.join(names[item] for item in group)}")
-            describe_partition(architecture, candidate)
-            st.markdown("**Điểm phát sinh từ đâu**")
-            if not details[candidate.id]:
-                st.caption("Không có đóng góp chi phí theo các tiêu chí đã khai báo.")
-            for detail in details[candidate.id]:
-                st.write(f"**{detail['subject']}** · {detail['axis']} · {' / '.join(detail['quanta'])} · "
-                         f"{detail['units']} × {detail['weight']} = {detail['weighted_cost']} điểm.")
-                st.caption(detail["reason"])
+    scale = max(1, *(item.score(preferences) for item in candidates))
+    cards = "".join(
+        candidate_card(slot, item, baseline=baseline, axes=AXES, weights=axis_weights, points=details[item.id],
+                       plan=plans[item.id], names=names, ranked=item.id == best.id, frontier=item.id in frontier_ids,
+                       dominator=dominated_by.get(item.id), scale=scale)
+        for slot, item in zip(slots, candidates, strict=True)
+    )
+    st.html(f'<div class="qs-candidate-grid">{cards}</div>')
+    st.caption("Điểm so sánh là chi phí thiết kế. Độ trễ và độ tin cậy cần được đo riêng.")
 
     comparison = {
         "status": "PROPOSED_NOT_VERIFIED",
@@ -419,8 +340,6 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
                         "interaction_routing": plans[item.id]["interactions"]}
                        for slot, item in zip(slots, candidates, strict=True)],
     }
-    show_review(comparison, candidates)
-
     with st.expander("Danh sách phương án Pareto"):
         st.dataframe(
             [{"Phương án": option(item), "Điểm": item.score(preferences),
@@ -429,6 +348,8 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
              for item in result.ranked],
             hide_index=True, width="stretch",
         )
+    show_traceability(architecture, plans, names)
+    show_review(comparison, candidates)
     st.download_button(
         "Tải bản so sánh JSON", json.dumps(comparison, ensure_ascii=False, indent=2),
         file_name="quantum-comparison.json", mime="application/json",
@@ -446,19 +367,19 @@ st.session_state.setdefault("studio_weights", Preferences())
 st.session_state.setdefault("studio_ranking", "SYNC_FIRST")
 architecture = st.session_state.architecture
 
-st.html("""
-<section class="studio-header">
-    <p>EQCR / QAME</p>
-    <h1>Quantum Studio</h1>
-    <div>Chỉnh component trên sơ đồ, suy ra các Quantum và so sánh trade-off.</div>
-</section>
-""")
+header = st.empty()
+st.html('<span id="studio-diagrams" class="qs-anchor"></span>')
 board = st.container()
 if st.session_state.studio_analyzed and not st.session_state.studio_pending:
     show_nfr_review(architecture)
     st.session_state.studio_plans, st.session_state.studio_no_solution = show_comparison(architecture)
 elif st.session_state.studio_pending:
     st.info("Bấm Phân tích sơ đồ để cập nhật trade-off và tiếp tục Human Review.")
+
+header.html(diagram_header(
+    architecture, example=architecture == example, analyzed=st.session_state.studio_analyzed,
+    pending=st.session_state.studio_pending, feasible=bool(st.session_state.get("studio_plans")),
+))
 
 with board:
     if architecture == example:

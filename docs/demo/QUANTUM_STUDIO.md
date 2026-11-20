@@ -3,22 +3,25 @@
 ## Demo trong 60 giây
 
 1. Mở app và kéo component hoặc kho trong **Sơ đồ đầu vào**. Bấm component để sửa tập characteristics. Dùng **Nối** rồi chọn hai đầu để tạo cạnh. Bấm nhãn cạnh để đổi Sync/Async, mức ảnh hưởng và căn cứ. Dùng **Bắt buộc tách** để thêm cặp có ràng buộc.
-2. Bấm **Phân tích sơ đồ**. Chọn phương án trong **Sơ đồ đầu ra**. Mục **Characteristics** ngay dưới mã Quantum liệt kê từng đặc tính, các component phụ trách và Quantum cùng phụ trách nếu có. Bấm component hoặc kho ở một bên để làm nổi phần tương ứng và Quantum ở bên còn lại. Cạnh nâu chấm nối các phần của kho cần đồng bộ.
-3. **Chia theo SYNC** là chế độ mặc định. Xem mục **Characteristics và luồng theo Quantum** để biết component nào phụ trách mỗi đặc tính, cạnh SYNC nào nằm trong nhóm và cạnh ASYNC nào qua ranh giới. Bấm **Ưu tiên giữ dữ liệu** hoặc **Ưu tiên tập trung đặc tính** để thử cách xếp theo trọng số.
-4. Trong **Human Review**, bấm **Chọn A**, **Chọn B** hoặc nhập điều cần sửa rồi chọn **Yêu cầu chỉnh**. Quyết định lưu cùng đầu vào, trọng số, phương án và điểm tại thời điểm review. Có thể tải bản JSON và sửa mô hình để phân tích lại.
+2. Mở **Requirements** dưới sơ đồ đầu vào rồi bấm **+ Requirement**. Điền nội dung, bấm component và chọn mã ở dòng **Gắn requirement** của characteristic tương ứng. Một characteristic trên một component có thể dẫn nhiều nguồn.
+3. Bấm **Phân tích sơ đồ**, rồi dùng **Chia theo characteristics** để ưu tiên gom các component cùng đặc tính. **Chia theo SYNC** là chế độ mặc định. **Ưu tiên giữ dữ liệu** và **Ưu tiên tập trung đặc tính** xếp theo điểm trọng số.
+4. Trong **Sơ đồ đầu ra**, mỗi Quantum liệt kê characteristics, component phụ trách, mã requirement và các Quantum cùng phụ trách. Bấm mã để mở nội dung nguồn bên đầu vào. Mục **Truy vết requirement** liệt kê toàn bộ liên kết và các requirement chưa gắn cho phương án xếp đầu.
+5. Trong **Human Review**, bấm **Chọn A**, **Chọn B** hoặc nhập điều cần sửa rồi chọn **Yêu cầu chỉnh**. Có thể tải bản JSON và sửa mô hình để phân tích lại.
 
 ## Pipeline
 
 | Bước | Dữ liệu và quyết định |
 |---|---|
-| 1. Nhập mô hình | Khai báo 1–8 component và các tập characteristics, cạnh có hướng SYNC/ASYNC/UNKNOWN, kho dùng chung và cặp bắt buộc tách. Mỗi chính sách giữ hoặc tách kho dùng chung có căn cứ. |
+| 1. Nhập mô hình | Khai báo 1–8 component và các tập characteristics, requirement có mã, cạnh có hướng SYNC/ASYNC/UNKNOWN, kho dùng chung và cặp bắt buộc tách. Kiểm tra mã requirement được trỏ tới và đặc tính đã gán trên đúng component. |
 | 2. Loại vi phạm | Liệt kê mọi cách chia, mỗi component vào đúng một nhóm. Loại phương án tách giao dịch cục bộ, tách kho KEEP_SHARED hoặc gom cặp bắt buộc tách. Nếu hết phương án, báo INFEASIBLE. |
 | 3. Tính trade-off | Tính tiền phạt theo bảng dưới. Cạnh UNKNOWN được giữ trong sơ đồ, với cảnh báo và trạng thái cần xác nhận. |
-| 4. Xếp hạng | Tính biên Pareto theo năm chi phí. **Chia theo SYNC** so lần lượt tổng mức ảnh hưởng SYNC bị cắt, tổng mức ảnh hưởng ASYNC giữ chung, rồi điểm trọng số. Hai nút ưu tiên còn lại so điểm trọng số ngay. Nếu hòa, ưu tiên ít nhóm hơn rồi theo ID. |
-| 5. Phân bổ characteristics và luồng | Với mỗi Quantum, lấy hợp các tập characteristics của component trong nhóm và ghi component đóng góp cho từng đặc tính. Đánh dấu mọi cạnh là nội bộ hoặc qua ranh giới theo Quantum ở hai đầu. |
+| 4. Xếp hạng | Tính biên Pareto theo năm chi phí. **Chia theo SYNC** so SYNC bị cắt, ASYNC giữ chung, rồi điểm trọng số. **Chia theo characteristics** so chi phí rải đặc tính, chi phí trộn đặc tính, rồi điểm trọng số. Hai nút ưu tiên so điểm trọng số ngay. Nếu hòa, ưu tiên ít nhóm hơn rồi theo ID. |
+| 5. Phân bổ characteristics và luồng | Với mỗi Quantum, lấy hợp các characteristics của component trong nhóm và giữ các mã requirement theo từng component phụ trách. Đánh dấu mọi cạnh là nội bộ hoặc qua ranh giới theo Quantum ở hai đầu. |
 | 6. Review và lặp lại | Đổi cách xếp hạng hoặc trọng số. Chọn một phương án hoặc yêu cầu chỉnh. Nếu thay relation, characteristic hoặc chính sách dữ liệu thì phân tích lại sơ đồ. |
 
 Kéo vị trí chỉ đổi bố cục. Khi bấm **Phân tích sơ đồ**, app lưu bố cục trong phiên làm việc và gửi riêng mô hình để giải. Khi sửa thuộc tính, kết quả trước vẫn xem được trong sơ đồ đầu ra với cảnh báo chờ cập nhật. Bảng trade-off và Human Review xuất hiện lại sau khi phân tích mô hình mới hợp lệ.
+
+Các characteristic trùng tên trên nhiều component được tính là cùng một đặc tính. Requirement lưu nội dung nguồn và liên kết do người dùng khai báo. Điểm phân nhóm dùng tập characteristics trên component. Khi đổi tên đặc tính, chọn lại mã requirement cho tên mới. Mô hình đã tạo trước khi có requirements vẫn chạy được và hiển thị **Chưa gắn requirement** ở các đặc tính thiếu liên kết.
 
 | Chi phí | Cách tính |
 |---|---|
@@ -28,7 +31,7 @@ Kéo vị trí chỉ đổi bố cục. Khi bấm **Phân tích sơ đồ**, app
 | Một characteristic bị rải | Cộng số Quantum chứa characteristic đó trừ một, cho từng characteristic đã gắn. |
 | Một Quantum trộn đặc tính | Cộng số characteristic khác nhau trong nhóm trừ một, cho các nhóm có characteristic. Nhóm chưa có characteristic được ghi riêng, nên chi phí 0 không mặc nhiên đạt ánh xạ 1:1. |
 
-Điểm trọng số bằng tổng chi phí nhân với hệ số tương ứng. Hai chi phí về characteristic cùng dùng trọng số **Tập trung đặc tính**. Với **Chia theo SYNC**, điểm trọng số quyết định thứ hạng khi hai tiêu chí đầu bằng nhau. Cạnh SYNC thường có thể đi qua ranh giới nếu bị buộc tách. Chỉ giao dịch cục bộ và các ràng buộc cứng đã khai báo bắt buộc giữ hoặc tách nhóm.
+Điểm trọng số bằng tổng chi phí nhân với hệ số tương ứng. Hai chi phí về characteristic cùng dùng trọng số **Tập trung đặc tính**. Trong hai chế độ chia, điểm trọng số quyết định thứ hạng khi hai tiêu chí ưu tiên bằng nhau. Chế độ characteristics có thể chấp nhận thêm chi phí SYNC qua ranh giới để giảm rải hoặc trộn đặc tính. Điều kiện giao dịch cục bộ, kho giữ chung và cặp bắt buộc tách được áp dụng trước bước xếp hạng.
 
 Phần **Điểm phát sinh từ đâu** truy từng khoản điểm về cạnh, kho hoặc characteristic gốc và nêu Quantum liên quan. Các khoản này dùng cùng phép tính với bộ giải và có trong JSON review. Dropdown trên sơ đồ nhận ứng viên do bộ giải tìm từ dữ liệu đang nhập. Hai hình tham chiếu chỉ cung cấp cách minh họa ví dụ Ticket Support.
 
@@ -47,4 +50,6 @@ Hai sơ đồ được dựng từ nghiệm do bộ giải tìm. Thay đầu và
 
 **Chia theo SYNC** xếp P011 đầu. Hai phương án đều có chi phí SYNC bằng 0. P011 chuyển cạnh ASYNC `CREATE → ROUTE` qua ranh giới Q1 → Q2, trong khi cạnh SYNC `ROUTE → COMPLETE` vẫn trong Q2. Đặc tính của Q1 là *Trải nghiệm khách hàng*, Q2 là *Nhất quán luồng ticket*, Q3 là *Cô lập tải báo cáo*. Đánh đổi là phải thiết kế đồng bộ Ticket DB giữa Q1 và Q2.
 
-Review do thao tác trên UI được lưu cục bộ dưới `runs/quantum-studio/reviews/`. Mỗi bản ghi chứa cách xếp hạng, trọng số, phương án đã xem, nguồn từng characteristic, vị trí các cạnh, thao tác review, ghi chú và thời điểm.
+Mẫu có ba requirement minh họa `REQ-01` đến `REQ-03` do Studio chuẩn bị. Để thấy hai chế độ chia cho kết quả khác nhau, đổi characteristic của Ticket Creation từ *Trải nghiệm khách hàng* thành *Nhất quán luồng ticket*, thêm `REQ-04` mô tả yêu cầu về trạng thái lúc tiếp nhận và định tuyến, rồi gắn mã vào characteristic mới. Sau khi phân tích, **Chia theo SYNC** xếp P047 đầu. **Chia theo characteristics** xếp P031 đầu, đưa Ticket Creation và `REQ-04` vào Q2 cùng Ticket Router.
+
+Review lưu cục bộ dưới `runs/quantum-studio/reviews/`. JSON chứa `architecture.requirements` với nội dung nguồn và `characteristic_requirements` trong hồ sơ Quantum của phương án xếp đầu và cặp A/B, cùng điểm, trọng số và quyết định review.

@@ -15,7 +15,7 @@ from .pipeline import _partitions
 Key = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")]
 Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 Cost = Annotated[int, Field(ge=0, le=10)]
-Ranking = Literal["SYNC_FIRST", "WEIGHTED"]
+Ranking = Literal["SYNC_FIRST", "CHARACTERISTIC_FIRST", "WEIGHTED"]
 
 
 class InputModel(BaseModel):
@@ -26,6 +26,12 @@ class Component(InputModel):
     id: Key
     name: Label
     characteristics: list[Label] = Field(default_factory=list, max_length=12)
+    characteristic_requirements: dict[Label, list[Key]] = Field(default_factory=dict)
+
+
+class Requirement(InputModel):
+    id: Key
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
 
 
 class Interaction(InputModel):
@@ -73,6 +79,7 @@ class Architecture(InputModel):
     interactions: list[Interaction] = Field(default_factory=list, max_length=56)
     stores: list[DataStore] = Field(default_factory=list, max_length=16)
     keep_apart: list[SeparatePair] = Field(default_factory=list, max_length=28)
+    requirements: list[Requirement] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
     def check_references(self):
@@ -81,6 +88,18 @@ class Architecture(InputModel):
             raise ValueError("ID component phải duy nhất.")
         if len({item.id for item in self.stores}) != len(self.stores):
             raise ValueError("ID kho dữ liệu phải duy nhất.")
+        requirement_ids = {requirement.id for requirement in self.requirements}
+        if len(requirement_ids) != len(self.requirements):
+            raise ValueError("ID requirement phải duy nhất.")
+        for component in self.components:
+            for label, linked_ids in component.characteristic_requirements.items():
+                if label not in component.characteristics:
+                    raise ValueError(f"{component.id} chưa được gán characteristic {label!r}.")
+                unknown = set(linked_ids) - requirement_ids
+                if unknown:
+                    raise ValueError(f"{component.id} / {label} trỏ tới requirement chưa khai báo: {', '.join(sorted(unknown))}.")
+                if len(linked_ids) != len(set(linked_ids)):
+                    raise ValueError(f"{component.id} / {label} có mã requirement trùng.")
         pairs = set()
         for edge in self.interactions:
             pair = (edge.source, edge.target)
@@ -215,6 +234,8 @@ def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking) ->
     weighted_order = (candidate.score(weights), len(candidate.groups), candidate.id)
     if ranking == "SYNC_FIRST":
         return (candidate.sync, candidate.async_seam, *weighted_order)
+    if ranking == "CHARACTERISTIC_FIRST":
+        return (candidate.characteristic_spread, candidate.characteristic_mix, *weighted_order)
     return weighted_order
 
 

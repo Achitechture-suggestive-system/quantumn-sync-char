@@ -22,6 +22,7 @@ def test_ticket_example_reproduces_both_tradeoffs_and_reverses_ranking():
     assert (keep_data.score(Preferences()), separate.score(Preferences())) == (5, 6)
     assert analyze(architecture, Preferences(characteristics=4)).ranked == (separate, keep_data)
     assert analyze(architecture, Preferences(), ranking="SYNC_FIRST").ranked == (separate, keep_data)
+    assert analyze(architecture, Preferences(), ranking="CHARACTERISTIC_FIRST").ranked == (separate, keep_data)
     for item in result.feasible:
         assignment = group_index(item.groups)
         assert assignment["LOGIN"] == assignment["PROFILE"]
@@ -73,6 +74,31 @@ def test_sync_first_retains_stronger_sync_under_hard_separation():
     assert sync_first.groups == (("A",), ("B", "C"))
     assert sync_first.sync == 2
     assert sync_first.score(weights) > balanced.score(weights)
+    sync_weights = Preferences(characteristics=0)
+    assert analyze(architecture, sync_weights).ranked[0].groups == sync_first.groups
+    by_characteristic = analyze(architecture, sync_weights, ranking="CHARACTERISTIC_FIRST").ranked[0]
+    assert by_characteristic.groups == (("A", "B"), ("C",))
+    assert (by_characteristic.characteristic_spread, by_characteristic.characteristic_mix) == (0, 0)
+    assert by_characteristic.sync == 5
+
+    model = architecture.model_dump(mode="json")
+    model["interactions"][1].update(local_transaction=True, basis="Beta and Gamma share an atomic write.")
+    constrained = analyze(Architecture.model_validate(model), sync_weights, ranking="CHARACTERISTIC_FIRST").ranked
+    assert [item.groups for item in constrained] == [(("A",), ("B", "C"))]
+
+
+@pytest.mark.parametrize(("links", "message"), [
+    ({"Unassigned characteristic": ["REQ-01"]}, "chưa được gán characteristic"),
+    ({"Freshness": ["REQ-99"]}, "requirement chưa khai báo"),
+    ({"Freshness": ["REQ-01", "REQ-01"]}, "requirement trùng"),
+])
+def test_invalid_requirement_links_are_rejected(links, message):
+    with pytest.raises(ValidationError, match=message):
+        Architecture.model_validate({
+            "requirements": [{"id": "REQ-01", "text": "Index new content."}],
+            "components": [{"id": "INDEXER", "name": "Indexer", "characteristics": ["Freshness"],
+                            "characteristic_requirements": links}],
+        })
 
 
 def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tmp_path, monkeypatch):
@@ -90,6 +116,8 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert app.metric[-1].value == "P011 · 6 điểm"
     plan = views[-1]["plans"][0]
     assert plan["groups"][1]["characteristic_sources"] == {"Nhất quán luồng ticket": ["ROUTE", "COMPLETE"]}
+    ticket_trace = {"Nhất quán luồng ticket": {"ROUTE": ["REQ-02"], "COMPLETE": ["REQ-02"]}}
+    assert plan["groups"][1]["characteristic_requirements"] == ticket_trace
     assert [(edge["mode"], edge["from_quantum"], edge["to_quantum"], edge["placement"]) for edge in plan["interactions"]] == [
         ("ASYNC", "Q1", "Q2", "CROSS_QUANTUM"),
         ("SYNC", "Q2", "Q2", "INTERNAL"),
@@ -116,12 +144,17 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert [item["score"] for item in review["comparison"]] == [9, 6]
     assert review["comparison"][1]["cost_drivers"][0]["subject"] == "Ticket DB"
     assert review["comparison"][1]["interaction_routing"] == plan["interactions"]
+    assert review["architecture"]["requirements"][1]["id"] == "REQ-02"
+    assert review["recommended_plan"]["groups"][1]["characteristic_requirements"] == ticket_trace
+    assert review["comparison"][1]["quantum_profiles"][1]["characteristic_requirements"] == ticket_trace
 
 
 def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):
     model = {
+        "requirements": [{"id": "REQ-01", "text": "Index and serve new content promptly."}],
         "components": [
-            {"id": "INDEXER", "name": "Indexer", "characteristics": ["Freshness"]},
+            {"id": "INDEXER", "name": "Indexer", "characteristics": ["Freshness"],
+             "characteristic_requirements": {"Freshness": ["REQ-01"]}},
             {"id": "QUERY", "name": "Query", "characteristics": ["Latency"]},
         ]
     }
@@ -138,14 +171,20 @@ def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypa
     assert not app.exception
     assert views[-1]["plans"][0]["assignment"] == {"INDEXER": "Q1", "QUERY": "Q2"}
     assert views[-1]["layout"] == {"component:INDEXER": [0.4, 0.25]}
+    next(button for button in app.button if button.label == "Chia theo characteristics").click().run()
+    assert app.session_state.studio_ranking == "CHARACTERISTIC_FIRST"
 
     event.update(token="generic-2", action="dirty")
     app.run()
     assert views[-1]["pending"] is True
     assert not app.metric
     model["components"][1]["characteristics"] = ["Freshness"]
+    model["components"][1]["characteristic_requirements"] = {"Freshness": ["REQ-01"]}
     event.update(token="generic-3", action="analyze")
     app.run()
     assert not app.exception
     assert views[-1]["pending"] is False
     assert views[-1]["plans"][0]["assignment"] == {"INDEXER": "Q1", "QUERY": "Q1"}
+    assert views[-1]["plans"][0]["groups"][0]["characteristic_requirements"] == {
+        "Freshness": {"INDEXER": ["REQ-01"], "QUERY": ["REQ-01"]},
+    }

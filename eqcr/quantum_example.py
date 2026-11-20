@@ -4,14 +4,28 @@ from .quantum_tradeoff import Architecture
 
 
 def ticket_example() -> Architecture:
+    customer_experience = "Trải nghiệm khách hàng"
+    ticket_consistency = "Nhất quán luồng ticket"
+    reporting_isolation = "Cô lập tải báo cáo"
     return Architecture.model_validate({
+        "requirements": [
+            {"id": "REQ-01", "text": "Khách hàng có thể đăng nhập, quản lý hồ sơ và gửi ticket trong luồng tự phục vụ."},
+            {"id": "REQ-02", "text": "Định tuyến và hoàn tất phải sử dụng trạng thái nhất quán của cùng một ticket."},
+            {"id": "REQ-03", "text": "Quản lý có thể xem báo cáo vận hành với tải báo cáo được cô lập khỏi luồng xử lý ticket."},
+        ],
         "components": [
-            {"id": "LOGIN", "name": "Customer Login", "characteristics": ["Trải nghiệm khách hàng"]},
-            {"id": "PROFILE", "name": "Customer Profile", "characteristics": ["Trải nghiệm khách hàng"]},
-            {"id": "CREATE", "name": "Ticket Creation", "characteristics": ["Trải nghiệm khách hàng"]},
-            {"id": "ROUTE", "name": "Ticket Router", "characteristics": ["Nhất quán luồng ticket"]},
-            {"id": "COMPLETE", "name": "Ticket Completion", "characteristics": ["Nhất quán luồng ticket"]},
-            {"id": "REPORT", "name": "Operations Reporting", "characteristics": ["Cô lập tải báo cáo"]},
+            {"id": "LOGIN", "name": "Customer Login", "characteristics": [customer_experience],
+             "characteristic_requirements": {customer_experience: ["REQ-01"]}},
+            {"id": "PROFILE", "name": "Customer Profile", "characteristics": [customer_experience],
+             "characteristic_requirements": {customer_experience: ["REQ-01"]}},
+            {"id": "CREATE", "name": "Ticket Creation", "characteristics": [customer_experience],
+             "characteristic_requirements": {customer_experience: ["REQ-01"]}},
+            {"id": "ROUTE", "name": "Ticket Router", "characteristics": [ticket_consistency],
+             "characteristic_requirements": {ticket_consistency: ["REQ-02"]}},
+            {"id": "COMPLETE", "name": "Ticket Completion", "characteristics": [ticket_consistency],
+             "characteristic_requirements": {ticket_consistency: ["REQ-02"]}},
+            {"id": "REPORT", "name": "Operations Reporting", "characteristics": [reporting_isolation],
+             "characteristic_requirements": {reporting_isolation: ["REQ-03"]}},
         ],
         "interactions": [
             {"source": "CREATE", "target": "ROUTE", "mode": "ASYNC", "weight": 1,

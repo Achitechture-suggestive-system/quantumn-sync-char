@@ -32,6 +32,7 @@ AXIS_EFFECTS = (
 )
 REVIEW_PRESETS = {
     "Chia theo SYNC": (Preferences(), "SYNC_FIRST"),
+    "Chia theo characteristics": (Preferences(), "CHARACTERISTIC_FIRST"),
     "Ưu tiên giữ dữ liệu": (Preferences(), "WEIGHTED"),
     "Ưu tiên tập trung đặc tính": (Preferences(characteristics=4), "WEIGHTED"),
 }
@@ -98,16 +99,20 @@ def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
     indexes = group_index(candidate.groups)
     assignment = {item: f"Q{group}" for item, group in indexes.items()}
     _, labels = characteristic_index(architecture, indexes)
-    characteristics = {component.id: set(component.characteristics) for component in architecture.components}
+    components = {component.id: component for component in architecture.components}
     groups = []
     for index, group in enumerate(candidate.groups, 1):
         characteristic_sources = {
-            label: [component for component in group if label in characteristics[component]]
+            label: [component for component in group if label in components[component].characteristics]
             for label in sorted(labels.get(index, set()))
         }
         groups.append({
             "id": f"Q{index}", "components": list(group), "characteristics": list(characteristic_sources),
             "characteristic_sources": characteristic_sources,
+            "characteristic_requirements": {
+                label: {owner: components[owner].characteristic_requirements.get(label, []) for owner in owners}
+                for label, owners in characteristic_sources.items()
+            },
         })
     return {
         "id": candidate.id,
@@ -160,6 +165,19 @@ def show_quantum_allocation(architecture: Architecture, plan: dict, names: dict[
             ])
         else:
             st.caption("Đầu vào chưa có quan hệ giữa các component.")
+    if architecture.requirements:
+        with st.expander(f"Truy vết requirement · {plan['id']}"):
+            traces = {item.id: [] for item in architecture.requirements}
+            for group in plan["groups"]:
+                for label, owners in group["characteristic_requirements"].items():
+                    for component, requirement_ids in owners.items():
+                        for requirement_id in requirement_ids:
+                            traces[requirement_id].append(f"{label} → {names[component]} → {group['id']}")
+            st.table([
+                {"Requirement": item.id, "Nội dung": item.text,
+                 "Characteristic → Component → Quantum": " · ".join(traces[item.id]) or "Chưa gắn"}
+                for item in architecture.requirements
+            ])
 
 
 def show_review(comparison: dict, left: Candidate, right: Candidate) -> None:
@@ -203,8 +221,8 @@ def show_review(comparison: dict, left: Candidate, right: Candidate) -> None:
 
 
 def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
-    heading("So sánh phương án", "Chọn cách xếp hạng để xem đánh đổi khi giữ các phụ thuộc SYNC trong cùng Quantum.")
-    for column, (label, preset) in zip(st.columns(3), REVIEW_PRESETS.items(), strict=True):
+    heading("So sánh phương án", "Đổi cách xếp hạng để xem Quantum và các trade-off tương ứng.")
+    for column, (label, preset) in zip(st.columns(len(REVIEW_PRESETS)), REVIEW_PRESETS.items(), strict=True):
         column.button(label, on_click=set_review_priority, args=preset, width="stretch")
     with st.expander("Tùy chỉnh trọng số"):
         for column, (name, label) in zip(st.columns(4), WEIGHT_FIELDS, strict=True):
@@ -224,6 +242,11 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
                    "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
         if best.sync:
             st.info(f"Chi phí SYNC thấp nhất qua ranh giới là {best.sync} với các ràng buộc đang bật.")
+    elif ranking == "CHARACTERISTIC_FIRST":
+        st.caption("Đang chia theo characteristics. Bộ giải giảm đặc tính rải nhiều Quantum trước, "
+                   "sau đó giảm trộn đặc tính trong một Quantum, rồi mới so điểm trọng số.")
+        if best.sync:
+            st.info(f"Phương án này có chi phí SYNC qua ranh giới là {best.sync}. Xem các luồng bên dưới để review.")
     else:
         st.caption("Đang xếp theo điểm trọng số. Cạnh SYNC qua ranh giới góp vào tổng điểm.")
     summaries = st.columns(4)
@@ -304,6 +327,7 @@ def show_comparison(architecture: Architecture) -> tuple[list[dict], bool]:
         "baseline_under_default_weights": initial_left,
         "recommended_under_weights": min(result.frontier, key=lambda item: ranking_key(item, preferences, "WEIGHTED")).id,
         "recommended_candidate": best.id,
+        "recommended_plan": best_plan,
         "comparison": [{"id": item.id, "groups": item.groups, "score": item.score(preferences),
                         "costs": dict(zip(AXES, item.vector, strict=True)), "cost_drivers": details[item.id],
                         "assignment": plans[item.id]["assignment"], "quantum_profiles": plans[item.id]["groups"],

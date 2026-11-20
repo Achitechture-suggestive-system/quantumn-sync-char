@@ -10,6 +10,7 @@ const modeStyle = {
 let options, model, positions, revision, selected, focusKey, tool, first, currentPlan, previousTop;
 let dirty = false;
 let submission = 0;
+let nextRequirement = 1;
 let lastHeight = 0;
 let dragging = false;
 let frameRequested = false;
@@ -343,6 +344,77 @@ function weightField(parent, item) {
     input.oninput = () => { item.weight = input.valueAsNumber; markDirty(); };
 }
 
+function focusRequirement(id) {
+    $("requirements-editor").open = true;
+    $("source-" + id)?.focus();
+}
+
+function renderRequirements() {
+    const list = $("requirement-list");
+    list.replaceChildren();
+    $("requirement-count").textContent = "· " + model.requirements.length;
+    $("add-requirement").disabled = model.requirements.length >= 40;
+    for (const requirement of model.requirements) {
+        const row = element("div", undefined, "requirement-row");
+        const label = element("label", requirement.id, "requirement-id");
+        const input = element("textarea");
+        input.id = "source-" + requirement.id;
+        label.htmlFor = input.id;
+        input.setAttribute("aria-label", "Nội dung " + requirement.id);
+        input.rows = 2;
+        input.maxLength = 600;
+        input.value = requirement.text;
+        input.oninput = () => { requirement.text = input.value; markDirty(); };
+        const remove = element("button", "Xóa", "requirement-remove");
+        remove.setAttribute("aria-label", "Xóa " + requirement.id + " và các liên kết");
+        remove.onclick = () => {
+            model.requirements = model.requirements.filter(item => item !== requirement);
+            for (const component of model.components) {
+                component.characteristic_requirements = Object.fromEntries(
+                    Object.entries(component.characteristic_requirements ?? {}).map(([label, ids]) =>
+                        [label, ids.filter(id => id !== requirement.id)])
+                );
+            }
+            markDirty();
+            render();
+        };
+        row.append(label, input, remove);
+        list.append(row);
+    }
+}
+
+function renderCharacteristicLinks(area, component) {
+    area.replaceChildren();
+    const assignments = new Map(Object.entries(component.characteristic_requirements ?? {}));
+    for (const label of component.characteristics) {
+        const ids = assignments.get(label) ?? [];
+        const row = element("div", undefined, "characteristic-links");
+        row.append(element("strong", label));
+        function setLinks(updated) {
+            component.characteristic_requirements = {...component.characteristic_requirements, [label]: updated};
+            markDirty();
+            renderCharacteristicLinks(area, component);
+        }
+        for (const id of ids) {
+            const remove = element("button", id + " ×", "requirement-chip");
+            remove.setAttribute("aria-label", `Gỡ ${id} khỏi ${label}`);
+            remove.onclick = () => setLinks(ids.filter(link => link !== id));
+            row.append(remove);
+        }
+        const available = model.requirements.filter(item => !ids.includes(item.id));
+        if (available.length) {
+            const picker = element("select");
+            picker.setAttribute("aria-label", "Gắn requirement cho " + label);
+            picker.append(new Option("Gắn requirement…", ""));
+            for (const item of available) picker.append(new Option(item.id, item.id));
+            picker.onchange = () => { if (picker.value) setLinks([...ids, picker.value]); };
+            row.append(picker);
+        }
+        if (!ids.length && !available.length) row.append(element("small", "Thêm requirement bên dưới để gắn nguồn."));
+        area.append(row);
+    }
+}
+
 function removeSelection() {
     const {type, item} = selected;
     if (type === "component") {
@@ -380,8 +452,14 @@ function renderInspector() {
         textField(fields, "Tên", item.name, value => { item.name = value; }, 100, true);
     }
     if (type === "component") {
+        const links = element("div", undefined, "wide");
         textField(fields, "Characteristics phụ trách (phân cách bằng ;)", item.characteristics.join("; "),
-            value => { item.characteristics = list(value); }, 1200, true);
+            value => {
+                item.characteristics = list(value);
+                renderCharacteristicLinks(links, item);
+            }, 1200, true);
+        renderCharacteristicLinks(links, item);
+        fields.append(links);
     } else if (type === "edge") {
         selectField(fields, "Kiểu tương tác", item.mode, ["SYNC", "ASYNC", "UNKNOWN"], value => {
             item.mode = value;
@@ -405,7 +483,7 @@ function renderInspector() {
     area.append(remove);
 }
 
-function quantumCharacteristics(plan, group, names) {
+function quantumCharacteristics(plan, group, names, requirements) {
     const section = element("section", undefined, "quantum-characteristics");
     section.setAttribute("aria-label", "Characteristics của " + group.id);
     section.append(element("h4", "Characteristics"));
@@ -413,7 +491,21 @@ function quantumCharacteristics(plan, group, names) {
     if (!characteristics.length) section.append(element("p", "Chưa gắn đặc tính"));
     for (const [label, owners] of characteristics) {
         const entry = element("div", undefined, "characteristic");
-        entry.append(element("strong", label), element("p", owners.map(id => names.get(id) || id).join(", ")));
+        entry.append(element("strong", label));
+        for (const owner of owners) {
+            const line = element("div", undefined, "characteristic-owner");
+            line.append(element("span", names.get(owner) || owner));
+            const ids = group.characteristic_requirements?.[label]?.[owner] ?? [];
+            for (const id of ids) {
+                const ref = element("button", id, "requirement-chip");
+                ref.title = requirements.get(id) ?? id;
+                ref.disabled = !$("source-" + id);
+                ref.onclick = () => focusRequirement(id);
+                line.append(ref);
+            }
+            if (!ids.length) line.append(element("small", "Chưa gắn requirement"));
+            entry.append(line);
+        }
         const shared = plan.groups.filter(other => other.id !== group.id && other.characteristics.includes(label));
         if (shared.length) entry.append(element("small", "Cùng phụ trách: " + shared.map(other => other.id).join(", ")));
         section.append(entry);
@@ -434,6 +526,7 @@ function renderOutput() {
     if (!plan) area.textContent = options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
     if (plan) {
         const names = new Map(options.model.components.map(item => [item.id, item.name]));
+        const requirements = new Map(options.model.requirements.map(item => [item.id, item.text]));
         const selectedGroups = new Set();
         for (const id of Object.keys(plan.assignment)) {
             if (highlighted(componentKey(id))) selectedGroups.add(plan.assignment[id]);
@@ -444,7 +537,7 @@ function renderOutput() {
         }
         for (const group of plan.groups) {
             const region = element("div", undefined, "quantum" + (selectedGroups.has(group.id) ? " active" : ""));
-            region.append(element("h3", group.id), quantumCharacteristics(plan, group, names));
+            region.append(element("h3", group.id), quantumCharacteristics(plan, group, names, requirements));
             for (const id of group.components) {
                 const item = options.model.components.find(row => row.id === id);
                 region.append(makeNode({type: "component", item, key: componentKey(id)}, componentKey(id)));
@@ -503,6 +596,7 @@ function renderInput() {
 function render() {
     renderInput();
     renderInspector();
+    renderRequirements();
     renderOutput();
     updateStatus();
     scheduleWires();
@@ -527,6 +621,15 @@ function addNode(type) {
 
 $("add-component").onclick = () => addNode("component");
 $("add-store").onclick = () => addNode("store");
+$("add-requirement").onclick = () => {
+    const used = new Set(model.requirements.map(item => item.id));
+    let id;
+    do { id = "REQ-" + String(nextRequirement++).padStart(2, "0"); } while (used.has(id));
+    model.requirements.push({id, text: ""});
+    markDirty();
+    render();
+    focusRequirement(id);
+};
 for (const [id, value] of [["connect", "connect"], ["separate", "apart"]]) {
     $(id).onclick = () => { tool = tool === value ? null : value; first = null; render(); };
 }
@@ -540,7 +643,14 @@ $("reset").onclick = () => {
 };
 $("analyze").onclick = () => {
     setMessage("Đang phân tích…");
-    emit("analyze", {model, layout: positions});
+    const submitted = clone(model);
+    for (const component of submitted.components) {
+        component.characteristic_requirements = Object.fromEntries(
+            Object.entries(component.characteristic_requirements ?? {}).filter(([label, ids]) =>
+                component.characteristics.includes(label) && ids.length)
+        );
+    }
+    emit("analyze", {model: submitted, layout: positions});
 };
 new ResizeObserver(scheduleWires).observe(document.body);
 new ResizeObserver(scheduleWires).observe(outputGraph);

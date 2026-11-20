@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Truy vết requirement và chia theo characteristics — 2026-11-20
+
+- Commit `6a5e236c0974048666123fd0c08af93242d4de4c` đã push lên `feat/quantum-tradeoff-workbench`. Remote ref khớp SHA. SHA của `main` và tag P0 khớp các giá trị đã ghi bên dưới.
+- 147 tests, compileall, cú pháp JavaScript, staged diff và secret scan qua. CI kết thúc thành công trên đúng commit. [GitHub Actions 44682122391](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44682122391)
+- Browser smoke trên `127.0.0.1:8501` thêm requirement, gắn characteristic vào component, đổi chế độ xếp hạng, mở nội dung nguồn từ Quantum và gỡ liên kết. Mẫu Ticket Support và thay đổi trên trình duyệt là dữ liệu kiểm tra.
+
 ## Khôi phục luồng Quantum Studio — 2026-11-20
 
 - Commit `3d2d3af4e4fafde9bed123647ac26c58f842b7f0` đã push lên `feat/quantum-tradeoff-workbench`. Remote ref khớp SHA. SHA của `main` và tag P0 khớp các giá trị đã ghi bên dưới.

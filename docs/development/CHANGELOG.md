@@ -1,5 +1,12 @@
 # Changelog
 
+## Truy vết requirement và chia theo characteristics — 2026-11-20
+
+- Studio nhập requirement có mã và cho gắn mỗi nguồn vào characteristic của component. Sơ đồ đầu ra hiển thị mã có thể bấm để mở nội dung nguồn. Bảng truy vết và JSON review cho biết đường từ requirement đến Quantum.
+- Chế độ **Chia theo characteristics** xếp phương án khả thi theo chi phí rải, chi phí trộn, rồi điểm trọng số. So sánh theo SYNC và trọng số tiếp tục có trong Studio.
+- Kiểm tra trình duyệt trên cổng 8501. Sau khi chuyển Ticket Creation sang đặc tính Nhất quán luồng ticket và gắn `REQ-04`, đổi chế độ xếp từ P047 sang P031 đưa Ticket Creation vào Q2 cùng Ticket Router. Chi phí tách kho giảm 1 xuống 0, chi phí ASYNC giữ chung tăng 0 lên 1. Đã kiểm tra bấm mã mở đúng nguồn và gỡ mã vẫn giữ đặc tính đã gán.
+- 147 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44682122391)
+
 ## Khôi phục luồng Quantum Studio — 2026-11-20
 
 - Khôi phục bộ giải, chính sách SYNC/ASYNC và so sánh A/B của `e10bd81`. Gỡ bảng độ nhạy và phân tích Ollama khỏi Studio. Phần **Characteristics** trong từng Quantum vẫn hiện đặc tính, component phụ trách và các nhóm cùng phụ trách.

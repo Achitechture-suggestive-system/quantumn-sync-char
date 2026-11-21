@@ -221,6 +221,29 @@ class CostDriver:
     units: int
 
 
+@dataclass(frozen=True)
+class HardConstraint:
+    kind: Literal["KEEP_APART", "LOCAL_TRANSACTION", "KEEP_SHARED"]
+    index: int
+    components: tuple[str, ...]
+    basis: str
+
+    def violated_by(self, assignment: dict[str, int]) -> bool:
+        together = len({assignment[item] for item in self.components}) == 1
+        return together if self.kind == "KEEP_APART" else not together
+
+
+def hard_constraints(architecture: Architecture) -> tuple[HardConstraint, ...]:
+    return (
+        *(HardConstraint("KEEP_APART", index, (rule.left, rule.right), rule.basis)
+          for index, rule in enumerate(architecture.keep_apart)),
+        *(HardConstraint("LOCAL_TRANSACTION", index, (edge.source, edge.target), edge.basis)
+          for index, edge in enumerate(architecture.interactions) if edge.local_transaction),
+        *(HardConstraint("KEEP_SHARED", index, tuple(store.members), store.basis)
+          for index, store in enumerate(architecture.stores) if store.policy == "KEEP_SHARED" and len(store.members) > 1),
+    )
+
+
 def group_index(groups: tuple[tuple[str, ...], ...]) -> dict[str, int]:
     return {component_id: index for index, group in enumerate(groups, 1) for component_id in group}
 
@@ -285,15 +308,9 @@ def explain_candidate(architecture: Architecture, candidate: Candidate) -> tuple
 
 
 def _evaluate(architecture: Architecture, profiles: dict[str, dict[str, list[str]]],
-              groups: tuple[tuple[str, ...], ...], index: int) -> Candidate | None:
+              rules: tuple[HardConstraint, ...], groups: tuple[tuple[str, ...], ...], index: int) -> Candidate | None:
     assignment = group_index(groups)
-    if any(assignment[rule.left] == assignment[rule.right] for rule in architecture.keep_apart):
-        return None
-    if any(edge.local_transaction and assignment[edge.source] != assignment[edge.target]
-           for edge in architecture.interactions):
-        return None
-    if any(store.policy == "KEEP_SHARED" and len({assignment[item] for item in store.members}) > 1
-           for store in architecture.stores):
+    if any(rule.violated_by(assignment) for rule in rules):
         return None
     totals = [0] * 5
     for driver in _cost_drivers(architecture, profiles, assignment):
@@ -314,9 +331,10 @@ def analyze(architecture: Architecture, weights: Preferences, *, ranking: Rankin
     """Visit all partitions, filter hard rules, and retain the exact Pareto frontier."""
     feasible = []
     profiles = component_profiles(architecture)
+    rules = hard_constraints(architecture)
     count = 0
     for count, groups in enumerate(_partitions([item.id for item in architecture.components]), 1):
-        candidate = _evaluate(architecture, profiles, groups, count)
+        candidate = _evaluate(architecture, profiles, rules, groups, count)
         if candidate is not None:
             feasible.append(candidate)
 

@@ -69,6 +69,12 @@ def test_studio_replays_use_the_real_canvas_and_restore_previous_workspace(monke
         widget(view, "button", "Nạp ca vào sơ đồ").click().run()
         assert bool(captures[-1]["plans"]) == feasible
         assert captures[-1]["no_solution"] != feasible
+        if not feasible:
+            for index, message in enumerate(("10 nghiệm khả thi · P031 xếp đầu · 5 điểm", "27 nghiệm khả thi · P008 xếp đầu · 16 điểm")):
+                widget(view, "selectbox", "Xem chi tiết mô phỏng").select(index).run()
+                assert any(message in row.value for row in view.markdown)
+                assert captures[-1]["no_solution"]
+                assert captures[-1]["model"] == replay_architecture(oracle_ticket_cases()["OC-10"], "oracle").model_dump(mode="json")
     assert view.metric[1].value == "10"
 
     widget(view, "button", "Quay lại sơ đồ của tôi").click().run()

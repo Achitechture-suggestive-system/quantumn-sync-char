@@ -7,6 +7,29 @@ from datetime import datetime
 from html import escape
 
 
+def constraint_subject(rule, architecture, names: dict[str, str]) -> str:
+    if rule.kind == "KEEP_SHARED":
+        return architecture.stores[rule.index].name
+    separator = " → " if rule.kind == "LOCAL_TRANSACTION" else " / "
+    return separator.join(names[item] for item in rule.components)
+
+
+def conflict_evidence(conflict, architecture, names: dict[str, str]) -> str:
+    kinds = {"KEEP_APART": "Bắt buộc tách", "LOCAL_TRANSACTION": "Giao dịch cục bộ", "KEEP_SHARED": "Kho giữ chung"}
+    path = " ↔ ".join(names[item] for item in (conflict.path[0][0], *(edge[1] for edge in conflict.path)))
+    rows = []
+    for rule in (*dict.fromkeys(edge[2] for edge in conflict.path), conflict.separation):
+        subject = constraint_subject(rule, architecture, names)
+        rows.append(f'<li><strong>{escape(kinds[rule.kind])} · {escape(subject)}</strong><q>{escape(rule.basis)}</q></li>')
+    return f"""
+    <article class="qs-card">
+        <h3>Chuỗi bắt buộc cùng Quantum</h3>
+        <p>{escape(path)}</p>
+        <ul class="qs-evidence-list">{"".join(rows)}</ul>
+    </article>
+    """
+
+
 def tag(value: object, tone: str = "neutral") -> str:
     return f'<span class="qs-tag qs-tag--{tone}">{escape(str(value))}</span>'
 

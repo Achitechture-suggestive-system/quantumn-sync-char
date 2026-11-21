@@ -13,15 +13,16 @@ from pydantic import ValidationError
 from eqcr.quantum_example import ticket_example
 from eqcr.quantum_tradeoff import (
     Architecture, Candidate, Preferences, Ranking, analyze, characteristic_index,
-    component_profiles, explain_candidate, group_index, ranking_key,
+    component_profiles, explain_candidate, group_index, hard_constraints, ranking_key,
 )
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
 from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
+from eqcr.studio_conflicts import conflict_witnesses, minimal_repairs, simulate_repair
 from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
 from eqcr.studio_views import (
-    candidate_card, constraint_cards, cost_matrix, diagram_header, interaction_cards,
+    candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
     iso_evidence, iso_route_preview, quantum_cards, requirement_cards, review_receipt,
 )
 
@@ -118,6 +119,46 @@ def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
 @st.cache_data(show_spinner=False)
 def calculate(architecture: Architecture, preferences: Preferences, ranking: Ranking):
     return analyze(architecture, preferences, ranking=ranking)
+
+
+@st.cache_data(show_spinner=False)
+def diagnose_conflicts(architecture: Architecture):
+    rules = hard_constraints(architecture)
+    return conflict_witnesses(rules), minimal_repairs(architecture, rules)
+
+
+def show_conflict_repairs(architecture: Architecture, weights: Preferences, ranking: Ranking) -> None:
+    st.header("Vì sao không có nghiệm?", anchor="studio-conflicts")
+    names = {item.id: item.name for item in architecture.components}
+    conflicts, repairs = diagnose_conflicts(architecture)
+    if not conflicts:
+        st.warning("Chưa tìm được chuỗi ràng buộc để giải thích. Hãy kiểm tra các quy tắc cứng của sơ đồ.")
+        return
+    for index, conflict in enumerate(conflicts, 1):
+        subject = constraint_subject(conflict.separation, architecture, names)
+        with st.expander(f"Xung đột {index} · {subject}", expanded=index == 1):
+            st.html(conflict_evidence(conflict, architecture, names))
+
+    st.subheader("Mô phỏng các cách gỡ xung đột")
+    st.caption("Mỗi hàng nêu các quy tắc cần sửa cùng nhau để có nghiệm trở lại. Kết quả dùng bản sao mô phỏng, "
+               "mô hình gốc vẫn ở trạng thái INFEASIBLE.")
+    actions = {"KEEP_APART": "Bỏ yêu cầu tách", "LOCAL_TRANSACTION": "Bỏ yêu cầu giao dịch cục bộ, giữ SYNC",
+               "KEEP_SHARED": "Cho phép tách kho"}
+    labels = [" + ".join(f"{actions[rule.kind]} · {constraint_subject(rule, architecture, names)}"
+                         for rule in repair.rules) for repair in repairs]
+    st.dataframe([{"Phương án": f"M{index}", "Thay đổi giả định": label, "Nghiệm khả thi": repair.feasible}
+                  for index, (repair, label) in enumerate(zip(repairs, labels, strict=True), 1)],
+                 hide_index=True, width="stretch", column_config={"Thay đổi giả định": st.column_config.TextColumn(width="large")})
+    if not repairs:
+        return
+    selected = st.selectbox("Xem chi tiết mô phỏng", range(len(repairs)), format_func=lambda index: f"M{index + 1} · {labels[index]}")
+    repair = repairs[selected]
+    alternative = simulate_repair(architecture, repair)
+    result = calculate(alternative, weights, ranking)
+    best = result.ranked[0]
+    st.markdown(f"**M{selected + 1} · {len(result.feasible)} nghiệm khả thi · {best.id} xếp đầu · {best.score(weights)} điểm**")
+    plan = plan_graph(alternative, best)
+    st.html(quantum_cards(plan, names))
 
 
 def open_oracle_case(case: dict, mode: str) -> None:
@@ -394,7 +435,9 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     result = calculate(architecture, preferences, ranking)
     if not result.ranked:
         st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
-        st.caption("Kiểm tra xung đột giữa cặp bắt buộc tách, giao dịch cục bộ và kho phải giữ chung.")
+        st.markdown("[Xem xung đột và các cách gỡ](#studio-conflicts)")
+        with details_panel:
+            show_conflict_repairs(architecture, preferences, ranking)
         return [], True, None
     best = result.ranked[0]
     if ranking == "SYNC_FIRST":

@@ -10,10 +10,56 @@ Yêu cầu Python 3.11 trở lên:
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python -m streamlit run app.py
+python -m streamlit run app.py --server.port 8501
 ```
 
 Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket Support. Kéo hoặc bấm component để chỉnh sơ đồ, rồi bấm **Phân tích sơ đồ**. Chọn phương án bên đầu ra và bấm một component để xem ánh xạ vào Quantum. Đổi ưu tiên và lưu quyết định trong **Human Review**. Xem [cách tính và kịch bản demo](docs/demo/QUANTUM_STUDIO.md).
+
+## Bài toán Studio giải
+
+Một phương án là một cách chia 1–8 component vào các Quantum. Đầu vào gồm sơ đồ component, kho và chính sách dữ liệu, cạnh `SYNC`/`ASYNC`/`UNKNOWN`, requirement và ánh xạ đặc tính đã được xác nhận. Với NFR, chuỗi truy vết là **đoạn nguồn → characteristic ISO → component → Quantum của phương án**. Ollama cung cấp đề xuất để review. Việc nạp văn bản nháp chỉ bổ sung nguồn; chi phí đặc tính phản ánh các ánh xạ đã đưa vào mô hình. [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html) · [Bộ ca đánh giá và nguồn gốc dữ liệu](docs/demo/STUDIO_TRICKY_CASES_ORACLE.md)
+
+| Ràng buộc cứng | Điều kiện để một cách chia hợp lệ |
+|---|---|
+| `local_transaction` | Hai component của giao dịch cục bộ nằm cùng Quantum. Một cạnh `SYNC` thông thường vẫn có thể qua ranh giới. |
+| `KEEP_SHARED` | Tất cả component dùng kho đã khai báo giữ chung nằm cùng Quantum. |
+| `keep_apart` | Hai component bắt buộc tách nằm ở hai Quantum khác nhau. |
+
+Bộ giải Python duyệt các phân hoạch, loại phương án vi phạm ràng buộc cứng, rồi giữ biên Pareto theo năm trục **SYNC qua ranh giới**, **tách kho**, **ASYNC giữ chung**, **đặc tính rải nhiều Quantum** và **trộn nhiều đặc tính trong Quantum**. Ở chế độ trọng số mặc định, điểm là `3×SYNC + 6×tách kho + 1×ASYNC + 2×rải + 2×trộn`. Điểm thấp hơn được ưu tiên trong cùng bộ tiêu chí. Một cạnh `UNKNOWN` được giữ trong sơ đồ và chưa có điểm SYNC hoặc ASYNC. Điểm là thước đo đánh đổi thiết kế, còn độ trễ, độ tin cậy và các mục tiêu chất lượng cần phép đo riêng. [Bộ giải Studio](eqcr/quantum_tradeoff.py) · [SEI Architecture Tradeoff Analysis Method](https://sei.cmu.edu/library/atam-method-for-architecture-evaluation/)
+
+## Xử lý `INFEASIBLE`
+
+1. **Tìm chuỗi gây xung đột.** Giao dịch cục bộ và các kho `KEEP_SHARED` tạo đồ thị bắt buộc cùng nhóm. Tìm theo chiều rộng để lấy một đường ngắn nhất nối hai đầu của từng `keep_apart` bị mâu thuẫn. Ví dụ, nếu A phải cùng nhóm với B và B phải cùng nhóm với C, thì chính sách A phải tách khỏi C gây vô nghiệm. UI hiện tên component, loại ràng buộc và căn cứ gốc của từng bước.
+2. **Tìm tập thay đổi tối thiểu.** Với mỗi phân hoạch `P`, lấy `V(P)` là tập quy tắc cứng mà `P` vi phạm. Nếu cho phép mô phỏng bỏ đúng các quy tắc trong `V(P)`, phân hoạch đó trở nên khả thi. Mọi cách sửa làm xuất hiện một phân hoạch đều phải chứa ít nhất một `V(P)`. Vì vậy, giữ các tập `V(P)` tối thiểu theo bao hàm sẽ tìm được toàn bộ tập sửa tối thiểu trong mô hình Studio. Một tập là tối thiểu theo bao hàm khi rút bất kỳ quy tắc nào ra khỏi tập sửa đó thì bài toán lại vô nghiệm. Cách này phù hợp với giới hạn tám component của Studio, tương ứng tối đa 4.140 phân hoạch.
+3. **Tính tác động trong bản sao.** Bỏ yêu cầu tách chỉ gỡ `keep_apart`. Bỏ yêu cầu giao dịch cục bộ chỉ tắt `local_transaction`, giữ nguyên cạnh SYNC và mức ảnh hưởng. Cho phép tách kho đổi `KEEP_SHARED` thành `SPLITTABLE` và giữ trọng số chi phí tách. Bảng hiển thị số nghiệm từng cách sửa. Chọn phương án ở **Xem chi tiết mô phỏng** để chạy lại bộ giải trên bản sao và xem Quantum, thứ hạng và điểm theo ưu tiên hiện tại. Mô hình gốc vẫn hiển thị `INFEASIBLE`. Người review quyết định việc sửa thật trên sơ đồ.
+
+Thuật toán hiển thị một đường chứng minh cho mỗi cặp bắt buộc tách bị xung đột. Danh sách cách sửa dùng toàn bộ các phân hoạch, nên vẫn tìm được các lựa chọn phải thay đổi nhiều quy tắc khi có nhiều xung đột độc lập. Các lựa chọn sắp theo số quy tắc thay đổi. Chi phí nghiệp vụ để sửa chính sách cần quyết định riêng. [Triển khai và mô phỏng](eqcr/studio_conflicts.py) · [Kiểm thử xung đột trực tiếp, bắc cầu và nhiều xung đột](tests/test_studio_conflicts.py)
+
+### Chạy lại OC-10
+
+1. Mở [Studio](http://127.0.0.1:8501/#studio-oracles), vào **Ca khó và oracle**, chọn **OC-10**, chọn **Áp dụng oracle** rồi bấm **Nạp ca vào sơ đồ**.
+2. Chọn **Xem xung đột và các cách gỡ**. Hai đoạn nguồn yêu cầu Ticket Router và Ticket Completion cùng một giao dịch cục bộ, đồng thời phải nằm ở hai Quantum khác nhau.
+3. Mở lần lượt M1 và M2 để đối chiếu kết quả trên cùng mẫu và trọng số mặc định.
+
+| Bộ chính sách | Số nghiệm trong 203 phân hoạch | Xếp đầu |
+|---|---:|---|
+| Giữ cả giao dịch cục bộ và bắt buộc tách | **0** | `INFEASIBLE` |
+| M1 · Bỏ yêu cầu tách, giữ giao dịch cục bộ | **10** | **P031 · 5 điểm**. Router và Completion cùng Quantum. |
+| M2 · Giữ yêu cầu tách, bỏ giao dịch cục bộ và giữ SYNC | **27** | **P008 · 16 điểm**. Router và Completion ở hai Quantum khác nhau. |
+
+Chế độ **Đầu ra Ollama đã lưu** của OC-10 cho 10 nghiệm vì phản hồi thực tế đã bỏ sót chính sách tách. Trong chế độ **Áp dụng oracle**, hai ràng buộc được giữ đầy đủ, còn kết quả 10 và 27 chỉ xuất hiện trong bảng mô phỏng. Đây là ca thử tổng hợp của Studio. [Nguyên văn OC-10, oracle và kết quả gọi Ollama](docs/demo/STUDIO_TRICKY_CASES_ORACLE.md)
+
+### Cơ sở nghiên cứu
+
+| Nguồn | Cách liên hệ với triển khai |
+|---|---|
+| [Wagstaff và Cardie (2000), *Clustering with Instance-level Constraints*](https://www.cs.cornell.edu/home/cardie/papers/icml-2000.pdf) | Cơ sở biểu diễn quan hệ `must-link` và `cannot-link`. Studio dùng đồ thị để lấy đường dẫn bằng chứng và dùng bộ giải phân hoạch hiện có. |
+| [Junker (2004), *QuickXplain*](https://cdn.aaai.org/AAAI/2004/AAAI04-027.pdf) | Tham chiếu cho giải thích xung đột tối thiểu bằng lời gọi kiểm tra khả thi. Studio hiện sinh đường chứng minh qua đồ thị của ba loại ràng buộc trên. QuickXplain là hướng mở rộng cho các loại constraint tổng quát hơn. |
+| [Liffiton, Previti, Malik và Marques-Silva, *Fast, Flexible MUS Enumeration*](https://markliffiton.com/publications/constraints_liffiton_marco.pdf) | Cơ sở cho *minimal unsatisfiable subset* và *minimal correction set*. Studio tìm các tập sửa bằng cách liệt kê tập vi phạm trên các phân hoạch. MARCO là thuật toán tham khảo nếu chuyển sang phân tích tổng quát trên một bộ giải khác. |
+| [Ansótegui, Bonet và Levy (2010), *A New Algorithm for Weighted Partial MaxSAT*](https://cdn.aaai.org/ojs/7545/7545-13-11075-1-2-20201228.pdf) | Hướng xếp hạng các cách sửa nếu có quy tắc được phép nới và chi phí sửa do người review cung cấp. Điểm kiến trúc hiện tại được tính trong từng kịch bản giả định. |
+| [Gray và Lamport (2006), *Consensus on Transaction Commit*](https://www.microsoft.com/en-us/research/publication/consensus-on-transaction-commit/) | Nếu yêu cầu nghiệp vụ cho phép thay giao dịch cục bộ bằng commit qua ranh giới, bài báo mô tả cơ chế phối hợp các bên cùng commit hoặc abort. Đây là thay đổi thiết kế cần review riêng. |
+| [Garcia-Molina và Salem (1987), *Sagas*](https://www.cs.princeton.edu/techreports/1987/070.pdf) | Tham khảo nếu nghiệp vụ chấp nhận trạng thái trung gian và có thao tác bù khi một bước thất bại. Áp dụng vào OC-10 cần xác định lại yêu cầu nguyên tử. |
+| [Bailis và cộng sự, *Coordination Avoidance in Database Systems*](https://www.vldb.org/pvldb/vol8/p185-bailis.pdf) | Dùng bất biến nghiệp vụ và các phép cập nhật để phân tích khi nào có thể giảm điều phối. Studio để việc kiểm tra các bất biến vận hành ở bước đánh giá kiến trúc sau mô phỏng. |
 
 ## Chạy giao diện nghiên cứu lưu trữ
 
@@ -38,7 +84,7 @@ Luồng offline không cần Ollama. Để dùng model-assisted mode, chạy Oll
 .\.venv\Scripts\python.exe -m compileall -q app.py research_app.py eqcr tests
 ```
 
-P0 baseline được kiểm tra ngày 14/11/2026: 30 test pass; compileall, Streamlit AppTest và HTTP smoke cục bộ pass. Nhánh P1 có 44 test pass. Feature branch gần nhất đạt 138 test pass, compileall và AppTest; xem [P2 validation](docs/p2/P2_VALIDATION_REPORT.md), [P2 human worksheet](docs/p2/HUMAN_REVIEW_WORKSHEET.md) và [demo acceptance matrix](docs/demo/DEMO_ACCEPTANCE_MATRIX.md). Đây là kiểm tra code/fixture; không tự xác nhận semantic hoặc chất lượng kiến trúc. P2 blind case vẫn chờ independent annotation lock.
+P0 baseline được kiểm tra ngày 14/11/2026 với 30 test đạt, cùng compileall, Streamlit AppTest và HTTP smoke. Nhánh P1 có 44 test đạt. Trạng thái của bản Studio hiện tại nằm trong [changelog](docs/development/CHANGELOG.md) và [nhật ký GitHub](docs/development/GITHUB_PUBLISH_LOG.md). Các phép kiểm xác minh hành vi code và dữ liệu thử. P2 blind case vẫn chờ independent annotation lock. [P2 validation](docs/p2/P2_VALIDATION_REPORT.md) · [P2 human worksheet](docs/p2/HUMAN_REVIEW_WORKSHEET.md) · [Demo acceptance matrix](docs/demo/DEMO_ACCEPTANCE_MATRIX.md)
 
 ## Tài liệu
 
@@ -48,4 +94,4 @@ Hướng dẫn và giới hạn riêng cho [Tutor exploratory demo](docs/demo/TU
 
 ## Giới hạn cần trình bày cùng demo
 
-Với fixture, Bell(6)=203; có mười phân hoạch đạt chi phí nhỏ nhất bằng không. Đây là kết quả liệt kê theo các constraint được cấu hình, không chứng minh boundary nào là kiến trúc tốt. Pet–Visit vẫn UNRESOLVED; Sync/Async là giả thuyết có điều kiện; Owner Search là NOT_MEASURED; Pet–Visit là INSUFFICIENT_EVIDENCE. LLM không tự xác minh ngữ nghĩa đề xuất.
+Trong fixture nghiên cứu PetClinic, Bell(6)=203 và mười phân hoạch đạt chi phí nhỏ nhất bằng 0 theo constraint đã cấu hình. Pet–Visit vẫn `UNRESOLVED` và `INSUFFICIENT_EVIDENCE`. Owner Search là `NOT_MEASURED`. Các giả thuyết Sync/Async và diễn giải của LLM cần review theo nguồn. [Giới hạn đánh giá](docs/05_VALIDATION_AND_RESEARCH_LIMITS.md)

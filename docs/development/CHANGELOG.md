@@ -1,5 +1,10 @@
 # Changelog
 
+## Oracle cho 12 ca khó của Quantum Studio — 2026-11-21
+
+- Ghi bộ đầu vào, oracle khóa trước inference và đối chiếu hai lượt chạy thật của `qwen3:4b`. Lượt dùng prompt chung khớp 0/12 ca, lượt tách prompt và schema khớp 4/12 ca.
+- Xác minh 12 ca nháp giữ nguyên tập nghiệm. Ca giao dịch cục bộ xung đột với ràng buộc tách cho 0 nghiệm, còn đầu ra LLM thiếu chính sách tách cho 10 nghiệm. [Bộ ca và báo cáo](../demo/STUDIO_TRICKY_CASES_ORACLE.md)
+
 ## Kịch bản requirement Ollama và sơ đồ so sánh — 2026-11-20
 
 - Gộp bộ chọn A/B/C, sơ đồ và ma trận trong một vùng làm việc. Một lựa chọn điều khiển cả sơ đồ đầu ra và hồ sơ truy vết.

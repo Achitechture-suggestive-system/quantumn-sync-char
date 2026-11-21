@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Giải thích INFEASIBLE và mô phỏng cách gỡ — 2026-11-21
+
+- Commit `a37466fa3d30a98dc6e4ee1cd48fccc2afb50117` đã đẩy lên `feat/quantum-tradeoff-workbench`. Đã đối chiếu nhánh remote, `main` và tag P0.
+- 158 bài kiểm tra, compileall, staged diff và secret scan đều qua tại máy phát triển. CI của commit triển khai đã đạt. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44858325677)
+- Kiểm tra trên cổng 8501 đã xác nhận hai đoạn nguồn OC-10, mô phỏng M1 với 10 nghiệm, mô phỏng M2 với 27 nghiệm và giá trị `INFEASIBLE` của sơ đồ gốc ở cả hai lượt. Khổ trình duyệt 400 px không tràn ngang toàn trang.
+
 ## Chạy lại 12 ca oracle trên Quantum Studio — 2026-11-21
 
 - Commit `443edb1fcfe2d65675a3dbb859e52fac050e416e` đã đẩy lên `feat/quantum-tradeoff-workbench`. Đã đối chiếu nhánh remote, `main` và tag P0.

@@ -1,5 +1,10 @@
 # Changelog
 
+## Giải thích INFEASIBLE và mô phỏng cách gỡ — 2026-11-21
+
+- Studio truy vết đường bắt buộc cùng nhóm gây xung đột với quy tắc tách, gồm giao dịch cục bộ và kho `KEEP_SHARED`. Bộ phân tích liệt kê các tập sửa tối thiểu theo bao hàm và kiểm tra phương án chọn trên bản sao.
+- OC-10 giữ 0 nghiệm cho mô hình gốc. Hai mô phỏng lần lượt cho 10 nghiệm với P031 và 27 nghiệm với P008. README ghi cách tiếp cận, ví dụ chạy và nguồn nghiên cứu. [Hướng dẫn và nguồn](../../README.md#xử-lý-infeasible)
+
 ## Chạy lại 12 ca oracle trên Quantum Studio — 2026-11-21
 
 - Thêm bảng chạy cả bộ và nút nạp từng ca lên sơ đồ. Chế độ nguồn nháp giữ nguyên mẫu. Chế độ oracle áp dụng ánh xạ và ràng buộc dựng sẵn trong phiên mô phỏng, có nút quay lại mô hình và bố cục gốc.

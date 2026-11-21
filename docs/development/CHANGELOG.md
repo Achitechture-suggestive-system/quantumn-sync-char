@@ -1,5 +1,10 @@
 # Changelog
 
+## Chạy lại 12 ca oracle trên Quantum Studio — 2026-11-21
+
+- Thêm bảng chạy cả bộ và nút nạp từng ca lên sơ đồ. Chế độ nguồn nháp giữ nguyên mẫu. Chế độ oracle áp dụng ánh xạ và ràng buộc dựng sẵn trong phiên mô phỏng, có nút quay lại mô hình và bố cục gốc.
+- Bộ giải khớp cả 12 ca. Kiểm tra 8501 cho thấy OC-01 chuyển từ P031 sang P011, còn OC-10 lần lượt cho 37, 0 và 10 nghiệm khi nạp nháp, áp dụng oracle và phát lại Ollama đã lưu. [Hướng dẫn chạy](../demo/STUDIO_TRICKY_CASES_ORACLE.md)
+
 ## Oracle cho 12 ca khó của Quantum Studio — 2026-11-21
 
 - Ghi bộ đầu vào, oracle khóa trước inference và đối chiếu hai lượt chạy thật của `qwen3:4b`. Lượt dùng prompt chung khớp 0/12 ca, lượt tách prompt và schema khớp 4/12 ca.

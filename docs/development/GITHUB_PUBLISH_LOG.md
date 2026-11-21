@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Chạy lại 12 ca oracle trên Quantum Studio — 2026-11-21
+
+- Commit `443edb1fcfe2d65675a3dbb859e52fac050e416e` đã đẩy lên `feat/quantum-tradeoff-workbench`. Đã đối chiếu nhánh remote, `main` và tag P0.
+- 156 bài kiểm tra cục bộ, compileall, cú pháp JavaScript, staged diff và secret scan đều qua. CI của commit triển khai đã đạt. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44854205840)
+- Kiểm tra trình duyệt trên 8501 gồm chạy cả 12 ca, nạp OC-01 và OC-10, xác minh trạng thái sơ đồ, phát lại phản hồi đã lưu, khôi phục phiên ban đầu và kiểm tra khổ 400 px.
+
 ## Oracle cho 12 ca khó của Quantum Studio — 2026-11-21
 
 - Commit tài liệu `b86f1119fd03507312fe6d8058e7334fd4c09e75` đã đẩy lên `feat/quantum-tradeoff-workbench`. Remote branch, `main` và tag P0 đã được đối chiếu.

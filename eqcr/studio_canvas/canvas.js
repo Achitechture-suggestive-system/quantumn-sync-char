@@ -203,6 +203,7 @@ function makeNode(node, outputId) {
     for (const event of ["pointerup", "pointercancel"]) button.addEventListener(event, () => {
         start = null;
         dragging = false;
+        if (moved) emit("layout", {layout: positions});
         scheduleWires();
     });
     button.addEventListener("click", () => {
@@ -215,6 +216,7 @@ function makeNode(node, outputId) {
         event.preventDefault();
         const [dx, dy] = steps[event.key];
         updatePosition(button, node.key, positions[node.key][0] + dx * .025, positions[node.key][1] + dy * .025);
+        emit("layout", {layout: positions});
     });
     return button;
 }

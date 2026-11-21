@@ -21,24 +21,26 @@ def requirement_origin(requirement) -> str:
     return f'<span class="qs-tag" title="{escape(source)}">{escape(label)}</span>'
 
 
-def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool, feasible: bool) -> str:
-    name = "Ticket Support" if example else "Sơ đồ đang chỉnh"
+def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool, feasible: bool,
+                   replay: str | None = None) -> str:
+    name = f"Mô phỏng {replay}" if replay else "Ticket Support" if example else "Sơ đồ đang chỉnh"
     status = "Chờ phân tích"
     if pending:
         status = "Có thay đổi chưa phân tích"
     elif analyzed:
         status = "Có kết quả phân tích" if feasible else "Không có phương án khả thi"
     status_tone = "warn" if pending or analyzed and not feasible else "accent" if analyzed else "neutral"
-    links = ['<a href="#studio-diagrams">Sơ đồ</a>', '<a href="#studio-ollama">Requirement Ollama</a>']
+    links = ['<a href="#studio-diagrams">Sơ đồ</a>', '<a href="#studio-oracles">Ca khó và oracle</a>']
+    if not replay:
+        links.append('<a href="#studio-ollama">Requirement Ollama</a>')
     if analyzed and not pending:
         if any(item.kind == "NFR" for item in architecture.requirements):
             links.append('<a href="#studio-iso">Ánh xạ ISO</a>')
         links.append('<a href="#studio-tradeoffs">So sánh</a>')
         if feasible:
-            links.extend((
-                '<a href="#studio-trace">Truy vết</a>',
-                '<a href="#studio-review">Human Review</a>',
-            ))
+            links.append('<a href="#studio-trace">Truy vết</a>')
+            if not replay:
+                links.append('<a href="#studio-review">Human Review</a>')
     counters = "".join(
         f'<div><dt>{label}</dt><dd>{value}</dd></div>'
         for label, value in (
@@ -58,7 +60,7 @@ def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool
     """
 
 
-def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str, str]) -> str:
+def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str, str], *, simulation: bool = False) -> str:
     signals = "".join(
         f'<li><strong>{escape(label.value)}</strong><q>{escape(quote)}</q></li>'
         for label, quote in suggestions.items()
@@ -72,7 +74,8 @@ def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str,
         f'{f"<q>{escape(item_allocation.source_quote)}</q>" if item_allocation.source_quote else ""}</li>'
         for label, item_allocation in confirmed.items()
     )
-    state = tag("Đã lưu ánh xạ", "accent") if confirmed else tag("Chờ xác nhận", "warn")
+    heading = "Ánh xạ trong mô phỏng" if simulation else "Ánh xạ đã xác nhận"
+    state = tag("Đang áp dụng trong mô phỏng" if simulation else "Đã lưu ánh xạ", "accent") if confirmed else tag("Chờ xác nhận", "warn")
     model_suggestion = requirement.model_suggestion
     model_line = ""
     if model_suggestion:
@@ -98,15 +101,16 @@ def iso_evidence(requirement, suggestions, mentions, confirmed, names: dict[str,
             {model_line}
             <h4>Tín hiệu từ quy tắc văn bản</h4>
             {f'<ul class="qs-evidence-list">{signals}</ul>' if signals else '<p class="qs-muted">Chưa tìm thấy đoạn khớp. Bạn có thể chọn nhãn bên dưới.</p>'}
-            <h4>Ánh xạ đã xác nhận</h4>
+            <h4>{heading}</h4>
             {f'<ul class="qs-evidence-list">{allocations}</ul>' if allocations else '<p class="qs-muted">Xem tuyến bên dưới rồi xác nhận để đưa đặc tính vào phân nhóm.</p>'}
         </article>
     </div>
     """
 
 
-def iso_route_preview(component_ids, names, plans, *, origin: str, applied: bool) -> str:
-    state = tag("Đã xác nhận" if applied else "Xem trước", "accent" if applied else "warn")
+def iso_route_preview(component_ids, names, plans, *, origin: str, applied: bool, simulation: bool = False) -> str:
+    applied_label = "Đang dùng trong mô phỏng" if simulation else "Đã xác nhận"
+    state = tag(applied_label if applied else "Xem trước", "accent" if applied else "warn")
     if not component_ids:
         body = '<p class="qs-muted">Chọn component phụ trách để xem Quantum chứa component đó.</p>'
     elif not plans:

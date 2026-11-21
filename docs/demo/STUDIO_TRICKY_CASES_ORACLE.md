@@ -2,6 +2,15 @@
 
 **Kết quả ngày 21/11/2026.** `qwen3:4b` khớp toàn bộ oracle ở **0/12 ca** khi dùng chung một prompt. Tách đầu vào NFR và tương tác, giới hạn trường đầu ra bằng schema và viết lại hướng dẫn giúp lượt thử thứ hai đạt **4/12 ca**. Cả bốn là NFR. Lượt hai vẫn bỏ sót ràng buộc bắt buộc tách trong ca mâu thuẫn. Nếu chỉ áp dụng phần giao dịch mà model giữ lại, bộ giải trả 10 phương án khả thi, trong khi hai ràng buộc đầy đủ cho **0 nghiệm**.
 
+## Chạy trên Quantum Studio
+
+1. Mở [Quantum Studio](http://127.0.0.1:8501/), chọn **Ca khó và oracle** ở đầu trang và bấm **Chạy cả 12 ca**. Bảng tính lại kết quả từ mã bộ giải đang chạy và đối chiếu với các giá trị kỳ vọng của từng ca.
+2. Chọn một ca và **Chỉ nạp nguồn** để xem requirement nháp với sơ đồ gốc, hoặc chọn **Áp dụng oracle** để mô phỏng các ánh xạ, mode và ràng buộc tương ứng. Bấm **Nạp ca vào sơ đồ** để xem kết quả cùng các lựa chọn A/B/C. Trọng số ban đầu của phiên thử là `(3, 6, 1, 2, 2)`.
+3. Với **OC-10**, chọn thêm **Đầu ra Ollama đã lưu** để phát lại phần cấu trúc từ phản hồi cục bộ đã ghi nhận ở lượt tách. Ba chế độ cho lần lượt **37**, **0** và **10** nghiệm khả thi. Phiên này không gọi lại Ollama và không ghi biên bản Human Review.
+4. Bấm **Quay lại sơ đồ của tôi** để lấy lại mô hình, bố cục và ưu tiên trước khi mở ca. Nếu đang chỉnh mô hình, bấm **Phân tích sơ đồ** trước khi đổi phiên.
+
+Mốc **12/12** trong bảng chỉ đo kết quả bộ giải khi nhận đầu vào theo oracle. Bảng chấm `qwen3:4b` trong phần 3 dùng phản hồi thực tế của hai lượt gọi đã lưu.
+
 ## 1. Thiết kế đánh giá
 
 Oracle là đáp án kỳ vọng của ca kiểm thử. Tài liệu này dùng 12 văn bản tổng hợp mới trên danh mục Ticket Support. Mỗi ca có oracle về trạng thái, ánh xạ ISO và component, quan hệ hoặc chính sách tách nếu có, đoạn làm căn cứ và tác động dự kiến lên bộ giải. Các oracle do người thực hiện thí nghiệm soạn và khóa trước lần gọi đầu tiên, dùng để kiểm thử kỹ thuật. Chưa có bộ nhãn chuyên gia độc lập. [Barr và cộng sự, The Oracle Problem in Software Testing](https://discovery.ucl.ac.uk/id/eprint/1471263/)

@@ -18,6 +18,7 @@ from eqcr.quantum_tradeoff import (
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
 from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
+from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
 from eqcr.studio_views import (
     candidate_card, constraint_cards, cost_matrix, diagram_header, interaction_cards,
@@ -119,6 +120,108 @@ def calculate(architecture: Architecture, preferences: Preferences, ranking: Ran
     return analyze(architecture, preferences, ranking=ranking)
 
 
+def open_oracle_case(case: dict, mode: str) -> None:
+    session = st.session_state
+    if session.studio_pending:
+        return
+    fixture = replay_architecture(case, mode)
+    if "studio_case_return" not in session:
+        session.studio_case_return = {
+            name: session.get(name) for name in ("architecture", "studio_layout", "studio_analyzed",
+                                                  "studio_weights", "studio_ranking", "studio_output_slot")
+        }
+    session.studio_replay = (case["id"], mode)
+    session.architecture = fixture
+    session.studio_layout = {}
+    session.studio_analyzed = True
+    session.studio_canvas_error = ""
+    session.editor_version += 1
+    session.studio_canvas_commit = session.get("studio_canvas_commit", 0) + 1
+    session.pop("studio_output_slot", None)
+    set_review_priority(Preferences(), "WEIGHTED")
+
+
+def close_oracle_case() -> None:
+    session = st.session_state
+    if session.studio_pending:
+        return
+    original = session.pop("studio_case_return")
+    session.pop("studio_replay")
+    set_review_priority(original.pop("studio_weights"), original.pop("studio_ranking"))
+    slot = original.pop("studio_output_slot")
+    session.pop("studio_output_slot", None)
+    if slot is not None:
+        session.studio_output_slot = slot
+    session.update(original)
+    session.editor_version += 1
+    session.studio_canvas_commit = session.get("studio_canvas_commit", 0) + 1
+
+
+def show_oracle_cases(architecture: Architecture, active: tuple[str, str] | None) -> None:
+    st.html('<span id="studio-oracles" class="qs-anchor"></span>')
+    with st.expander("Ca khó và oracle", expanded=active is not None):
+        cases = oracle_ticket_cases()
+        case = cases[st.selectbox("Ca kiểm thử", list(cases), key="studio_oracle_picker",
+                                  format_func=lambda key: f"{key} · {cases[key]['title']}")]
+        st.write(case["text"])
+        for reference in case["context"]:
+            st.caption(f"{reference['id']} · {reference['text']}")
+        st.caption(f"Oracle · {case['status']}" + (f" · Trùng {case['duplicate_of']}" if case.get("duplicate_of") else ""))
+        options = ["draft", "oracle"]
+        if "saved_model" in case:
+            options.append("saved_model")
+            st.caption(f"Phát lại {case['saved_model']['model']} từ phản hồi đã lưu. "
+                       "Phản hồi có giao dịch cục bộ và thiếu chính sách bắt buộc tách.")
+        mode = st.radio("Chế độ nạp", options, format_func=REPLAY_MODES.__getitem__, horizontal=True,
+                        key=f"studio_oracle_mode_{case['id']}")
+        baseline = calculate(ticket_example(), Preferences(), "WEIGHTED")
+        rows = []
+        for method in options:
+            result = calculate(replay_architecture(case, method), Preferences(), "WEIGHTED")
+            outcome = replay_outcome(result)
+            if method == "draft":
+                verdict = "Giữ nguyên mẫu" if result == baseline else "Lệch mẫu"
+            elif method == "oracle":
+                verdict = "Khớp oracle" if matches_oracle(result, case["expected"]) else "Lệch oracle"
+            else:
+                verdict = "Tái hiện sai lệch so với oracle" if matches_oracle(result, case["saved_model"]["expected"]) else "Lệch kết quả đã lưu"
+            rows.append({"Chế độ": REPLAY_MODES[method], "Khả thi": outcome["feasible"],
+                         "Xếp đầu": outcome["leader"] or "INFEASIBLE",
+                         "Điểm": str(outcome["score"]) if outcome["score"] is not None else "—", "Đối chiếu": verdict})
+        st.dataframe(rows, hide_index=True, width="stretch")
+        st.caption("Bảng dùng trọng số mặc định. Nạp ca để xem sơ đồ, trade-off và truy vết trong phiên mô phỏng riêng.")
+        if active:
+            loaded_case, loaded_mode = active
+            note = f"Đang mở {loaded_case} · {REPLAY_MODES[loaded_mode]}"
+            if architecture != replay_architecture(cases[loaded_case], loaded_mode):
+                note += " · Có chỉnh sửa trong phiên thử"
+            st.info(note)
+        pending = st.session_state.studio_pending
+        if pending:
+            st.caption("Bấm Phân tích sơ đồ để lưu chỉnh sửa đang làm trước khi đổi phiên.")
+        load, leave, suite = st.columns(3)
+        load.button("Nạp ca vào sơ đồ", on_click=open_oracle_case, args=(case, mode), disabled=pending,
+                    width="stretch", type="primary")
+        if active:
+            leave.button("Quay lại sơ đồ của tôi", on_click=close_oracle_case, disabled=pending, width="stretch")
+        if suite.button("Chạy cả 12 ca", width="stretch"):
+            st.session_state.studio_oracle_suite = True
+        if st.session_state.get("studio_oracle_suite"):
+            suite_rows = []
+            passed = 0
+            for item in cases.values():
+                draft = calculate(replay_architecture(item, "draft"), Preferences(), "WEIGHTED")
+                outcome = calculate(replay_architecture(item, "oracle"), Preferences(), "WEIGHTED")
+                agrees = draft == baseline and matches_oracle(outcome, item["expected"])
+                passed += agrees
+                suite_rows.append({"Ca": item["id"], "Nháp khả thi": len(draft.feasible),
+                                   "Theo oracle khả thi": len(outcome.feasible),
+                                   "Xếp đầu theo oracle": replay_outcome(outcome)["leader"] or "INFEASIBLE",
+                                   "Đối chiếu": "Khớp" if agrees else "Lệch"})
+            st.write(f"{passed}/{len(cases)} ca khớp oracle của bộ giải.")
+            st.dataframe(suite_rows, hide_index=True, width="stretch")
+
+
 def show_traceability(architecture: Architecture, plan: dict, names: dict[str, str]) -> None:
     st.header("Hồ sơ và truy vết", anchor="studio-trace")
     st.caption(f"Theo sơ đồ đang hiển thị · {plan['label']}")
@@ -133,19 +236,22 @@ def show_traceability(architecture: Architecture, plan: dict, names: dict[str, s
         st.html(requirement_cards(architecture, plan, names))
 
 
-def show_nfr_review(architecture: Architecture, plans: list[dict]) -> None:
+def show_nfr_review(architecture: Architecture, plans: list[dict], replay: tuple[str, str] | None = None) -> None:
     nfrs = {item.id: item for item in architecture.requirements if item.kind == "NFR"}
     if not nfrs:
         return
     st.html('<span id="studio-iso" class="qs-anchor"></span>')
     with st.expander(f"Ánh xạ NFR vào {ISO_EDITION}", expanded=True):
-        requirement = nfrs[st.selectbox("NFR nguồn", list(nfrs))]
+        ids = list(nfrs)
+        initial = ids.index(replay[0]) if replay and replay[0] in nfrs else 0
+        key = f"studio_replay_nfr_{st.session_state.editor_version}" if replay else None
+        requirement = nfrs[st.selectbox("NFR nguồn", ids, index=initial, key=key)]
         suggested = quality_suggestions(requirement.text)
         model_suggestion = requirement.model_suggestion
         names = {item.id: item.name for item in architecture.components}
         mentions = component_mentions(requirement.text, names)
         confirmed = {item.characteristic: item for item in requirement.quality_allocations}
-        st.html(iso_evidence(requirement, suggested, mentions, confirmed, names))
+        st.html(iso_evidence(requirement, suggested, mentions, confirmed, names, simulation=replay is not None))
         linked = [
             item.id for item in architecture.components
             if any(requirement.id in references for references in item.characteristic_requirements.values())
@@ -172,10 +278,10 @@ def show_nfr_review(architecture: Architecture, plans: list[dict]) -> None:
                                   format_func=names.__getitem__, key=f"quality_components_{requirement.id}_{labels.index(label)}_{generation}")
         applied = saved is not None and set(selected) == set(saved.component_ids)
         if applied:
-            origin = "Theo danh sách component đã xác nhận"
+            origin = "Theo component trong phiên mô phỏng" if replay else "Theo danh sách component đã xác nhận"
         elif set(selected) != set(components):
             origin = "Theo danh sách component bạn đang chọn"
-        st.html(iso_route_preview(selected, names, plans, origin=origin, applied=applied))
+        st.html(iso_route_preview(selected, names, plans, origin=origin, applied=applied, simulation=replay is not None))
         apply, remove = st.columns(2)
         confirmed_now = apply.button("Xác nhận gán ISO", disabled=not selected)
         removed_now = remove.button("Gỡ ánh xạ ISO", disabled=label not in confirmed)
@@ -272,7 +378,8 @@ def show_review(comparison: dict, candidates: list[Candidate]) -> None:
         )
 
 
-def show_comparison(architecture: Architecture, details_panel, evidence_panel) -> tuple[list[dict], bool, str | None]:
+def show_comparison(architecture: Architecture, details_panel, evidence_panel,
+                    replay: tuple[str, str] | None = None) -> tuple[list[dict], bool, str | None]:
     st.header("So sánh phương án", anchor="studio-tradeoffs")
     preferences = st.session_state.studio_weights
     ranking = st.session_state.studio_ranking
@@ -382,7 +489,8 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel) -
         "status": "PROPOSED_NOT_VERIFIED",
         "quality_standard": ISO_EDITION,
         "quality_measurement_status": "NOT_MEASURED",
-        "input_provenance": ("MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
+        "input_provenance": ("SYNTHETIC_REPLAY" if replay else
+                             "MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
                              else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED"),
         "architecture": architecture.model_dump(mode="json"),
         "preferences": preferences.model_dump(mode="json"),
@@ -403,6 +511,13 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel) -
                         "interaction_routing": plans[item.id]["interactions"]}
                        for slot, item in zip(slots, candidates, strict=True)],
     }
+    if replay:
+        case_id, mode = replay
+        case = oracle_ticket_cases()[case_id]
+        comparison["replay"] = {"case_id": case_id, "mode": mode,
+                                "input_edited": architecture != replay_architecture(case, mode)}
+        if mode == "saved_model":
+            comparison["replay"]["response_sha256"] = case["saved_model"]["response_sha256"]
     with details_panel.expander("Danh sách phương án Pareto"):
         st.dataframe(
             [{"Phương án": option(item), "Điểm": item.score(preferences),
@@ -413,7 +528,10 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel) -
         )
     with evidence_panel:
         show_traceability(architecture, plans[active_id], names)
-        show_review(comparison, candidates)
+        if replay:
+            st.caption("Kết quả mô phỏng. Phiên này không ghi vào lịch sử Human Review.")
+        else:
+            show_review(comparison, candidates)
         st.download_button(
             "Tải bản so sánh JSON", json.dumps(comparison, ensure_ascii=False, indent=2),
             file_name="quantum-comparison.json", mime="application/json",
@@ -430,8 +548,10 @@ st.session_state.setdefault("studio_pending", False)
 st.session_state.setdefault("studio_weights", Preferences())
 st.session_state.setdefault("studio_ranking", "SYNC_FIRST")
 architecture = st.session_state.architecture
+replay = st.session_state.get("studio_replay")
 
 header = st.empty()
+show_oracle_cases(architecture, replay)
 workspace = st.container(key="studio_workspace", border=st.session_state.studio_analyzed and not st.session_state.studio_pending)
 comparison_panel = workspace.container()
 board = workspace.container()
@@ -442,33 +562,37 @@ evidence_panel = st.container()
 plans, no_solution, active_plan = [], False, None
 if st.session_state.studio_analyzed and not st.session_state.studio_pending:
     with comparison_panel:
-        plans, no_solution, active_plan = show_comparison(architecture, details_panel, evidence_panel)
+        plans, no_solution, active_plan = show_comparison(architecture, details_panel, evidence_panel, replay)
     with nfr_panel:
-        show_nfr_review(architecture, sorted(plans, key=lambda plan: plan['id'] != active_plan))
+        show_nfr_review(architecture, sorted(plans, key=lambda plan: plan['id'] != active_plan), replay)
 elif st.session_state.studio_pending:
-    comparison_panel.info("Bấm Phân tích sơ đồ để cập nhật trade-off và tiếp tục Human Review.")
+    comparison_panel.info("Bấm Phân tích sơ đồ để cập nhật trade-off và truy vết.")
 
-with samples_panel:
-    st.html('<span id="studio-ollama" class="qs-anchor"></span>')
-    show_requirement_cases(architecture)
+if replay is None:
+    with samples_panel:
+        st.html('<span id="studio-ollama" class="qs-anchor"></span>')
+        show_requirement_cases(architecture)
 
 header.html(diagram_header(
     architecture, example=architecture == example, analyzed=st.session_state.studio_analyzed,
-    pending=st.session_state.studio_pending, feasible=bool(plans),
+    pending=st.session_state.studio_pending, feasible=bool(plans), replay=replay[0] if replay else None,
 ))
 
 with board:
     st.html('<span id="studio-diagrams" class="qs-anchor"></span>')
     if architecture == example:
         st.caption("Mẫu Ticket Support · Nhãn Sync/Async, đặc tính và chính sách dữ liệu là giả định minh họa có thể chỉnh.")
+    reset_model = replay_architecture(oracle_ticket_cases()[replay[0]], replay[1]) if replay else example
     event = render_board(
-        model=architecture.model_dump(mode="json"), example=example.model_dump(mode="json"),
+        model=architecture.model_dump(mode="json"), example=reset_model.model_dump(mode="json"),
         layout=st.session_state.studio_layout, revision=st.session_state.get("studio_canvas_commit", 0),
         plans=plans, no_solution=no_solution, active_plan=active_plan,
         error=st.session_state.get("studio_canvas_error", ""), pending=st.session_state.studio_pending,
     )
 if isinstance(event, dict) and event.get("token") != st.session_state.get("studio_submission"):
     st.session_state.studio_submission = event.get("token")
+    if event.get("action") == "layout":
+        st.session_state.studio_layout = read_layout(architecture, event.get("layout"))
     if event.get("action") == "dirty" and not st.session_state.studio_pending:
         st.session_state.studio_pending = True
         st.session_state.studio_canvas_error = ""

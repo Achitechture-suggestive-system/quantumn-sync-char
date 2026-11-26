@@ -78,7 +78,7 @@ def review_interaction_cases(architecture: Architecture, source: str, target: st
         raise ValueError("Chọn cạnh hiện có không bắt buộc giao dịch cục bộ. Muốn đổi quy tắc cứng cần review riêng.")
     if len(normalized) < 2:
         raise ValueError("Khai báo ít nhất hai điều kiện, kiểm tra cả trường hợp bình thường và lỗi.")
-    edge.update(mode="UNKNOWN", cases=normalized)
+    edge.update(mode="UNKNOWN", cases=normalized, evidence=None)
     changed = Architecture.model_validate(data)
     return changed, {"action": "INTERACTION_CONDITIONS_REVIEW", "actor": actor.strip(), "rationale": rationale.strip(),
                      "source": source, "target": target, "cases": normalized,

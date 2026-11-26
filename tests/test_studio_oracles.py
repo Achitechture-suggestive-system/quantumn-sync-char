@@ -2,7 +2,7 @@ from pathlib import Path
 
 from streamlit.testing.v1 import AppTest
 
-from eqcr import studio_canvas
+from eqcr import storage, studio_canvas
 from eqcr.quantum_example import ticket_example
 from eqcr.quantum_tradeoff import Architecture, Preferences, analyze, group_index
 from eqcr.studio_oracles import matches_oracle, oracle_ticket_cases, replay_architecture
@@ -28,7 +28,8 @@ def test_all_replays_validate_against_outcomes_and_preserve_baseline_until_appli
     assert all(group_index(c.groups)["ROUTE"] == group_index(c.groups)["COMPLETE"] for c in actual.feasible)
 
 
-def test_studio_replays_use_the_real_canvas_and_restore_previous_workspace(monkeypatch):
+def test_studio_replays_use_the_real_canvas_and_restore_previous_workspace(monkeypatch, tmp_path):
+    monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
     example = ticket_example().model_dump(mode="json")
     example["requirements"].append({"id": "MY-FR", "kind": "FR", "text": "Local Studio draft."})
     event = {"token": "start", "action": "analyze", "model": example}

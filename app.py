@@ -19,9 +19,10 @@ from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
 from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
 from eqcr.studio_conflicts import apply_reviewed_repair, conflict_witnesses, enforce_protected_rules, minimal_repairs, simulate_repair
+from eqcr.studio_evidence import evidence_blockers
 from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
-from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_interaction_review, show_live_review, show_rule_policy_review, show_session_history
+from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_evidence_review, show_interaction_review, show_live_review, show_rule_policy_review, show_session_history
 from eqcr.studio_sessions import invalidate_changed_sources
 from eqcr.studio_uncertainty import cases_are_current, conservative_order, score_bounds
 from eqcr.studio_views import (
@@ -466,6 +467,12 @@ def show_review(comparison: dict, candidates: list[Candidate]) -> None:
 def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                     replay: tuple[str, str] | None = None) -> tuple[list[dict], bool, str | None]:
     st.header("So sánh phương án", anchor="studio-tradeoffs")
+    if blockers := evidence_blockers(architecture):
+        st.warning("Cần review lại căn cứ nguồn trước khi phân nhóm. Các ràng buộc cứng hiện hành vẫn được giữ.")
+        for blocker in blockers:
+            details_panel.write(f"{blocker['source_id']} · {' '.join(blocker['issues'])}")
+        st.markdown("[Review căn cứ nguồn](#studio-source-review)")
+        return [], False, None
     preferences = st.session_state.studio_weights
     ranking = st.session_state.studio_ranking
     with st.expander("Ưu tiên phân nhóm và trọng số"):
@@ -694,12 +701,14 @@ if replay is None:
         show_duplicate_review(architecture)
         show_interaction_review(architecture)
         show_rule_policy_review(architecture)
+        show_evidence_review(architecture)
         st.html('<span id="studio-ollama" class="qs-anchor"></span>')
         show_requirement_cases(architecture)
 
 header.html(diagram_header(
     architecture, example=architecture == example, analyzed=st.session_state.studio_analyzed,
     pending=st.session_state.studio_pending, feasible=bool(plans), replay=replay[0] if replay else None,
+    review_required=bool(evidence_blockers(architecture)),
 ))
 
 with board:
@@ -712,6 +721,7 @@ with board:
         layout=st.session_state.studio_layout, revision=st.session_state.get("studio_canvas_commit", 0),
         plans=plans, no_solution=no_solution, active_plan=active_plan,
         error=st.session_state.get("studio_canvas_error", ""), pending=st.session_state.studio_pending,
+        review_required=bool(evidence_blockers(architecture)),
     )
 if isinstance(event, dict) and event.get("token") != st.session_state.get("studio_submission"):
     st.session_state.studio_submission = event.get("token")

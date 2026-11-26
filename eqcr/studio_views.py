@@ -45,14 +45,16 @@ def requirement_origin(requirement) -> str:
 
 
 def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool, feasible: bool,
-                   replay: str | None = None) -> str:
+                   replay: str | None = None, review_required: bool = False) -> str:
     name = f"Mô phỏng {replay}" if replay else "Ticket Support" if example else "Sơ đồ đang chỉnh"
     status = "Chờ phân tích"
     if pending:
         status = "Có thay đổi chưa phân tích"
+    elif review_required:
+        status = "Cần review lại căn cứ nguồn"
     elif analyzed:
         status = "Có kết quả phân tích" if feasible else "Không có phương án khả thi"
-    status_tone = "warn" if pending or analyzed and not feasible else "accent" if analyzed else "neutral"
+    status_tone = "warn" if pending or review_required or analyzed and not feasible else "accent" if analyzed else "neutral"
     links = ['<a href="#studio-diagrams">Sơ đồ</a>', '<a href="#studio-oracles">Ca khó và oracle</a>']
     if not replay:
         links.append('<a href="#studio-live">Ollama và review</a>')
@@ -284,12 +286,17 @@ def interaction_cards(plan, names) -> str:
             f'<p>{escape(case["source_id"])} · {escape(case["source_quote"])}</p></li>'
             for case in edge.get("cases", [])
         )
+        evidence = edge.get("evidence")
+        citation = (f'<p>{tag(evidence["source_id"])} {escape(evidence["source_quote"])}</p>'
+                    f'<p class="qs-muted">{escape(evidence["citation_provenance"])} · '
+                    f'{escape(evidence["review_provenance"])} · {escape(evidence["review_actor"])}</p>') if evidence else ""
         cards.append(f"""
         <article class="qs-card qs-relation">
             <div class="qs-card-top"><div class="qs-tags">{tag(mode, tone)}{tag(locality)}</div><span class="qs-code">{escape(route)}</span></div>
             <h3>{escape(names[edge["source"]])} <span aria-hidden="true">→</span> {escape(names[edge["target"]])}</h3>
             <p class="qs-muted">Mức ảnh hưởng {edge["weight"]}{' · Giao dịch cục bộ' if edge["local_transaction"] else ''}</p>
             <p>{escape(edge["basis"] or "Chưa khai báo căn cứ.")}</p>
+            {citation}
             {f'<p>{tag(edge.get("case_review_status", "NONE"))}</p><ul>{conditions}</ul>' if conditions else ''}
             {f'<p class="qs-muted">{follow_up}</p>' if follow_up else ''}
         </article>

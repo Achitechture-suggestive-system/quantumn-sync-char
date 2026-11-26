@@ -11,15 +11,11 @@ from pydantic import ValidationError
 
 from . import ollama, storage
 from .quantum_tradeoff import Architecture, Interaction, QualityAllocation, SeparatePair
+from .studio_evidence import catalog_digest, claim_digest
 from .studio_quality import QualityCharacteristic
 
 
 PROMPT_VERSION = "STUDIO-EXTRACT@1"
-
-
-def catalog_digest(architecture: Architecture) -> str:
-    catalog = sorted((item.id, item.name) for item in architecture.components)
-    return sha256(json.dumps(catalog, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
 def proposal_is_current(architecture: Architecture, proposal: dict) -> bool:
@@ -174,6 +170,11 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
     if not isinstance(payload, dict):
         raise ValueError("Cần dữ liệu chỉnh sửa có cấu trúc.")
     data = architecture.model_dump(mode="json")
+    binding = {"source_id": proposal["source_id"], "source_digest": proposal["source_digest"],
+               "catalog_digest": proposal["catalog_digest"], "source_quote": payload.get("quote"),
+               "proposal_id": proposal["id"], "run_id": proposal["run_id"],
+               "citation_provenance": "HUMAN_DECISION" if action == "CORRECT" else "LLM_PROPOSAL",
+               "review_actor": actor.strip(), "review_rationale": rationale.strip()}
     if action in {"APPROVE", "CORRECT"}:
         issues = proposal_issues(architecture, proposal["source_id"], payload)
         if issues:
@@ -192,14 +193,18 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
             if edge is None:
                 edge = {"source": payload["source"], "target": payload["target"], "weight": 1}
                 data["interactions"].append(edge)
-            edge.update(mode=payload["mode"], local_transaction=payload["local_transaction"], basis=payload["quote"], cases=[])
+            edge.update(mode=payload["mode"], local_transaction=payload["local_transaction"], basis=payload["quote"], cases=[], evidence=binding)
+            binding["claim_digest"] = claim_digest("interactions", edge)
         else:
             pair = {payload["left"], payload["right"]}
             rule = next((item for item in data["keep_apart"] if {item["left"], item["right"]} == pair), None)
             if rule is None:
-                data["keep_apart"].append({"left": payload["left"], "right": payload["right"], "basis": payload["quote"]})
+                data["keep_apart"].append({"left": payload["left"], "right": payload["right"], "basis": payload["quote"], "evidence": binding})
+                rule = data["keep_apart"][-1]
             else:
                 rule["basis"] = payload["quote"]
+                rule["evidence"] = binding
+            binding["claim_digest"] = claim_digest("keep_apart", rule)
     after = Architecture.model_validate(data)
     from .studio_conflicts import enforce_protected_rules
 

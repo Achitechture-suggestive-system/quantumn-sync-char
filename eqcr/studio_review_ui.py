@@ -9,6 +9,7 @@ import streamlit as st
 from . import ollama
 from .quantum_tradeoff import Architecture, Preferences, hard_constraints, merge_quality_requirement
 from .studio_conflicts import enforce_protected_rules, review_rule_policy
+from .studio_evidence import binding_issues, bound_items, rebind_evidence
 from .studio_extraction import decide_proposal, extract_proposals, proposal_is_current
 from .studio_quality import QualityCharacteristic
 from .studio_sessions import checkpoints, load_checkpoint, save_checkpoint
@@ -305,6 +306,67 @@ def show_rule_policy_review(architecture: Architecture) -> None:
             try:
                 changed, event = review_rule_policy(architecture, rule, protected=protected, change_cost=cost,
                                                      actor=actor, rationale=rationale)
+                if commit_revision(changed, event):
+                    st.session_state.architecture = changed
+                    st.session_state.editor_version += 1
+                    st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                    st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+
+
+def show_evidence_review(architecture: Architecture) -> None:
+    items = list(bound_items(architecture))
+    if not items:
+        return
+    st.html('<span id="studio-source-review" class="qs-anchor"></span>')
+    with st.expander("Căn cứ nguồn của tương tác và quy tắc"):
+        if st.session_state.studio_pending:
+            st.caption("Lưu sơ đồ trước khi xác nhận lại căn cứ.")
+            return
+        names = {component.id: component.name for component in architecture.components}
+
+        def option(value):
+            collection, _, item = items[value]
+            endpoints = (item.source, item.target) if collection == "interactions" else (item.left, item.right)
+            return ("Tương tác" if collection == "interactions" else "Bắt buộc tách") + " · " + " → ".join(
+                names[endpoint] for endpoint in endpoints) + f" · {item.evidence.source_id}"
+
+        selected = st.selectbox("Quan hệ có căn cứ đã review", range(len(items)), format_func=option)
+        collection, index, item = items[selected]
+        evidence = item.evidence
+        issues = binding_issues(architecture, evidence, collection=collection, item=item)
+        st.write(f"Nguồn {evidence.source_id}")
+        st.write(evidence.source_quote)
+        st.caption(f"Đoạn nguồn · {evidence.citation_provenance} · quyết định {evidence.review_provenance} · {evidence.review_actor}")
+        with st.expander("Dấu vết lần đề xuất"):
+            st.write(f"Proposal · {evidence.proposal_id}")
+            st.write(f"Run · {evidence.run_id}")
+        if issues:
+            for issue in issues:
+                st.warning(issue)
+        else:
+            st.caption("Căn cứ khớp revision đã review. Ý nghĩa vẫn thuộc trách nhiệm reviewer.")
+        sources = {source.id: source for source in architecture.requirements}
+        if not sources:
+            st.info("Thêm requirement hiện hành để review lại căn cứ.")
+            return
+        prefix = f"source_rebind_{collection}_{index}_{st.session_state.editor_version}"
+        source_id = st.selectbox("Requirement làm căn cứ mới", list(sources),
+                                 index=list(sources).index(evidence.source_id) if evidence.source_id in sources else 0,
+                                 key=f"{prefix}_source")
+        st.write(sources[source_id].text)
+        quote = st.text_area("Đoạn nguồn xác nhận lại", max_chars=600,
+                             value=evidence.source_quote if evidence.source_quote in sources[source_id].text else "",
+                             key=f"{prefix}_{source_id}_quote")
+        actor = st.text_input("Người review lại căn cứ", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+        rationale = st.text_area("Lý do giữ quan hệ theo nguồn hiện hành", max_chars=1000)
+        st.caption("Xác nhận lại chỉ cập nhật căn cứ. Mode và các ràng buộc cứng giữ nguyên. "
+                   "Muốn đổi quan hệ, sửa sơ đồ hoặc review proposal mới, rồi kiểm lại policy bảo vệ.")
+        if st.button("Xác nhận lại căn cứ nguồn"):
+            try:
+                changed, event = rebind_evidence(architecture, collection, index, source_id=source_id, quote=quote,
+                                                  actor=actor, rationale=rationale)
                 if commit_revision(changed, event):
                     st.session_state.architecture = changed
                     st.session_state.editor_version += 1

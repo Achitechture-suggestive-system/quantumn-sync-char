@@ -31,6 +31,8 @@ Bộ giải Python duyệt các phân hoạch, loại phương án vi phạm rà
 
 ## Review và so sánh khi mode còn bất định
 
+Sau khi sửa requirement đã dùng để review tương tác hoặc quy tắc tách, Studio yêu cầu **Căn cứ nguồn của tương tác và quy tắc** trước khi chạy lại bộ giải. Chọn nguồn/quote hiện hành, kiểm nghĩa và ghi lý do xác nhận. Các hard constraints vẫn giữ cho tới khi có quyết định đổi policy; nguồn cũ không tiếp tục được dùng âm thầm.
+
 Với cạnh `UNKNOWN`, thẻ phương án và bảng so sánh hiển thị khoảng chi phí theo hai giả thuyết SYNC/ASYNC. Mở **Review tương tác theo điều kiện** để khai báo mode cho từng điều kiện bằng quote nguồn, người review và rationale. Bật **Ưu tiên chi phí biên trên khi còn bất định** để chọn phương án có biên trên thấp nhất trên toàn bộ tập khả thi. Các ràng buộc cứng vẫn giữ nguyên. Khoảng này chưa có xác suất và giả định mode giữa các cạnh độc lập. [Công thức, nguồn nghiên cứu và giới hạn](docs/research/STUDIO_COMPLETION_STATUS.md#mốc-b2--bất-định-của-mode-tương-tác).
 
 ## Review mục tiêu trùng

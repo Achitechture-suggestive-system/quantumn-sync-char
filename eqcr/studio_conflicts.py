@@ -87,6 +87,7 @@ def simulate_repair(architecture: Architecture, repair: Repair) -> Architecture:
     for rule in repair.rules:
         if rule.kind == "LOCAL_TRANSACTION":
             data["interactions"][rule.index]["local_transaction"] = False
+            data["interactions"][rule.index]["evidence"] = None
         elif rule.kind == "KEEP_SHARED":
             data["stores"][rule.index]["policy"] = "SPLITTABLE"
         else:

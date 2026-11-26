@@ -14,7 +14,7 @@ def save_checkpoint(architecture: Architecture, *, event: dict, parent: str | No
                     proposals: list[dict] | None = None, view: dict | None = None) -> str:
     identifier = f"checkpoint-{uuid4().hex}"
     storage._write_json(storage.ARTIFACT_ROOT / "quantum-studio" / "checkpoints" / f"{identifier}.json", {
-        "schema": "STUDIO-CHECKPOINT@1", "id": identifier, "parent": parent,
+        "schema": "STUDIO-CHECKPOINT@2", "id": identifier, "parent": parent,
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "architecture": architecture.model_dump(mode="json"), "event": event, "proposals": proposals or [], "view": view or {},
     })
@@ -27,7 +27,7 @@ def checkpoints() -> list[dict]:
     for path in sorted(directory.glob("checkpoint-*.json"), key=lambda path: path.stat().st_mtime, reverse=True):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            if data.get("schema") == "STUDIO-CHECKPOINT@1":
+            if data.get("schema") in {"STUDIO-CHECKPOINT@1", "STUDIO-CHECKPOINT@2"}:
                 result.append({"id": path.stem, "recorded_at": data["recorded_at"], "action": data["event"].get("action", "SAVE")})
         except (OSError, ValueError, KeyError, TypeError):
             continue
@@ -44,7 +44,7 @@ def load_checkpoint(identifier: str) -> dict:
     if checkpoint_uuid.hex != identifier[11:]:
         raise ValueError("Checkpoint ID không hợp lệ.")
     data = json.loads((storage.ARTIFACT_ROOT / "quantum-studio" / "checkpoints" / f"{identifier}.json").read_text(encoding="utf-8"))
-    if data.get("schema") != "STUDIO-CHECKPOINT@1" or data.get("id") != identifier:
+    if data.get("schema") not in {"STUDIO-CHECKPOINT@1", "STUDIO-CHECKPOINT@2"} or data.get("id") != identifier:
         raise ValueError("Checkpoint schema hoặc ID không khớp.")
     Architecture.model_validate(data["architecture"])
     decision = data.get("event", {})
@@ -52,6 +52,11 @@ def load_checkpoint(identifier: str) -> dict:
         for proposal in data.get("proposals", []):
             if proposal["id"] == decision.get("proposal_id") and "applied" not in proposal:
                 proposal["applied"] = decision["applied"]
+    from .studio_evidence import restore_legacy_bindings
+
+    if data["schema"] == "STUDIO-CHECKPOINT@1":
+        restore_legacy_bindings(data)
+    Architecture.model_validate(data["architecture"])
     return data
 
 

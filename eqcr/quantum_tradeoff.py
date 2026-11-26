@@ -90,6 +90,20 @@ class ConstraintReviewPolicy(InputModel):
     change_cost: int = Field(default=1, ge=1, le=1000)
 
 
+class EvidenceBinding(InputModel):
+    source_id: Key
+    source_digest: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    catalog_digest: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    claim_digest: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    source_quote: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+    proposal_id: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+    run_id: Annotated[str, StringConstraints(min_length=1, max_length=100)]
+    citation_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION"]
+    review_provenance: Literal["HUMAN_DECISION"] = "HUMAN_DECISION"
+    review_actor: Label
+    review_rationale: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
 class Interaction(InputModel):
     source: Key
     target: Key
@@ -99,6 +113,7 @@ class Interaction(InputModel):
     basis: str = Field(default="", max_length=240)
     cases: list[InteractionCase] = Field(default_factory=list, max_length=4)
     review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
+    evidence: EvidenceBinding | None = None
 
     @model_validator(mode="after")
     def check_coupling(self):
@@ -136,6 +151,7 @@ class SeparatePair(InputModel):
     right: Key
     basis: Label
     review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
+    evidence: EvidenceBinding | None = None
 
 
 class Architecture(InputModel):
@@ -396,6 +412,9 @@ def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking) ->
 
 def analyze(architecture: Architecture, weights: Preferences, *, ranking: Ranking = "WEIGHTED") -> Analysis:
     """Visit all partitions, filter hard rules, and retain the exact Pareto frontier."""
+    from .studio_evidence import ensure_current_evidence
+
+    ensure_current_evidence(architecture)
     feasible = []
     profiles = component_profiles(architecture)
     rules = hard_constraints(architecture)

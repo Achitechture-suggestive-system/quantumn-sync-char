@@ -599,7 +599,8 @@ function renderOutput() {
     $("output-count").textContent = plan?.label || "";
     area.replaceChildren();
     area.className = plan ? "quanta" : "empty";
-    if (!plan) area.textContent = options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
+    if (!plan) area.textContent = options.review_required ? "Cần review lại căn cứ nguồn trước khi tạo Quantum."
+        : options.no_solution ? "Bộ ràng buộc hiện tại không có phương án khả thi." : "Quantum sẽ xuất hiện tại đây.";
     if (plan) {
         const names = new Map(options.model.components.map(item => [item.id, item.name]));
         const requirements = new Map(options.model.requirements.map(item => [item.id, item.text]));
@@ -690,6 +691,7 @@ function updateStatus() {
     $("unknown-legend").hidden = !plan?.interactions.some(edge => edge.mode === "UNKNOWN");
     $("output-hint").hidden = showLegend;
     $("output-hint").textContent = dirty ? "Mô hình đã đổi. Bấm Phân tích sơ đồ để cập nhật kết quả."
+        : options.review_required ? "Căn cứ đã đổi sau review. Xác nhận lại để chạy bộ giải."
         : "Chọn Phân tích sơ đồ để xem các Quantum.";
 }
 

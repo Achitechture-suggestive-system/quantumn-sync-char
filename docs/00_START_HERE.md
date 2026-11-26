@@ -4,6 +4,8 @@ Tài liệu này hướng dẫn đọc những gì checkout hiện thực sự t
 
 Giao diện mặc định là Quantum Studio. Xem [pipeline và kịch bản Ticket Support](demo/QUANTUM_STUDIO.md) để chạy từ component đến Human Review và trade-off. Phần đọc bên dưới mô tả pipeline nghiên cứu lưu trữ.
 
+Rà soát hiện tại của Studio, các phép đối chứng và hướng nghiên cứu nằm trong [gap analysis ngày 26/11/2026](research/STUDIO_GAP_ANALYSIS_2026-11-26.md).
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

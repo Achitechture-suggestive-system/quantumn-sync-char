@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Revision căn cứ nguồn của quan hệ — 2026-11-27
+
+- Commit `85d0c767bbe76a238b9c6ad87de92c1e90e8ad1f` đã đẩy lên `feat/quantum-tradeoff-workbench`; remote feature khớp, main/tag P0 giữ nguyên.
+- 190 tests, compileall, JavaScript syntax, staged diff và secret scan qua. Browser xác minh model thật→sửa proposal→sửa nguồn làm mất hiệu lực→review lại và khôi phục input mẫu. Artifact/run giữ local.
+- [GitHub Actions 45845041987](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/45845041987) đạt trên cùng SHA.
+
 ## Policy bảo vệ và áp dụng cách sửa — 2026-11-26
 
 - Commit `e2fe2b2bf1ad5e1911511db4e8ca374bd9ece485` đã đẩy lên `feat/quantum-tradeoff-workbench`. Remote feature khớp SHA; `main` và tag P0 giữ nguyên.

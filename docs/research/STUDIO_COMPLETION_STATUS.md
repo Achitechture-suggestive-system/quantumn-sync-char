@@ -10,8 +10,8 @@ Mục tiêu đang thực hiện là hoàn thiện dự án theo mười gap tron
 | G2 · Ngữ nghĩa và mệnh đề | Prompt riêng cho từng tác vụ, quote nguyên văn và danh mục kiểm lại trước khi áp dụng. Các lỗi đề xuất vẫn được giữ để sửa hoặc từ chối. | Cấu trúc mệnh đề, điều kiện, phủ định và đánh giá trên ca mới còn tiếp tục. |
 | G3 · Mục tiêu trùng | Review chọn NFR gốc qua `duplicate_of`, ghi rationale và checkpoint. Scoring dùng một mục tiêu, giữ tất cả source IDs. Có kiểm paraphrase bất biến điểm, mục tiêu khác scope độc lập và sửa nguồn yêu cầu review lại. | Tính tương đương ngữ nghĩa do reviewer quyết định. Chưa có bộ nhãn độc lập đánh giá quyết định hợp nhất. |
 | G4 · UNKNOWN và điều kiện | Khoảng chi phí theo mode, độ phủ khai báo, review hai đến bốn điều kiện và xếp hạng tùy chọn theo biên trên trên toàn bộ tập khả thi. Nguồn điều kiện đổi làm bằng chứng hết hiệu lực. | Tập mode là giả thuyết do reviewer khai báo. Chưa có xác suất, tương quan mode hay bằng chứng vận hành xác nhận tập điều kiện đầy đủ. |
-| G5 · NFR và phép đo | Giữ `NOT_MEASURED`. | Structured scenario, adapter profile và bằng chứng đo hoặc dự đoán phù hợp. |
-| G6 · Revision và tải lại | Checkpoint chứa input, proposal, quyết định trước–sau, rationale và view. Allocation/điều kiện và quan hệ model được gắn nguồn/revision. Căn cứ quan hệ cũ chặn bộ giải, giữ hard rules cho tới review lại. Checkpoint v2 và đọc v1 không sửa file cũ. Đã kiểm source đổi, xóa, catalog đổi, claim đổi và tải lại. | Còn bổ sung revision cho structured scenario/contract khi triển khai G5/G8. Chưa xác thực danh tính reviewer bằng tài khoản. |
+| G5 · NFR và phép đo | Scenario sáu phần có review, scope ISO đưa vào optimizer và hai adapter bound có điều kiện cho phản hồi/khôi phục. Profile theo candidate, target, provenance và đóng góp thời gian. | Chưa đo vận hành; các bound là giả định. Thứ hạng năm trục chưa dùng target số như objective riêng. Mô hình ngoài đường đi tuần tự/restart toàn Quantum còn chưa hỗ trợ. |
+| G6 · Revision và tải lại | Checkpoint chứa input, proposal, quyết định trước–sau, rationale và view. Allocation/điều kiện, quan hệ model và scenario gắn nguồn/revision. Căn cứ quan hệ cũ chặn bộ giải, giữ hard rules. Scenario cũ giữ chưa đủ căn cứ cho prediction. v2 đọc v1 không sửa file cũ. | Còn bổ sung revision cho contract ở G8. Chưa xác thực danh tính reviewer bằng tài khoản. |
 | G7 · Policy sửa hard constraint | Bảo vệ từng quy tắc, chi phí sửa, lọc/xếp MCS theo policy, xem trước và áp dụng qua revision. Chặn sửa quy tắc bảo vệ từ canvas/model review/restore. Lưu riêng bản input bị chặn. | Chi phí và quyết định bảo vệ do reviewer khai báo, chưa có mô hình chi phí nghiệp vụ thực nghiệm hoặc xác thực danh tính reviewer. |
 | G8 · Bằng chứng boundary | Giữ boundary ở mức ứng viên. | Hợp đồng lỗi/data ownership và mục tiêu vận hành có hệ thống chạy được để kiểm tra. |
 | G9 · Backend lớn | Giữ giới hạn hiện tại của Studio. | Adapter objective tương đương, kiểm bộ nhỏ và benchmark backend lớn. |
@@ -113,3 +113,25 @@ Thử thêm `REQ-04` trực tiếp từ UI với nội dung “Khi khách hàng 
 Lượt kiểm thử kỹ thuật dùng actor `AGENT_TECHNICAL_SMOKE_TEST`, chọn `CORRECT`, đổi sang Performance efficiency và quote nguyên văn `phải trả mã tiếp nhận trong vòng 900 ms ở p95`. Với xếp hạng theo trọng số mặc định, P031 có 5 điểm trước áp dụng. Sau áp dụng, P011 đứng đầu với 8 điểm. P031 chấm trên đầu vào mới có 11 điểm. Checkpoint `checkpoint-7e212d4b009645dc91b662c3e827e56c` ghi source hash, run ID, rationale và input trước–sau. Đây là bằng chứng kỹ thuật về truyền dữ liệu qua review, với nhãn độc lập và đánh giá chất lượng còn phải thực hiện theo G10.
 
 Sau khi khởi động lại Streamlit, chọn checkpoint này trong lịch sử đã tái tạo P011/8 điểm và nhãn `Performance efficiency · REQ-04` trên sơ đồ. Regression suite tại mốc này đạt **162 tests**. Các phép test giả lập provider dùng dữ liệu ghi rõ `TEST_ONLY` và lưu dưới thư mục tạm của pytest.
+
+## Mốc C1 — scenario sáu phần và profile dự đoán
+
+Mốc này dùng schema `Scenario` hiện có, bổ sung scope, đường đi, target, timing assumptions và quyết định review. Có adapter phản hồi tuần tự và khôi phục tuần tự toàn Quantum. Toàn bộ đầu vào, công thức, điều kiện và giới hạn nằm trong [mô tả C1](STUDIO_QUALITY_SCENARIOS.md). Ô chưa biết, source/catalog cũ, mode nhiều giả thuyết, target không khớp, metric chưa hỗ trợ hoặc bound thiếu đều giữ `INSUFFICIENT_EVIDENCE`, không tự tạo số dự đoán.
+
+Khi bật gán scope, scenario được xác nhận cập nhật characteristic trên component và optimizer tính lại. Profile sau đó tiêu thụ phân hoạch, mode và giả định để đối chiếu bound với target. Các số target hiện ảnh hưởng đối chiếu profile; năm trục điểm thiết kế vẫn giữ công thức cũ. Biên Pareto trong UI chỉ nói về năm trục đó. Measurement luôn `NOT_MEASURED` khi chưa có observation.
+
+Đã kiểm trực tiếp trên 8501 với hai NFR **PREPARED_FIXTURE**:
+
+1. `REQ-04`: Customer sends a ticket during peak load. Ticket Creation waits for Ticket Router and must acknowledge within 900 ms. Scenario `QC-UI`, scope CREATE/ROUTE, đường đi CREATE→ROUTE, SYNC. Bound CREATE=250, ROUTE=350, RTT=400 ms.
+2. `REQ-05`: Monitor notices a stopped router process under normal processing load. Ticket Router must restore service within 10 min. This is the recoverability target. Scenario `QC-REC-UI`, scope/đầu mối ROUTE. Bound recovery CREATE=250.000, ROUTE=COMPLETE=200.000, LOGIN=PROFILE=REPORT=50.000, detection=5.000 ms.
+
+Actor `AGENT_TECHNICAL_SMOKE_TEST` và cả provenance của quyết định lẫn timing đều được chọn `PREPARED_FIXTURE`. Đây là phép thử UI và tính toán, không phải output Ollama hay annotation stakeholder. Checkpoint `checkpoint-37bed3b1cdb04b78a6361b03c8ceb7a3` lưu QC-UI; `checkpoint-d39e405292d44e84808f754f487bd139` lưu cả hai scenario.
+
+| Phương án | Điểm thiết kế với trọng số mặc định | Bound phản hồi / target | Bound khôi phục / target |
+|---|---:|---|---|
+| P031 | 8 | 600 / 900 ms | 655.000 / 600.000 ms |
+| P011 | 17 | 1.000 / 900 ms | 405.000 / 600.000 ms |
+
+Chọn P011 cho slot C rồi chọn radio C đã vẽ đúng P011, chuyển Performance efficiency·REQ-04 sang Q1/Q2, giữ Reliability·REQ-05 ở Q2 và cập nhật cả hai profile. P011 nằm ngoài Pareto năm trục thiết kế nhưng có recovery bound nhỏ hơn P031 theo giả định này. Không gán quality PASS cho phương án nào. Dữ liệu chạy và ảnh kiểm tra giữ local.
+
+Regression C1 đạt **208 tests**, trong đó 18 test mới về công thức, UNKNOWN, số/đơn vị, hai mốc ACK/completion, scope/context, khôi phục, review/lưu/gỡ scenario, overflow và provenance fixture. Compileall, JavaScript syntax và diff check qua. Khổ browser 400 px không tràn ngang toàn trang. Input mẫu ban đầu được khôi phục sau phép thử; hai checkpoint scenario vẫn giữ local để tải lại.

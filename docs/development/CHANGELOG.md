@@ -1,5 +1,10 @@
 # Changelog
 
+## Revision căn cứ nguồn của quan hệ — 2026-11-27
+
+- Commit `85d0c767bbe76a238b9c6ad87de92c1e90e8ad1f` đã thêm binding nguồn/catalog/claim, chặn optimizer khi căn cứ cũ và review lại có checkpoint. v2 đọc v1 trong bộ nhớ, giữ nguyên file lịch sử.
+- 190 tests và CI đạt. Lượt qwen3:4b thật trả quote đúng nhưng sai endpoints; smoke kỹ thuật sửa lại, đổi nguồn để kiểm chặn và xác nhận lại. Không dùng làm annotation độc lập. [Bằng chứng A2](../research/STUDIO_COMPLETION_STATUS.md#mốc-a2--ràng-buộc-nguồn-theo-revision-của-quan-hệ)
+
 ## Policy bảo vệ và áp dụng cách sửa — 2026-11-26
 
 - Commit `e2fe2b2bf1ad5e1911511db4e8ca374bd9ece485` thêm bảo vệ từng hard rule, chi phí sửa, xếp MCS theo policy và quyết định áp dụng có revision. Chặn sửa quy tắc bảo vệ từ input, review model và restore; giữ bản nháp bị chặn.

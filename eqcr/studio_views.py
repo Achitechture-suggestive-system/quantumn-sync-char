@@ -59,6 +59,8 @@ def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool
     if not replay:
         links.append('<a href="#studio-live">Ollama và review</a>')
         links.append('<a href="#studio-ollama">Requirement Ollama</a>')
+        if any(item.kind == "NFR" for item in architecture.requirements):
+            links.append('<a href="#studio-scenarios">Quality scenario</a>')
     if analyzed and not pending:
         if any(item.kind == "NFR" for item in architecture.requirements):
             links.append('<a href="#studio-iso">Ánh xạ ISO</a>')
@@ -223,7 +225,7 @@ def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, na
         notes = f'<div class="qs-trade"><h4>So với A · {escape(baseline.id)} · {score_delta:+d} điểm</h4>'
         notes += f'<div class="qs-tags">{changes or tag("Cùng bộ chi phí")}</div></div>'
     if dominator:
-        notes += (f'<p class="qs-muted">{escape(dominator)} có ít nhất một chi phí thấp hơn '
+        notes += (f'<p class="qs-muted">Trong năm tiêu chí điểm thiết kế, {escape(dominator)} có ít nhất một chi phí thấp hơn '
                   'và các chi phí còn lại bằng hoặc thấp hơn.</p>')
     characteristics = [label for group in plan["groups"] for label in group["characteristics"]]
     if all(len(group["characteristics"]) == 1 for group in plan["groups"]) and len(set(characteristics)) == len(plan["groups"]):

@@ -39,6 +39,12 @@ Với cạnh `UNKNOWN`, thẻ phương án và bảng so sánh hiển thị kho�
 
 Nếu hai NFR diễn đạt cùng một mục tiêu, mở **Review yêu cầu cùng mục tiêu**, chọn nguồn đối chiếu và bản gốc đã gán ISO, ghi lý do rồi lưu. Bộ giải dùng ánh xạ của bản gốc một lần, còn cả hai mã yêu cầu vẫn có trong truy vết. Chỉ hợp nhất sau khi đối chiếu ngưỡng, điều kiện và phạm vi component. Tách mục tiêu hoặc sửa nguồn sẽ cần review ánh xạ lại. Xem [tiến độ và bằng chứng hoàn thiện](docs/research/STUDIO_COMPLETION_STATUS.md).
 
+## Quality scenario và dự đoán theo phương án
+
+Mở **Quality scenario và dự đoán**, chọn NFR gốc, điền sáu phần scenario, scope chịu trách nhiệm và đường đi. Chọn adapter phản hồi tuần tự hoặc khôi phục toàn Quantum, nhập target theo quote nguồn và các bound thời gian đã gồm thời gian chờ. Ô trống giữ UNKNOWN. Phân biệt khai báo reviewer với dữ liệu chuẩn bị cho demo/kiểm thử.
+
+Bấm **Xác nhận scenario và tính lại** để lưu revision. Nếu bật đưa scope ISO vào phân nhóm, optimizer dùng ánh xạ mới. **Quality Profiles theo phương án** hiển thị scope→Quantum, target, dự đoán có điều kiện và từng đóng góp thời gian. Chọn A/B/C để đối chiếu với sơ đồ. Thứ hạng năm tiêu chí thiết kế và dự đoán chất lượng được ghi riêng; chưa có phép đo thì vẫn `NOT_MEASURED`. [Công thức, ví dụ và giới hạn](docs/research/STUDIO_QUALITY_SCENARIOS.md).
+
 ## Xử lý `INFEASIBLE`
 
 1. **Tìm chuỗi gây xung đột.** Giao dịch cục bộ và các kho `KEEP_SHARED` tạo đồ thị bắt buộc cùng nhóm. Tìm theo chiều rộng để lấy một đường ngắn nhất nối hai đầu của từng `keep_apart` bị mâu thuẫn. Ví dụ, nếu A phải cùng nhóm với B và B phải cùng nhóm với C, thì chính sách A phải tách khỏi C gây vô nghiệm. UI hiện tên component, loại ràng buộc và căn cứ gốc của từng bước.

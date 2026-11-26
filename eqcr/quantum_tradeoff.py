@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from .pipeline import _partitions
 from .studio_quality import QualityCharacteristic
+from .studio_scenarios import ReviewedScenario
 
 
 Key = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")]
@@ -160,6 +161,7 @@ class Architecture(InputModel):
     stores: list[DataStore] = Field(default_factory=list, max_length=16)
     keep_apart: list[SeparatePair] = Field(default_factory=list, max_length=28)
     requirements: list[Requirement] = Field(default_factory=list, max_length=40)
+    quality_scenarios: list[ReviewedScenario] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def check_references(self):
@@ -171,6 +173,8 @@ class Architecture(InputModel):
         requirement_ids = {requirement.id for requirement in self.requirements}
         if len(requirement_ids) != len(self.requirements):
             raise ValueError("ID requirement phải duy nhất.")
+        if len({item.scenario.id for item in self.quality_scenarios}) != len(self.quality_scenarios):
+            raise ValueError("ID quality scenario phải duy nhất.")
         for requirement in self.requirements:
             visited = {requirement.id}
             target = requirement

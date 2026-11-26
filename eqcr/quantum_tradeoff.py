@@ -55,9 +55,13 @@ class Requirement(InputModel):
     component_ids: list[Key] = Field(default_factory=list, max_length=8)
     quality_allocations: list[QualityAllocation] = Field(default_factory=list, max_length=9)
     generation: RequirementGeneration | None = None
+    duplicate_of: Key | None = None
 
     def input_digest(self) -> str:
-        payload = json.dumps([self.kind, self.text, sorted(self.component_ids)], ensure_ascii=False)
+        source = [self.kind, self.text, sorted(self.component_ids)]
+        if self.duplicate_of:
+            source.append({"duplicate_of": self.duplicate_of})
+        payload = json.dumps(source, ensure_ascii=False)
         return sha256(payload.encode("utf-8")).hexdigest()
 
     @property
@@ -131,6 +135,19 @@ class Architecture(InputModel):
         if len(requirement_ids) != len(self.requirements):
             raise ValueError("ID requirement phải duy nhất.")
         for requirement in self.requirements:
+            visited = {requirement.id}
+            target = requirement
+            while target.duplicate_of:
+                if target.duplicate_of not in requirement_ids or target.duplicate_of in visited:
+                    raise ValueError("Liên kết mục tiêu trùng bị lặp vòng hoặc trỏ tới nguồn chưa khai báo.")
+                visited.add(target.duplicate_of)
+                target = next(item for item in self.requirements if item.id == target.duplicate_of)
+                if target.kind != "NFR" or requirement.kind != "NFR":
+                    raise ValueError("Liên kết mục tiêu chất lượng trùng cần hai nguồn NFR.")
+                if target.duplicate_of:
+                    raise ValueError("Mục tiêu trùng phải trỏ trực tiếp tới bản gốc.")
+            if requirement.duplicate_of and requirement.quality_allocations:
+                raise ValueError("Nguồn cùng mục tiêu dùng ánh xạ của bản gốc. Tách mục tiêu trước khi gán ISO riêng.")
             scope = set(requirement.component_ids)
             if not scope <= ids or len(scope) != len(requirement.component_ids):
                 raise ValueError(f"{requirement.id} có component phụ trách trùng hoặc chưa khai báo.")
@@ -255,14 +272,41 @@ def component_profiles(architecture: Architecture) -> dict[str, dict[str, list[s
                        for label in component.characteristics}
         for component in architecture.components
     }
+    by_id = {item.id: item for item in architecture.requirements}
+    roots = {}
     for requirement in architecture.requirements:
+        root = requirement
+        while root.duplicate_of:
+            root = by_id[root.duplicate_of]
+        roots.setdefault(root.id, []).append(requirement.id)
+    for requirement in architecture.requirements:
+        if requirement.duplicate_of:
+            continue
         for allocation in requirement.quality_allocations:
             label = f"{allocation.characteristic} · {requirement.id}"
             for component_id in allocation.component_ids:
                 sources = profiles[component_id].setdefault(label, [])
-                if requirement.id not in sources:
-                    sources.append(requirement.id)
+                for source_id in roots[requirement.id]:
+                    if source_id not in sources:
+                        sources.append(source_id)
     return profiles
+
+
+def merge_quality_requirement(architecture: Architecture, alias_id: str, target_id: str | None) -> Architecture:
+    data = architecture.model_dump(mode="json")
+    alias = next((item for item in data["requirements"] if item["id"] == alias_id), None)
+    if alias is None or alias["kind"] != "NFR":
+        raise ValueError("Chọn nguồn NFR đã khai báo để đối chiếu mục tiêu.")
+    if target_id is not None:
+        target = next((item for item in architecture.requirements if item.id == target_id), None)
+        if target is None or target.id == alias_id or target.duplicate_of or not target.quality_allocations:
+            raise ValueError("Chọn bản gốc đã có ánh xạ ISO và chưa hợp nhất vào nguồn khác.")
+        for item in data["requirements"]:
+            if item["duplicate_of"] == alias_id:
+                item["duplicate_of"] = target_id
+    alias["duplicate_of"] = target_id
+    alias["quality_allocations"] = []
+    return Architecture.model_validate(data)
 
 
 def characteristic_index(profiles: dict[str, dict[str, list[str]]], assignment: dict[str, int]) -> tuple[dict[str, set[int]], dict[int, set[str]]]:

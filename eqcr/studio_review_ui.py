@@ -7,7 +7,7 @@ import json
 import streamlit as st
 
 from . import ollama
-from .quantum_tradeoff import Architecture, Preferences
+from .quantum_tradeoff import Architecture, Preferences, merge_quality_requirement
 from .studio_extraction import decide_proposal, extract_proposals, proposal_is_current
 from .studio_quality import QualityCharacteristic
 from .studio_sessions import checkpoints, load_checkpoint, save_checkpoint
@@ -178,3 +178,42 @@ def show_session_history() -> None:
                 st.error(error)
         except (ValueError, OSError) as exc:
             st.error(f"Chưa đọc được lịch sử phiên. {exc}")
+
+
+def show_duplicate_review(architecture: Architecture) -> None:
+    sources = {item.id: item for item in architecture.requirements if item.kind == "NFR"}
+    if len(sources) < 2:
+        return
+    with st.expander("Review yêu cầu cùng mục tiêu"):
+        if st.session_state.studio_pending:
+            st.caption("Bấm Phân tích sơ đồ để lưu nguồn trước khi hợp nhất.")
+            return
+        alias_id = st.selectbox("Nguồn cần đối chiếu", list(sources))
+        alias = sources[alias_id]
+        st.write(alias.text)
+        choices = [None, *[item.id for item in sources.values() if item.id != alias_id and not item.duplicate_of and item.quality_allocations]]
+        saved = alias.duplicate_of if alias.duplicate_of in choices else None
+        target_id = st.selectbox("Mục tiêu chất lượng gốc", choices, index=choices.index(saved),
+                                 format_func=lambda value: value or "Giữ thành mục tiêu riêng", key=f"merge_{alias_id}")
+        if target_id:
+            target = sources[target_id]
+            st.write(target.text)
+            st.caption("Kiểm tra điều kiện tải, ngưỡng, actor và phạm vi component. Sau hợp nhất, ánh xạ của bản gốc "
+                       "quyết định chi phí, cả hai mã nguồn vẫn truy vết về cùng mục tiêu.")
+        actor = st.text_input("Người xác nhận mục tiêu", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+        rationale = st.text_area("Căn cứ hợp nhất hoặc tách mục tiêu", max_chars=1000)
+        if st.button("Lưu quan hệ mục tiêu", disabled=target_id == alias.duplicate_of):
+            try:
+                if not actor.strip() or not rationale.strip():
+                    raise ValueError("Điền người review và lý do quyết định.")
+                changed = merge_quality_requirement(architecture, alias_id, target_id)
+                if commit_revision(changed, {"action": "QUALITY_TARGET_MERGE" if target_id else "QUALITY_TARGET_UNLINK",
+                                             "actor": actor, "source_id": alias_id, "target_id": target_id, "rationale": rationale,
+                                             "before": architecture.model_dump(mode="json"), "after": changed.model_dump(mode="json")}):
+                    st.session_state.architecture = changed
+                    st.session_state.studio_analyzed = True
+                    st.session_state.editor_version += 1
+                    st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                    st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))

@@ -40,6 +40,8 @@ def proposal_issues(architecture: Architecture, source_id: str, payload: dict) -
         if payload.get("kind") == "QUALITY":
             if source.kind != "NFR":
                 issues.append("Nguồn cần phân loại NFR để gán đặc tính ISO.")
+            if source.duplicate_of:
+                issues.append(f"Nguồn dùng mục tiêu của {source.duplicate_of}. Sửa bản gốc hoặc tách mục tiêu trước khi áp dụng.")
             entry = QualityAllocation(characteristic=payload.get("characteristic"),
                                       component_ids=payload.get("component_ids", []), source_quote=quote or "")
             if not set(entry.component_ids) <= {item.id for item in architecture.components}:

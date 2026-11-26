@@ -27,6 +27,10 @@ Một phương án là một cách chia 1–8 component vào các Quantum. Đầ
 
 Bộ giải Python duyệt các phân hoạch, loại phương án vi phạm ràng buộc cứng, rồi giữ biên Pareto theo năm trục **SYNC qua ranh giới**, **tách kho**, **ASYNC giữ chung**, **đặc tính rải nhiều Quantum** và **trộn nhiều đặc tính trong Quantum**. Ở chế độ trọng số mặc định, điểm là `3×SYNC + 6×tách kho + 1×ASYNC + 2×rải + 2×trộn`. Điểm thấp hơn được ưu tiên trong cùng bộ tiêu chí. Một cạnh `UNKNOWN` được giữ trong sơ đồ và chưa có điểm SYNC hoặc ASYNC. Điểm là thước đo đánh đổi thiết kế, còn độ trễ, độ tin cậy và các mục tiêu chất lượng cần phép đo riêng. [Bộ giải Studio](eqcr/quantum_tradeoff.py) · [SEI Architecture Tradeoff Analysis Method](https://sei.cmu.edu/library/atam-method-for-architecture-evaluation/)
 
+## Review mục tiêu trùng
+
+Nếu hai NFR diễn đạt cùng một mục tiêu, mở **Review yêu cầu cùng mục tiêu**, chọn nguồn đối chiếu và bản gốc đã gán ISO, ghi lý do rồi lưu. Bộ giải dùng ánh xạ của bản gốc một lần, còn cả hai mã yêu cầu vẫn có trong truy vết. Chỉ hợp nhất sau khi đối chiếu ngưỡng, điều kiện và phạm vi component. Tách mục tiêu hoặc sửa nguồn sẽ cần review ánh xạ lại. Xem [tiến độ và bằng chứng hoàn thiện](docs/research/STUDIO_COMPLETION_STATUS.md).
+
 ## Xử lý `INFEASIBLE`
 
 1. **Tìm chuỗi gây xung đột.** Giao dịch cục bộ và các kho `KEEP_SHARED` tạo đồ thị bắt buộc cùng nhóm. Tìm theo chiều rộng để lấy một đường ngắn nhất nối hai đầu của từng `keep_apart` bị mâu thuẫn. Ví dụ, nếu A phải cùng nhóm với B và B phải cùng nhóm với C, thì chính sách A phải tách khỏi C gây vô nghiệm. UI hiện tên component, loại ràng buộc và căn cứ gốc của từng bước.

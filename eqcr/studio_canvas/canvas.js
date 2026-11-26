@@ -158,7 +158,7 @@ function selectNode(node) {
 }
 
 function approvedIsoLabels(component, architecture) {
-    return architecture.requirements.flatMap(requirement => (requirement.quality_allocations ?? [])
+    return architecture.requirements.filter(requirement => !requirement.duplicate_of).flatMap(requirement => (requirement.quality_allocations ?? [])
         .filter(allocation => allocation.component_ids.includes(component.id))
         .map(allocation => allocation.characteristic + " · " + requirement.id));
 }
@@ -405,6 +405,12 @@ function renderRequirements() {
         kind.onchange = () => {
             requirement.kind = kind.value;
             requirement.quality_allocations = [];
+            if (requirement.kind !== "NFR") {
+                requirement.duplicate_of = null;
+                for (const item of model.requirements) {
+                    if (item.duplicate_of === requirement.id) item.duplicate_of = null;
+                }
+            }
             markDirty();
             render();
         };
@@ -431,10 +437,14 @@ function renderRequirements() {
                         [label, ids.filter(id => id !== requirement.id)])
                 );
             }
+            for (const remaining of model.requirements) {
+                if (remaining.duplicate_of === requirement.id) remaining.duplicate_of = null;
+            }
             markDirty();
             render();
         };
         meta.append(label, kind);
+        if (requirement.duplicate_of) meta.append(element("small", "Cùng mục tiêu " + requirement.duplicate_of));
         const fields = element("div", undefined, "requirement-fields");
         const scope = element("div", undefined, "requirement-scope");
         renderRequirementScope(scope, requirement);

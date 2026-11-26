@@ -21,7 +21,7 @@ from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
 from eqcr.studio_conflicts import conflict_witnesses, minimal_repairs, simulate_repair
 from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
-from eqcr.studio_review_ui import commit_revision, show_live_review, show_session_history
+from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_live_review, show_session_history
 from eqcr.studio_sessions import invalidate_changed_sources
 from eqcr.studio_views import (
     candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
@@ -289,6 +289,11 @@ def show_nfr_review(architecture: Architecture, plans: list[dict], replay: tuple
         initial = ids.index(replay[0]) if replay and replay[0] in nfrs else 0
         key = f"studio_replay_nfr_{st.session_state.editor_version}" if replay else None
         requirement = nfrs[st.selectbox("NFR nguồn", ids, index=initial, key=key)]
+        if requirement.duplicate_of:
+            st.info(f"{requirement.id} dùng mục tiêu và ánh xạ của {requirement.duplicate_of}. "
+                    "Chọn bản gốc để sửa ánh xạ, hoặc tách tại Review yêu cầu cùng mục tiêu.")
+            st.write(requirement.text)
+            return
         suggested = quality_suggestions(requirement.text)
         model_suggestion = requirement.model_suggestion
         names = {item.id: item.name for item in architecture.components}
@@ -634,6 +639,7 @@ if replay is None:
     with samples_panel:
         show_live_review(architecture)
         show_session_history()
+        show_duplicate_review(architecture)
         st.html('<span id="studio-ollama" class="qs-anchor"></span>')
         show_requirement_cases(architecture)
 

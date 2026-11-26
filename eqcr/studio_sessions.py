@@ -57,8 +57,12 @@ def load_checkpoint(identifier: str) -> dict:
 
 def invalidate_changed_sources(before: Architecture, after: Architecture) -> Architecture:
     previous = {item.id: item.input_digest() for item in before.requirements}
+    changed = {item.id for item in after.requirements if item.id in previous and previous[item.id] != item.input_digest()}
     data = after.model_dump(mode="json")
     for item, raw in zip(after.requirements, data["requirements"], strict=True):
-        if item.id in previous and previous[item.id] != item.input_digest():
+        if item.id in changed:
             raw["quality_allocations"] = []
+            raw["duplicate_of"] = None
+        if raw.get("duplicate_of") in changed:
+            raw["duplicate_of"] = None
     return Architecture.model_validate(data)

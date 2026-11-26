@@ -340,11 +340,12 @@ def requirement_cards(architecture, plan, names) -> str:
         )
         kind = requirement.kind if requirement.kind != "UNSPECIFIED" else "Chưa phân loại"
         status = f"{len(links)} liên kết đặc tính" if links else "Chưa gắn đặc tính"
+        canonical = tag(f"Cùng mục tiêu {requirement.duplicate_of}", "accent") if requirement.duplicate_of else ""
         scoped = "".join(tag(f"{names[item]} → {plan['assignment'][item]}")
                          for item in requirement.component_ids)
         cards.append(f"""
         <article class="qs-card qs-requirement">
-            <div class="qs-card-top"><h3>{escape(requirement.id)}</h3><div class="qs-tags">{tag(kind)}{requirement_origin(requirement)}{tag(status, "accent" if links else "warn")}</div></div>
+            <div class="qs-card-top"><h3>{escape(requirement.id)}</h3><div class="qs-tags">{tag(kind)}{requirement_origin(requirement)}{canonical}{tag(status, "accent" if links else "warn")}</div></div>
             <p>{escape(requirement.text)}</p>
             {f'<div class="qs-tags qs-scope" aria-label="Phạm vi component khai báo">{scoped}</div>' if scoped else ''}
             {f'<ul class="qs-chain" aria-label="Đặc tính, component và Quantum">{body}</ul>' if body else ''}

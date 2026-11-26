@@ -1,5 +1,11 @@
 # Changelog
 
+## Rà soát gap và hướng nghiên cứu Studio — 2026-11-26
+
+- Ghi mười gap từ input Ollama, ngữ nghĩa, mục tiêu trùng, UNKNOWN, quality scenarios, lịch sử review, policy sửa ràng buộc, bằng chứng vận hành, backend lớn và protocol đánh giá.
+- Tái hiện điểm P031 tăng 7→9 khi thêm paraphrase, target 900/9.000 ms giữ cùng phương án và UNKNOWN làm giảm điểm. Báo cáo ánh xạ nguồn bài báo vào từng bước và nêu điều kiện hoàn thành. [Báo cáo](../research/STUDIO_GAP_ANALYSIS_2026-11-26.md)
+- Regression suite ngày 26/11/2026 đạt 158 tests. Đợt này là kiểm tra mã và dữ liệu thử, kèm cập nhật tài liệu.
+
 ## Giải thích INFEASIBLE và mô phỏng cách gỡ — 2026-11-21
 
 - Studio truy vết đường bắt buộc cùng nhóm gây xung đột với quy tắc tách, gồm giao dịch cục bộ và kho `KEEP_SHARED`. Bộ phân tích liệt kê các tập sửa tối thiểu theo bao hàm và kiểm tra phương án chọn trên bản sao.

@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Ollama theo input hiện tại và lịch sử review — 2026-11-26
+
+- Commit `af16548124fe209ee1b2a6bb05d41ebd472fd738` đã đẩy lên `feat/quantum-tradeoff-workbench`. Đã đối chiếu remote branch, `main` và tag P0.
+- 162 tests, compileall, staged diff và secret scan qua tại máy phát triển. Browser đã xác minh gọi model trên REQ-04 mới, sửa proposal theo nguồn và tải lại checkpoint sau restart để tái tạo P011/8 điểm. Actor của phép thử là `AGENT_TECHNICAL_SMOKE_TEST`.
+- CI của commit triển khai đã đạt. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/45835128747)
+
 ## Rà soát gap và hướng nghiên cứu Studio — 2026-11-26
 
 - Commit tài liệu `9503ebd48c4a58172ac21ba6142c14822d79724a` đã đẩy lên `feat/quantum-tradeoff-workbench`. Nhánh remote, `main` và tag P0 đã được đối chiếu.

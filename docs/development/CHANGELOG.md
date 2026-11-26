@@ -1,5 +1,11 @@
 # Changelog
 
+## Ollama theo input hiện tại và lịch sử review — 2026-11-26
+
+- Thêm ba tác vụ gọi Ollama trực tiếp từ requirement đang nhập, kiểm quote/ID và giữ proposal ở trạng thái chờ quyết định. Người vận hành có thể approve/correct/reject/defer, lưu rationale và mô hình trước–sau.
+- Checkpoint tải lại được sau khi khởi động app. Sửa nguồn yêu cầu xác nhận lại allocation. Lượt smoke bằng agent đã sửa đề xuất thật của model và quan sát P031→P011 trên cùng sơ đồ. [Tiến độ và bằng chứng](../research/STUDIO_COMPLETION_STATUS.md)
+- 162 tests qua cùng compileall và kiểm tra trình duyệt trên cổng 8501.
+
 ## Rà soát gap và hướng nghiên cứu Studio — 2026-11-26
 
 - Ghi mười gap từ input Ollama, ngữ nghĩa, mục tiêu trùng, UNKNOWN, quality scenarios, lịch sử review, policy sửa ràng buộc, bằng chứng vận hành, backend lớn và protocol đánh giá.

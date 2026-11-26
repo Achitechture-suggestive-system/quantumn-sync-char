@@ -1,5 +1,10 @@
 # Changelog
 
+## Scenario sáu phần và bound có điều kiện — 2026-11-27
+
+- Commit `d17ca17e6dcbe220ebaf674b006119847bfd0e26` đã thêm review scenario, scope ISO vào phân nhóm, hai adapter thời gian và Quality Profiles theo candidate. Giữ UNKNOWN/NOT_MEASURED và provenance reviewer/fixture.
+- 208 tests, compileall, kiểm JavaScript và CI qua. Browser 8501 nhập hai scenario fixture, đối chiếu 600/1.000 ms và 655.000/405.000 ms, chọn C/P011 rồi kiểm đúng sơ đồ cùng đặc tính. Khổ 400 px không tràn ngang toàn trang. [Công thức và giới hạn](../research/STUDIO_QUALITY_SCENARIOS.md)
+
 ## Revision căn cứ nguồn của quan hệ — 2026-11-27
 
 - Commit `85d0c767bbe76a238b9c6ad87de92c1e90e8ad1f` đã thêm binding nguồn/catalog/claim, chặn optimizer khi căn cứ cũ và review lại có checkpoint. v2 đọc v1 trong bộ nhớ, giữ nguyên file lịch sử.

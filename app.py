@@ -21,6 +21,8 @@ from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
 from eqcr.studio_conflicts import conflict_witnesses, minimal_repairs, simulate_repair
 from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
+from eqcr.studio_review_ui import commit_revision, show_live_review, show_session_history
+from eqcr.studio_sessions import invalidate_changed_sources
 from eqcr.studio_views import (
     candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
     iso_evidence, iso_route_preview, quantum_cards, requirement_cards, review_receipt,
@@ -323,19 +325,36 @@ def show_nfr_review(architecture: Architecture, plans: list[dict], replay: tuple
         elif set(selected) != set(components):
             origin = "Theo danh sách component bạn đang chọn"
         st.html(iso_route_preview(selected, names, plans, origin=origin, applied=applied, simulation=replay is not None))
+        initial_quote = (saved.source_quote if saved else model_suggestion[1]
+                         if model_suggestion and model_suggestion[0] == label else suggested.get(label, ""))
+        quote = st.text_area("Căn cứ cho ánh xạ ISO", value=initial_quote, max_chars=600,
+                             key=f"quality_quote_{requirement.id}_{labels.index(label)}_{generation}")
+        rationale = st.text_input("Lý do bổ sung của reviewer", max_chars=1000,
+                                  key=f"quality_rationale_{requirement.id}_{labels.index(label)}_{generation}")
         apply, remove = st.columns(2)
         confirmed_now = apply.button("Xác nhận gán ISO", disabled=not selected)
         removed_now = remove.button("Gỡ ánh xạ ISO", disabled=label not in confirmed)
         if confirmed_now or removed_now:
+            if confirmed_now and ((quote and quote not in requirement.text) or (not quote.strip() and not rationale.strip())):
+                st.error("Chọn đoạn nguyên văn trong requirement, hoặc ghi căn cứ bổ sung khi nguồn chưa diễn đạt đủ.")
+                return
             model = architecture.model_dump(mode="json")
             target = next(item for item in model["requirements"] if item["id"] == requirement.id)
             target["quality_allocations"] = [item for item in target["quality_allocations"] if item["characteristic"] != label]
             if confirmed_now:
-                quote = model_suggestion[1] if model_suggestion and model_suggestion[0] == label else suggested.get(label, "")
                 target["quality_allocations"].append({
                     "characteristic": label, "component_ids": selected, "source_quote": quote,
                 })
-            st.session_state.architecture = Architecture.model_validate(model)
+            changed = Architecture.model_validate(model)
+            if replay is None and not commit_revision(changed, {
+                "action": "MANUAL_ISO_CONFIRM" if confirmed_now else "MANUAL_ISO_REMOVE",
+                "actor": "LOCAL_INTERACTIVE_REVIEWER", "source_id": requirement.id,
+                "source_digest": requirement.input_digest(), "characteristic": label,
+                "source_quote": quote, "rationale": rationale,
+                "before": architecture.model_dump(mode="json"), "after": changed.model_dump(mode="json"),
+            }):
+                return
+            st.session_state.architecture = changed
             st.session_state.editor_version += 1
             st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
             st.rerun()
@@ -613,6 +632,8 @@ elif st.session_state.studio_pending:
 
 if replay is None:
     with samples_panel:
+        show_live_review(architecture)
+        show_session_history()
         st.html('<span id="studio-ollama" class="qs-anchor"></span>')
         show_requirement_cases(architecture)
 
@@ -642,17 +663,23 @@ if isinstance(event, dict) and event.get("token") != st.session_state.get("studi
         st.rerun()
     if event.get("action") == "analyze":
         try:
-            submitted = Architecture.model_validate(event.get("model"))
+            submitted = invalidate_changed_sources(architecture, Architecture.model_validate(event.get("model")))
         except ValidationError as exc:
             issue = exc.errors(include_url=False)[0]
             field = " / ".join(str(part + 1) if isinstance(part, int) else part for part in issue["loc"])
             st.session_state.studio_canvas_error = f"{field} · {issue['msg']}" if field else issue["msg"]
             st.session_state.studio_pending = True
         else:
+            submitted_layout = read_layout(submitted, event.get("layout"))
+            if submitted != architecture and replay is None and not commit_revision(submitted, {
+                "action": "INPUT_CHANGED", "actor": "LOCAL_INTERACTIVE_REVIEWER",
+                "before": architecture.model_dump(mode="json"), "after": submitted.model_dump(mode="json"),
+            }, layout=submitted_layout):
+                st.stop()
             if submitted != architecture:
                 st.session_state.editor_version += 1
             st.session_state.architecture = submitted
-            st.session_state.studio_layout = read_layout(submitted, event.get("layout"))
+            st.session_state.studio_layout = submitted_layout
             st.session_state.studio_analyzed = True
             st.session_state.studio_pending = False
             st.session_state.studio_canvas_error = ""

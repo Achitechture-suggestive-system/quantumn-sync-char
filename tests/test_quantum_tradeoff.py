@@ -172,7 +172,7 @@ def test_studio_review_records_explicit_choice_and_tradeoff_after_reweighting(tm
     assert not app.exception
     assert app.metric[-1].value == "P011 · 6 điểm"
     assert not list(tmp_path.rglob("*.json"))
-    app.text_input[0].set_value("AppTest-only decision")
+    next(widget for widget in app.text_input if widget.label == "Ghi chú review").set_value("AppTest-only decision")
     next(button for button in app.button if button.label == "Chọn B · P011").click().run()
     assert not app.exception
     [path] = list(tmp_path.rglob("review-*.json"))
@@ -222,7 +222,8 @@ def test_requirement_rejects_invalid_component_scope(scope):
         Architecture.model_validate(data)
 
 
-def test_declared_requirement_scope_feeds_iso_review_and_quantum_trace(monkeypatch):
+def test_declared_requirement_scope_feeds_iso_review_and_quantum_trace(monkeypatch, tmp_path):
+    monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
     architecture = ticket_example()
     event = {"token": "scope-fixture", "action": "analyze", "model": architecture.model_dump(mode="json")}
     views = []
@@ -247,7 +248,8 @@ def test_declared_requirement_scope_feeds_iso_review_and_quantum_trace(monkeypat
         assert group["characteristic_requirements"]["Security · NFR-03"] == {"PROFILE": ["NFR-03"]}
 
 
-def test_loading_llm_case_keeps_inputs_draft_until_explicit_iso_review(monkeypatch):
+def test_loading_llm_case_keeps_inputs_draft_until_explicit_iso_review(monkeypatch, tmp_path):
+    monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
     from eqcr.studio_cases import case_requirements, ticket_requirement_cases
 
     cases = ticket_requirement_cases()
@@ -282,7 +284,8 @@ def test_loading_llm_case_keeps_inputs_draft_until_explicit_iso_review(monkeypat
     assert any(f"{label} · {source.id}" in group["characteristic_requirements"] for group in shown["groups"])
 
 
-def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch):
+def test_canvas_edits_recompute_generic_groups_and_keep_layout_separate(monkeypatch, tmp_path):
+    monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
     model = {
         "requirements": [{"id": "REQ-01", "text": "Index and serve new content promptly."}],
         "components": [

@@ -1,0 +1,180 @@
+"""Model proposal review and restorable revisions in the existing Streamlit Studio."""
+
+from __future__ import annotations
+
+import json
+
+import streamlit as st
+
+from . import ollama
+from .quantum_tradeoff import Architecture, Preferences
+from .studio_extraction import decide_proposal, extract_proposals, proposal_is_current
+from .studio_quality import QualityCharacteristic
+from .studio_sessions import checkpoints, load_checkpoint, save_checkpoint
+
+
+def commit_revision(architecture: Architecture, event: dict, *, proposals: list[dict] | None = None,
+                    layout: dict | None = None) -> bool:
+    session = st.session_state
+    items = session.get("studio_live_proposals", []) if proposals is None else proposals
+    try:
+        view = {"preferences": session.studio_weights.model_dump(mode="json"), "ranking": session.studio_ranking,
+                "layout": session.studio_layout if layout is None else layout}
+        identifier = save_checkpoint(architecture, event=event, parent=session.get("studio_checkpoint"), proposals=items, view=view)
+    except OSError as exc:
+        st.error(f"Chưa lưu được phiên. {exc}")
+        return False
+    session.studio_checkpoint = identifier
+    session.studio_live_proposals = items
+    return True
+
+
+def show_live_review(architecture: Architecture) -> None:
+    st.html('<span id="studio-live" class="qs-anchor"></span>')
+    with st.expander("Phân tích yêu cầu hiện tại bằng Ollama"):
+        if st.session_state.studio_pending:
+            st.info("Bấm Phân tích sơ đồ để lưu chỉnh sửa trước khi gọi model hoặc review.")
+            return
+        task = st.radio("Nội dung cần phân tích", ["QUALITY", "INTERACTION", "SEPARATION"], horizontal=True,
+                        format_func=lambda item: {"QUALITY": "ISO và component", "INTERACTION": "Tương tác SYNC/ASYNC",
+                                                   "SEPARATION": "Quy tắc bắt buộc tách"}[item])
+        available = [item.id for item in architecture.requirements if task == "INTERACTION" or item.kind == "NFR"]
+        selected = st.multiselect("Nguồn gửi Ollama", available, default=available[:4], max_selections=8)
+        model = st.text_input("Model Ollama", value="qwen3:4b", max_chars=100)
+        if st.button("Phân tích bằng Ollama", disabled=not selected or not model.strip()):
+            try:
+                with st.spinner("Ollama đang đọc yêu cầu…"):
+                    run = extract_proposals(architecture, selected, task, model.strip())
+                existing = st.session_state.get("studio_live_proposals", [])
+                if commit_revision(architecture, {"action": "LLM_PROPOSED", "run_id": run["id"],
+                                                   "model": run["model"], "model_digest": run["model_digest"],
+                                                   "count": len(run["proposals"])}, proposals=[*existing, *run["proposals"]]):
+                    st.session_state.studio_last_inference = run
+                    st.rerun()
+            except (ollama.OllamaError, ValueError, OSError) as exc:
+                st.error(str(exc))
+        run = st.session_state.get("studio_last_inference")
+        if run:
+            st.caption(f"{run['model']} · {run['ollama_version']} · {len(run['proposals'])} đề xuất · "
+                       f"{run['tokens']} token · {run['recorded_at']}")
+        items = st.session_state.get("studio_live_proposals", [])
+        st.caption("Đề xuất chờ review giữ nguyên đầu vào bộ giải. Đoạn trích khớp cần được kiểm tra cả ý nghĩa và phạm vi.")
+        for item in items:
+            current = proposal_is_current(architecture, item)
+            state = item["status"] if current else "STALE"
+            applied = item.get("applied") or item["payload"]
+            label = applied.get("characteristic") or applied.get("mode") or "Quy tắc tách"
+            with st.expander(f"{item['source_id']} · {label} · {state}"):
+                source = next((r for r in architecture.requirements if r.id == item["source_id"]), None)
+                if source:
+                    st.write(source.text)
+                st.write("Đề xuất gốc từ model")
+                st.write(item["payload"].get("quote", ""))
+                if item.get("issues"):
+                    st.warning(" ".join(item["issues"]))
+                if item.get("applied"):
+                    st.write("Căn cứ đã áp dụng sau review")
+                    st.write(item["applied"].get("quote", ""))
+                if not current:
+                    st.warning("Nguồn hoặc danh mục đã đổi. Phân tích lại để có đề xuất theo phiên bản hiện tại.")
+                    continue
+                if state not in {"REVIEW_REQUIRED", "DEFERRED"}:
+                    continue
+                with st.form(f"review_{item['id']}"):
+                    payload = dict(item["payload"])
+                    names = {component.id: component.name for component in architecture.components}
+                    if payload["kind"] == "QUALITY":
+                        labels = list(QualityCharacteristic)
+                        default = next((n for n, label in enumerate(labels) if label == payload.get("characteristic")), 0)
+                        payload["characteristic"] = st.selectbox("Characteristic", labels, index=default)
+                        payload["component_ids"] = st.multiselect("Component chịu trách nhiệm", list(names),
+                                                                  default=[c for c in payload.get("component_ids", []) if c in names],
+                                                                  format_func=names.__getitem__)
+                    elif payload["kind"] == "INTERACTION":
+                        keys = list(names)
+                        for field, name in [("source", "Component gọi"), ("target", "Component nhận")]:
+                            payload[field] = st.selectbox(name, keys, index=keys.index(payload[field]) if payload.get(field) in keys else 0,
+                                                          format_func=names.__getitem__)
+                        modes = ["SYNC", "ASYNC", "UNKNOWN"]
+                        payload["mode"] = st.selectbox("Mode sau review", modes,
+                                                     index=modes.index(payload.get("mode")) if payload.get("mode") in modes else 2)
+                        payload["local_transaction"] = st.checkbox("Cùng giao dịch cục bộ", value=bool(payload.get("local_transaction")))
+                    else:
+                        keys = list(names)
+                        for field, name in [("left", "Component thứ nhất"), ("right", "Component cần tách")]:
+                            payload[field] = st.selectbox(name, keys, index=keys.index(payload[field]) if payload.get(field) in keys else 0,
+                                                          format_func=names.__getitem__)
+                    payload["quote"] = st.text_area("Đoạn căn cứ nguyên văn", value=payload.get("quote", ""), max_chars=600)
+                    actor = st.text_input("Người review", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+                    rationale = st.text_area("Lý do quyết định", max_chars=1000)
+                    action = st.selectbox("Quyết định", ["APPROVE", "CORRECT", "REJECT", "DEFER"],
+                                          format_func=lambda value: {"APPROVE": "Đồng ý đề xuất gốc", "CORRECT": "Áp dụng phần đã sửa",
+                                                                     "REJECT": "Từ chối", "DEFER": "Giữ lại để làm rõ"}[value])
+                    submitted = st.form_submit_button("Lưu quyết định và tính lại")
+                if submitted:
+                    try:
+                        if action == "APPROVE" and payload != item["payload"]:
+                            raise ValueError("Bạn đã chỉnh đề xuất. Chọn Áp dụng phần đã sửa để lưu các giá trị đang chọn.")
+                        changed, decision = decide_proposal(architecture, item, action=action, actor=actor,
+                                                            rationale=rationale, corrected=payload)
+                        updated = [{**row, "status": {"APPROVE": "APPROVED", "CORRECT": "CORRECTED", "REJECT": "REJECTED",
+                                                       "DEFER": "DEFERRED"}[action], "applied": decision["applied"]}
+                                   if row["id"] == item["id"] else row for row in items]
+                        if commit_revision(changed, decision, proposals=updated):
+                            st.session_state.architecture = changed
+                            st.session_state.editor_version += 1
+                            st.session_state.studio_analyzed = True
+                            st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                            st.rerun()
+                    except ValueError as exc:
+                        st.error(str(exc))
+
+
+def restore_session() -> None:
+    try:
+        loaded = load_checkpoint(st.session_state.studio_restore_selector)
+        if not commit_revision(st.session_state.architecture, {"action": "BEFORE_RESTORE"}):
+            return
+        saved_view = loaded.get("view", {})
+        preferences = Preferences.model_validate(saved_view.get("preferences", {}))
+        st.session_state.architecture = Architecture.model_validate(loaded["architecture"])
+        st.session_state.studio_live_proposals = loaded["proposals"]
+        st.session_state.studio_checkpoint = loaded["id"]
+        st.session_state.studio_weights = preferences
+        st.session_state.studio_ranking = saved_view.get("ranking", "SYNC_FIRST")
+        for field, value in preferences.model_dump().items():
+            st.session_state[f"studio_weight_{field}"] = value
+        st.session_state.studio_layout = saved_view.get("layout", {})
+        st.session_state.studio_last_inference = None
+        st.session_state.studio_analyzed = True
+        st.session_state.editor_version += 1
+        st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+    except (ValueError, OSError) as exc:
+        st.session_state.studio_restore_error = str(exc)
+
+
+def show_session_history() -> None:
+    with st.expander("Lịch sử và tải lại phiên Studio"):
+        if st.session_state.studio_pending:
+            st.caption("Lưu chỉnh sửa bằng Phân tích sơ đồ trước khi tải phiên.")
+            return
+        try:
+            saved = checkpoints()
+            if not saved:
+                st.caption("Phiên được lưu khi phân tích thay đổi hoặc đưa ra quyết định review.")
+                return
+            rows = {item["id"]: item for item in saved}
+            selected = st.selectbox("Phiên đã lưu", list(rows),
+                                    format_func=lambda key: f"{rows[key]['recorded_at']} · {rows[key]['action']} · {key[-8:]}",
+                                    key="studio_restore_selector")
+            loaded = load_checkpoint(selected)
+            st.caption(f"Nguồn quyết định · {loaded['event'].get('actor', loaded['event'].get('model', 'LOCAL_INPUT'))}")
+            if loaded["event"].get("rationale"):
+                st.write(loaded["event"]["rationale"])
+            st.download_button("Tải hồ sơ phiên", json.dumps(loaded, ensure_ascii=False, indent=2),
+                               file_name=f"{selected}.json", mime="application/json")
+            st.button("Tải lại phiên đã chọn", on_click=restore_session)
+            if error := st.session_state.pop("studio_restore_error", None):
+                st.error(error)
+        except (ValueError, OSError) as exc:
+            st.error(f"Chưa đọc được lịch sử phiên. {exc}")

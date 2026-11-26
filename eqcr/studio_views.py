@@ -55,6 +55,7 @@ def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool
     status_tone = "warn" if pending or analyzed and not feasible else "accent" if analyzed else "neutral"
     links = ['<a href="#studio-diagrams">Sơ đồ</a>', '<a href="#studio-oracles">Ca khó và oracle</a>']
     if not replay:
+        links.append('<a href="#studio-live">Ollama và review</a>')
         links.append('<a href="#studio-ollama">Requirement Ollama</a>')
     if analyzed and not pending:
         if any(item.kind == "NFR" for item in architecture.requirements):

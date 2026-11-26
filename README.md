@@ -81,6 +81,8 @@ Luồng offline không cần Ollama. Để dùng model-assisted mode, chạy Oll
 
 Rà soát ngày 26/11/2026 ghi nhận 158 bài kiểm tra đạt và mười khoảng trống còn lại. Ba phép đối chứng cho thấy paraphrase làm điểm P031 tăng 7→9, đổi target 900→9.000 ms vẫn cho cùng kết quả và chuyển cạnh sang UNKNOWN làm giảm điểm. Ưu tiên tiếp theo là nối đầu vào mới với Ollama và review theo phiên bản, hợp nhất mục tiêu trùng sau review, rồi đánh giá bất định và quality scenario. Báo cáo có dấu vết mã nguồn, nguồn bài báo và điều kiện hoàn thành cho từng gap. [Gap analysis và hướng hoàn thiện](docs/research/STUDIO_GAP_ANALYSIS_2026-11-26.md)
 
+Mốc triển khai tiếp theo đã nối Ollama vào các requirement đang nhập. Mở **Phân tích yêu cầu hiện tại bằng Ollama**, chọn nguồn và tác vụ, rồi bấm **Phân tích bằng Ollama**. Mỗi đề xuất có đoạn nguồn, lỗi cấu trúc và các lựa chọn approve/correct/reject/defer. Quyết định áp dụng được lưu cùng input trước–sau. **Lịch sử và tải lại phiên Studio** khôi phục mô hình và ưu tiên từ checkpoint. Khi sửa nguồn, cần xác nhận lại allocation. [Tiến độ, hướng dẫn và bằng chứng từng gap](docs/research/STUDIO_COMPLETION_STATUS.md)
+
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m compileall -q app.py research_app.py eqcr tests

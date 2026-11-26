@@ -11,6 +11,7 @@ from .quantum_tradeoff import Architecture, Preferences, merge_quality_requireme
 from .studio_extraction import decide_proposal, extract_proposals, proposal_is_current
 from .studio_quality import QualityCharacteristic
 from .studio_sessions import checkpoints, load_checkpoint, save_checkpoint
+from .studio_uncertainty import review_interaction_cases
 
 
 def commit_revision(architecture: Architecture, event: dict, *, proposals: list[dict] | None = None,
@@ -19,6 +20,7 @@ def commit_revision(architecture: Architecture, event: dict, *, proposals: list[
     items = session.get("studio_live_proposals", []) if proposals is None else proposals
     try:
         view = {"preferences": session.studio_weights.model_dump(mode="json"), "ranking": session.studio_ranking,
+                "conservative": session.get("studio_conservative", False),
                 "layout": session.studio_layout if layout is None else layout}
         identifier = save_checkpoint(architecture, event=event, parent=session.get("studio_checkpoint"), proposals=items, view=view)
     except OSError as exc:
@@ -142,6 +144,7 @@ def restore_session() -> None:
         st.session_state.studio_checkpoint = loaded["id"]
         st.session_state.studio_weights = preferences
         st.session_state.studio_ranking = saved_view.get("ranking", "SYNC_FIRST")
+        st.session_state.studio_conservative = saved_view.get("conservative", False)
         for field, value in preferences.model_dump().items():
             st.session_state[f"studio_weight_{field}"] = value
         st.session_state.studio_layout = saved_view.get("layout", {})
@@ -210,6 +213,51 @@ def show_duplicate_review(architecture: Architecture) -> None:
                 if commit_revision(changed, {"action": "QUALITY_TARGET_MERGE" if target_id else "QUALITY_TARGET_UNLINK",
                                              "actor": actor, "source_id": alias_id, "target_id": target_id, "rationale": rationale,
                                              "before": architecture.model_dump(mode="json"), "after": changed.model_dump(mode="json")}):
+                    st.session_state.architecture = changed
+                    st.session_state.studio_analyzed = True
+                    st.session_state.editor_version += 1
+                    st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                    st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+
+
+def show_interaction_review(architecture: Architecture) -> None:
+    sources = {item.id: item for item in architecture.requirements}
+    eligible = [edge for edge in architecture.interactions if not edge.local_transaction]
+    if not sources or not eligible:
+        return
+    with st.expander("Review tương tác theo điều kiện"):
+        if st.session_state.studio_pending:
+            st.caption("Lưu sơ đồ trước khi khai báo điều kiện.")
+            return
+        edges = {f"{edge.source} → {edge.target}": edge for edge in eligible}
+        edge = edges[st.selectbox("Cạnh cần đối chiếu điều kiện", list(edges))]
+        st.caption("Khai báo các chế độ vận hành, ví dụ bình thường và mất kết nối. Reviewer xác định tập điều kiện "
+                   "được bao phủ. Khoảng chi phí xét mọi mode đã khai báo, chưa có xác suất xảy ra.")
+        prefix = f"conditions_{edge.source}_{edge.target}_{st.session_state.editor_version}"
+        count = st.selectbox("Số điều kiện", [2, 3, 4], index=max(0, len(edge.cases) - 2), key=f"{prefix}_count")
+        cases = []
+        for index in range(count):
+            saved = edge.cases[index] if index < len(edge.cases) else None
+            with st.container(border=True):
+                st.markdown(f"**Điều kiện {index + 1}**")
+                condition = st.text_input(f"Tên điều kiện {index + 1}", value=saved.condition if saved else "", key=f"{prefix}_{index}_name", max_chars=100)
+                source_id = st.selectbox(f"Nguồn điều kiện {index + 1}", list(sources),
+                                         index=list(sources).index(saved.source_id) if saved and saved.source_id in sources else 0,
+                                         key=f"{prefix}_{index}_source")
+                st.write(sources[source_id].text)
+                mode = st.selectbox(f"Mode điều kiện {index + 1}", ["SYNC", "ASYNC"],
+                                    index=int(saved is not None and saved.mode == "ASYNC"), key=f"{prefix}_{index}_mode")
+                quote = st.text_area(f"Căn cứ điều kiện {index + 1}", value=saved.source_quote if saved else "",
+                                     max_chars=600, key=f"{prefix}_{index}_quote")
+                cases.append({"condition": condition, "mode": mode, "source_id": source_id, "source_quote": quote})
+        actor = st.text_input("Người review điều kiện", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+        rationale = st.text_area("Căn cứ và phạm vi bao phủ điều kiện", max_chars=1000)
+        if st.button("Lưu các điều kiện và tính lại"):
+            try:
+                changed, event = review_interaction_cases(architecture, edge.source, edge.target, cases, actor=actor, rationale=rationale)
+                if commit_revision(changed, event):
                     st.session_state.architecture = changed
                     st.session_state.studio_analyzed = True
                     st.session_state.editor_version += 1

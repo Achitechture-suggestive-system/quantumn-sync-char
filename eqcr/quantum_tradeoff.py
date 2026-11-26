@@ -77,6 +77,14 @@ class Requirement(InputModel):
         return None
 
 
+class InteractionCase(InputModel):
+    condition: Label
+    mode: Literal["SYNC", "ASYNC"]
+    source_id: Key
+    source_digest: Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+    source_quote: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
+
+
 class Interaction(InputModel):
     source: Key
     target: Key
@@ -84,6 +92,7 @@ class Interaction(InputModel):
     weight: Cost = 1
     local_transaction: bool = False
     basis: str = Field(default="", max_length=240)
+    cases: list[InteractionCase] = Field(default_factory=list, max_length=4)
 
     @model_validator(mode="after")
     def check_coupling(self):
@@ -91,6 +100,10 @@ class Interaction(InputModel):
             raise ValueError("Hai đầu của quan hệ phải là component khác nhau.")
         if self.local_transaction and (self.mode != "SYNC" or not self.basis.strip()):
             raise ValueError("Giao dịch cục bộ cần quan hệ SYNC và căn cứ rõ ràng.")
+        if self.cases and (self.mode != "UNKNOWN" or len(self.cases) < 2):
+            raise ValueError("Quan hệ theo điều kiện cần UNKNOWN và ít nhất hai điều kiện được review.")
+        if len({item.condition.casefold() for item in self.cases}) != len(self.cases):
+            raise ValueError("Các điều kiện tương tác phải có tên khác nhau.")
         return self
 
 

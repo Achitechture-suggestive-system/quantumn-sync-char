@@ -27,6 +27,10 @@ Một phương án là một cách chia 1–8 component vào các Quantum. Đầ
 
 Bộ giải Python duyệt các phân hoạch, loại phương án vi phạm ràng buộc cứng, rồi giữ biên Pareto theo năm trục **SYNC qua ranh giới**, **tách kho**, **ASYNC giữ chung**, **đặc tính rải nhiều Quantum** và **trộn nhiều đặc tính trong Quantum**. Ở chế độ trọng số mặc định, điểm là `3×SYNC + 6×tách kho + 1×ASYNC + 2×rải + 2×trộn`. Điểm thấp hơn được ưu tiên trong cùng bộ tiêu chí. Một cạnh `UNKNOWN` được giữ trong sơ đồ và chưa có điểm SYNC hoặc ASYNC. Điểm là thước đo đánh đổi thiết kế, còn độ trễ, độ tin cậy và các mục tiêu chất lượng cần phép đo riêng. [Bộ giải Studio](eqcr/quantum_tradeoff.py) · [SEI Architecture Tradeoff Analysis Method](https://sei.cmu.edu/library/atam-method-for-architecture-evaluation/)
 
+## Review và so sánh khi mode còn bất định
+
+Với cạnh `UNKNOWN`, thẻ phương án và bảng so sánh hiển thị khoảng chi phí theo hai giả thuyết SYNC/ASYNC. Mở **Review tương tác theo điều kiện** để khai báo mode cho từng điều kiện bằng quote nguồn, người review và rationale. Bật **Ưu tiên chi phí biên trên khi còn bất định** để chọn phương án có biên trên thấp nhất trên toàn bộ tập khả thi. Các ràng buộc cứng vẫn giữ nguyên. Khoảng này chưa có xác suất và giả định mode giữa các cạnh độc lập. [Công thức, nguồn nghiên cứu và giới hạn](docs/research/STUDIO_COMPLETION_STATUS.md#mốc-b2--bất-định-của-mode-tương-tác).
+
 ## Review mục tiêu trùng
 
 Nếu hai NFR diễn đạt cùng một mục tiêu, mở **Review yêu cầu cùng mục tiêu**, chọn nguồn đối chiếu và bản gốc đã gán ISO, ghi lý do rồi lưu. Bộ giải dùng ánh xạ của bản gốc một lần, còn cả hai mã yêu cầu vẫn có trong truy vết. Chỉ hợp nhất sau khi đối chiếu ngưỡng, điều kiện và phạm vi component. Tách mục tiêu hoặc sửa nguồn sẽ cần review ánh xạ lại. Xem [tiến độ và bằng chứng hoàn thiện](docs/research/STUDIO_COMPLETION_STATUS.md).

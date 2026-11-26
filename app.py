@@ -21,8 +21,9 @@ from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
 from eqcr.studio_conflicts import conflict_witnesses, minimal_repairs, simulate_repair
 from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
-from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_live_review, show_session_history
+from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_interaction_review, show_live_review, show_session_history
 from eqcr.studio_sessions import invalidate_changed_sources
+from eqcr.studio_uncertainty import cases_are_current, conservative_order, score_bounds
 from eqcr.studio_views import (
     candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
     iso_evidence, iso_route_preview, quantum_cards, requirement_cards, review_receipt,
@@ -110,6 +111,7 @@ def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
         "interactions": [
             {
                 **edge.model_dump(mode="json"),
+                "case_review_status": "CURRENT" if cases_are_current(architecture, edge) else "STALE" if edge.cases else "NONE",
                 "from_quantum": assignment[edge.source], "to_quantum": assignment[edge.target],
                 "placement": "INTERNAL" if assignment[edge.source] == assignment[edge.target] else "CROSS_QUANTUM",
             }
@@ -463,8 +465,14 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         with details_panel:
             show_conflict_repairs(architecture, preferences, ranking)
         return [], True, None
-    best = result.ranked[0]
-    if ranking == "SYNC_FIRST":
+    uncertain = any(edge.mode == "UNKNOWN" for edge in architecture.interactions)
+    conservative = uncertain and st.checkbox("Ưu tiên chi phí biên trên khi còn bất định", key="studio_conservative")
+    robust = conservative_order(architecture, result.feasible, preferences) if conservative else ()
+    best = robust[0] if conservative else result.ranked[0]
+    if conservative:
+        details_panel.caption("Đang giảm chi phí biên trên theo trọng số trên toàn bộ phương án thỏa ràng buộc cứng. "
+                              "Nhãn Pareto và ma trận năm trục bên dưới dựa trên các cạnh đã xác định mode.")
+    elif ranking == "SYNC_FIRST":
         details_panel.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
                               "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
         if best.sync:
@@ -477,13 +485,22 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     else:
         details_panel.caption("Đang xếp theo điểm trọng số. Cạnh SYNC qua ranh giới góp vào tổng điểm.")
     summaries = details_panel.columns(4)
+    best_bounds = score_bounds(architecture, best, preferences)
+    best_cost = f"{best_bounds.lower}–{best_bounds.upper}" if uncertain else str(best.score(preferences))
     for column, (label, value) in zip(summaries, (
         ("Đã xét", result.enumerated), ("Khả thi", len(result.feasible)),
-        ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best.score(preferences)} điểm"),
+        ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best_cost} điểm"),
     ), strict=True):
         column.metric(label, value)
-    if any(edge.mode == "UNKNOWN" for edge in architecture.interactions):
-        details_panel.warning("Quan hệ UNKNOWN chưa góp vào điểm. Kiểm tra các quan hệ này trước khi chọn phương án.")
+    if uncertain:
+        bounds = score_bounds(architecture, best, preferences)
+        details_panel.warning(f"Cạnh chưa xác định mode góp vào khoảng chi phí, không được coi là miễn phí. "
+                              f"{bounds.unresolved_edges} cạnh chưa rõ · {bounds.conditional_edges} cạnh có điều kiện được review. "
+                              f"{best.id} có khoảng {bounds.lower}–{bounds.upper} điểm theo tập giả thuyết hiện tại.")
+        total = len(architecture.interactions)
+        covered = total - bounds.unresolved_edges
+        details_panel.caption(f"Độ phủ khai báo mode/điều kiện còn hiệu lực · {covered}/{total} cạnh. "
+                              "Con số này không đo độ đúng ngữ nghĩa của quyết định.")
     names = {item.id: item.name for item in architecture.components}
     best_plan = plan_graph(architecture, best)
 
@@ -497,7 +514,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     default_order = sorted(result.frontier, key=lambda item: ranking_key(item, Preferences(), "WEIGHTED"))
     initial_left = default_order[0]
     defaults = list(dict.fromkeys([initial_left, best, *default_order]))[:3]
-    other_feasible = sorted(result.feasible, key=lambda item: ranking_key(item, preferences, ranking))
+    other_feasible = list(robust) if conservative else sorted(result.feasible, key=lambda item: ranking_key(item, preferences, ranking))
     if len(defaults) < 3:
         defaults = list(dict.fromkeys([*defaults, *other_feasible]))[:3]
     options = other_feasible if show_all else list(dict.fromkeys([*result.ranked, *defaults]))
@@ -506,7 +523,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         details_panel.info(f"Chỉ có {len(defaults)} phương án khả thi theo ràng buộc hiện tại.")
     elif any(item.id not in frontier_ids for item in defaults):
         details_panel.caption("Biên Pareto có ít hơn ba phương án. Studio bổ sung phương án khả thi ngoài biên để so sánh.")
-    if ranking == "WEIGHTED" and best.id != initial_left.id:
+    if not conservative and ranking == "WEIGHTED" and best.id != initial_left.id:
         details_panel.info(f"Ưu tiên hiện tại đổi phương án xếp đầu từ {initial_left.id} sang {best.id} · {initial_left.score(preferences)} → {best.score(preferences)} điểm với cùng bộ trọng số.")
     generation = st.session_state.editor_version
     columns = st.columns(len(defaults))
@@ -517,7 +534,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         available = sorted(set(choices) - set(selected_ids))
         selected = column.selectbox(
             f"Phương án {slot}", available, index=available.index(default.id) if default.id in available else 0,
-            format_func=lambda key: option(choices[key]), key=f"compare_{slot}_{generation}_{show_all}_{'_'.join(selected_ids)}",
+            format_func=lambda key: option(choices[key]), key=f"compare_{slot}_{generation}_{show_all}_{conservative}_{'_'.join(selected_ids)}",
         )
         selected_ids.append(selected)
         candidates.append(choices[selected])
@@ -532,6 +549,15 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     axis_weights = preferences.vector
     baseline = candidates[0]
     details_panel.html(cost_matrix(AXES, axis_weights, candidates, slots))
+    intervals = {item.id: score_bounds(architecture, item, preferences) for item in candidates}
+    if uncertain:
+        details_panel.dataframe([
+            {"Phương án": f"{slot} · {item.id}", "Điểm cạnh đã xác định": item.score(preferences),
+             "Biên dưới": intervals[item.id].lower, "Biên trên": intervals[item.id].upper}
+            for slot, item in zip(slots, candidates, strict=True)
+        ], hide_index=True, width="stretch")
+        details_panel.caption("Khoảng điểm xét độc lập SYNC/ASYNC cho cạnh UNKNOWN, hoặc các mode trong điều kiện đã review. "
+                              "Chưa có xác suất hay tương quan giữa các cạnh. Ràng buộc cứng được giữ trong mọi giả thuyết.")
     deltas = {
         item.id: {label: b - a for label, a, b in zip(AXES, baseline.vector, item.vector, strict=True)}
         for item in candidates
@@ -546,7 +572,8 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     cards = "".join(
         candidate_card(slot, item, baseline=baseline, axes=AXES, weights=axis_weights, points=details[item.id],
                        plan=plans[item.id], names=names, ranked=item.id == best.id, frontier=item.id in frontier_ids,
-                       displayed=item.id == active_id, dominator=dominated_by.get(item.id), scale=scale)
+                       displayed=item.id == active_id, dominator=dominated_by.get(item.id), scale=scale,
+                       interval=intervals[item.id] if uncertain else None)
         for slot, item in zip(slots, candidates, strict=True)
     )
     details_panel.html(f'<div class="qs-candidate-grid">{cards}</div>')
@@ -562,6 +589,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         "architecture": architecture.model_dump(mode="json"),
         "preferences": preferences.model_dump(mode="json"),
         "ranking": ranking,
+        "uncertainty_policy": "MINIMIZE_WEIGHTED_UPPER_BOUND" if conservative else "KNOWN_MODE_COSTS",
         "enumerated": result.enumerated,
         "feasible": len(result.feasible),
         "pareto": len(result.frontier),
@@ -571,6 +599,9 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         "recommended_plan": best_plan,
         "displayed_candidate": active_id,
         "comparison": [{"id": item.id, "slot": slot, "groups": item.groups, "score": item.score(preferences),
+                        "score_interval": {"lower": intervals[item.id].lower, "upper": intervals[item.id].upper,
+                                           "unresolved_edges": intervals[item.id].unresolved_edges,
+                                           "conditional_edges": intervals[item.id].conditional_edges},
                         "pareto": item.id in frontier_ids, "dominated_by": dominated_by.get(item.id),
                         "cost_delta_vs_a": deltas[item.id],
                         "costs": dict(zip(AXES, item.vector, strict=True)), "cost_drivers": details[item.id],
@@ -640,6 +671,7 @@ if replay is None:
         show_live_review(architecture)
         show_session_history()
         show_duplicate_review(architecture)
+        show_interaction_review(architecture)
         st.html('<span id="studio-ollama" class="qs-anchor"></span>')
         show_requirement_cases(architecture)
 

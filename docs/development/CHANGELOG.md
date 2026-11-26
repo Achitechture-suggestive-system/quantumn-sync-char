@@ -1,5 +1,10 @@
 # Changelog
 
+## Review mục tiêu chất lượng trùng — 2026-11-26
+
+- Thêm quan hệ `duplicate_of` do reviewer xác nhận, giữ source IDs cùng truy vết nhưng tính một mục tiêu trên ánh xạ gốc. Có checkpoint hợp nhất/tách, chặn liên kết sai và yêu cầu xác nhận lại khi nguồn đổi.
+- 168 tests, compileall và kiểm tra UI trên 8501 qua. Commit triển khai `efd200ebe3e07abb215428e3c867b4e1ad51bfd0` đã được đẩy và CI đạt. Test paraphrase là đối chứng tổng hợp, chưa cung cấp nhãn ngữ nghĩa độc lập. [Bằng chứng](../research/STUDIO_COMPLETION_STATUS.md#mốc-b1--danh-tính-mục-tiêu-chất-lượng)
+
 ## Ollama theo input hiện tại và lịch sử review — 2026-11-26
 
 - Thêm ba tác vụ gọi Ollama trực tiếp từ requirement đang nhập, kiểm quote/ID và giữ proposal ở trạng thái chờ quyết định. Người vận hành có thể approve/correct/reject/defer, lưu rationale và mô hình trước–sau.

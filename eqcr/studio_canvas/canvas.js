@@ -541,6 +541,7 @@ function renderInspector() {
         if (iso.length) fields.append(element("p", "ISO đã gán · " + iso.join(" / "), "wide"));
     } else if (type === "edge") {
         selectField(fields, "Kiểu tương tác", item.mode, ["SYNC", "ASYNC", "UNKNOWN"], value => {
+            item.cases = [];
             item.mode = value;
             if (value !== "SYNC") item.local_transaction = false;
         });

@@ -65,4 +65,9 @@ def invalidate_changed_sources(before: Architecture, after: Architecture) -> Arc
             raw["duplicate_of"] = None
         if raw.get("duplicate_of") in changed:
             raw["duplicate_of"] = None
+    from .studio_uncertainty import cases_are_current
+
+    for edge, raw in zip(after.interactions, data["interactions"], strict=True):
+        if edge.cases and not cases_are_current(after, edge):
+            raw["cases"] = []
     return Architecture.model_validate(data)

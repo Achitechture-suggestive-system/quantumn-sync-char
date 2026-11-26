@@ -192,7 +192,7 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
             if edge is None:
                 edge = {"source": payload["source"], "target": payload["target"], "weight": 1}
                 data["interactions"].append(edge)
-            edge.update(mode=payload["mode"], local_transaction=payload["local_transaction"], basis=payload["quote"])
+            edge.update(mode=payload["mode"], local_transaction=payload["local_transaction"], basis=payload["quote"], cases=[])
         else:
             pair = {payload["left"], payload["right"]}
             rule = next((item for item in data["keep_apart"] if {item["left"], item["right"]} == pair), None)

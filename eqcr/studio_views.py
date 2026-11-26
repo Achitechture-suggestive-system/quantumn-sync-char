@@ -192,7 +192,7 @@ def cost_matrix(axes, weights, candidates, slots: str) -> str:
     """
 
 
-def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, names, ranked, frontier, displayed, dominator, scale):
+def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, names, ranked, frontier, displayed, dominator, scale, interval=None):
     profile = "".join(
         f'<li><span class="qs-code">{escape(group["id"])}</span><span>'
         f'{escape(", ".join(names[item] for item in group["components"]))}</span></li>'
@@ -237,7 +237,7 @@ def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, na
     return f"""
     <article class="qs-card qs-candidate{' qs-candidate--first' if ranked else ''}">
         <div class="qs-card-top"><span class="qs-code">{slot} · {escape(candidate.id)}</span><div class="qs-tags">{status}</div></div>
-        <div class="qs-score"><strong>{total}</strong><span>điểm trọng số</span><span>{len(plan["groups"])} Quantum</span></div>
+        <div class="qs-score"><strong>{f'{interval.lower}–{interval.upper}' if interval else total}</strong><span>{'khoảng điểm' if interval else 'điểm trọng số'}</span><span>{len(plan["groups"])} Quantum</span></div>
         <div class="qs-cost-bar" role="img" aria-label="{escape(bars_label)}">{bars}</div>
         <ul class="qs-groups">{profile}</ul>
         {notes}
@@ -275,16 +275,22 @@ def interaction_cards(plan, names) -> str:
         locality = "Qua ranh giới" if edge["placement"] == "CROSS_QUANTUM" else "Nội bộ"
         follow_up = ""
         if mode == "UNKNOWN":
-            follow_up = "Cần xác định kiểu tương tác trước khi đưa cạnh này vào điểm."
+            follow_up = "Khoảng chi phí xét các mode theo điều kiện được review hoặc cả hai giả thuyết SYNC/ASYNC."
         elif locality == "Qua ranh giới":
             follow_up = ("Cần thiết kế giao nhận, retry và xử lý trùng."
                          if mode == "ASYNC" else "Cần xác định độ trễ, timeout và xử lý lỗi qua ranh giới.")
+        conditions = "".join(
+            f'<li>{tag(case["mode"])} <strong>{escape(case["condition"])}</strong>'
+            f'<p>{escape(case["source_id"])} · {escape(case["source_quote"])}</p></li>'
+            for case in edge.get("cases", [])
+        )
         cards.append(f"""
         <article class="qs-card qs-relation">
             <div class="qs-card-top"><div class="qs-tags">{tag(mode, tone)}{tag(locality)}</div><span class="qs-code">{escape(route)}</span></div>
             <h3>{escape(names[edge["source"]])} <span aria-hidden="true">→</span> {escape(names[edge["target"]])}</h3>
             <p class="qs-muted">Mức ảnh hưởng {edge["weight"]}{' · Giao dịch cục bộ' if edge["local_transaction"] else ''}</p>
             <p>{escape(edge["basis"] or "Chưa khai báo căn cứ.")}</p>
+            {f'<p>{tag(edge.get("case_review_status", "NONE"))}</p><ul>{conditions}</ul>' if conditions else ''}
             {f'<p class="qs-muted">{follow_up}</p>' if follow_up else ''}
         </article>
         """)
@@ -359,10 +365,14 @@ def review_receipt(recorded) -> str:
     item = next((candidate for candidate in recorded["comparison"] if candidate["id"] == selection), None)
     timestamp = datetime.fromisoformat(recorded["recorded_at"]).astimezone().strftime("%H:%M · %d/%m/%Y %Z")
     choice = f'Đã lưu lựa chọn {escape(selection)}' if selection else "Đã lưu yêu cầu chỉnh"
+    cost = str(item["score"]) if item else ""
+    if item and "score_interval" in item:
+        interval = item["score_interval"]
+        cost = f"{interval['lower']}–{interval['upper']}"
     return f"""
     <article class="qs-card qs-receipt" role="status">
         <div class="qs-card-top"><h3>{choice}</h3><span class="qs-muted">{escape(timestamp)}</span></div>
-        {f'<p class="qs-muted">{item["score"]} điểm trọng số · {len(item["groups"])} Quantum tại thời điểm lưu</p>' if item else ''}
+        {f'<p class="qs-muted">{cost} điểm trọng số · {len(item["groups"])} Quantum tại thời điểm lưu</p>' if item else ''}
         {f'<p class="qs-review-note">{escape(recorded["note"])}</p>' if recorded["note"] else ''}
     </article>
     """

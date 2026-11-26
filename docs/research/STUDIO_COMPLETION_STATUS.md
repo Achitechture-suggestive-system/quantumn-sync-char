@@ -7,7 +7,7 @@ Mục tiêu đang thực hiện là hoàn thiện dự án theo mười gap tron
 | G1 · Ollama theo input hiện tại | Adapter gọi thật cho ISO/component, tương tác và bắt buộc tách. Có request, raw response, metadata và proposal chờ review. UI đã chạy requirement mới, sửa đề xuất và tái tính kết quả. | Còn mở rộng kiểm thử lỗi provider và phạm vi semantics ở G2. |
 | G2 · Ngữ nghĩa và mệnh đề | Prompt riêng cho từng tác vụ, quote nguyên văn và danh mục kiểm lại trước khi áp dụng. Các lỗi đề xuất vẫn được giữ để sửa hoặc từ chối. | Cấu trúc mệnh đề, điều kiện, phủ định và đánh giá trên ca mới còn tiếp tục. |
 | G3 · Mục tiêu trùng | Review chọn NFR gốc qua `duplicate_of`, ghi rationale và checkpoint. Scoring dùng một mục tiêu, giữ tất cả source IDs. Có kiểm paraphrase bất biến điểm, mục tiêu khác scope độc lập và sửa nguồn yêu cầu review lại. | Tính tương đương ngữ nghĩa do reviewer quyết định. Chưa có bộ nhãn độc lập đánh giá quyết định hợp nhất. |
-| G4 · UNKNOWN và điều kiện | Giữ cảnh báo hiện có. | Khoảng điểm theo giả thuyết, độ phủ và hợp đồng có điều kiện. |
+| G4 · UNKNOWN và điều kiện | Khoảng chi phí theo mode, độ phủ khai báo, review hai đến bốn điều kiện và xếp hạng tùy chọn theo biên trên trên toàn bộ tập khả thi. Nguồn điều kiện đổi làm bằng chứng hết hiệu lực. | Tập mode là giả thuyết do reviewer khai báo. Chưa có xác suất, tương quan mode hay bằng chứng vận hành xác nhận tập điều kiện đầy đủ. |
 | G5 · NFR và phép đo | Giữ `NOT_MEASURED`. | Structured scenario, adapter profile và bằng chứng đo hoặc dự đoán phù hợp. |
 | G6 · Revision và tải lại | Checkpoint chứa input, proposal, quyết định trước–sau, thời điểm, rationale và trạng thái hiển thị. Sửa nguồn yêu cầu xác nhận lại. Đã tải lại phiên sau khi khởi động lại app và tái tạo P011/8 điểm cùng đặc tính trên sơ đồ. | Còn mở rộng kiểm thử các đường sửa khi bổ sung scenario, conditional interaction và policy. |
 | G7 · Policy sửa hard constraint | Giữ bộ chẩn đoán và mô phỏng hiện có. | Quy tắc bảo vệ, ưu tiên sửa và áp dụng thay đổi qua revision. |
@@ -42,6 +42,29 @@ Ví dụ tổng hợp trong `tests/test_studio_quality_targets.py` xác nhận S
 Tách mục tiêu tạo `QUALITY_TARGET_UNLINK` và yêu cầu xác nhận ánh xạ mới. Sửa nội dung hoặc scope của nguồn gốc/nguồn hợp nhất làm mất hiệu lực quan hệ liên quan. Validator chặn vòng lặp, liên kết thiếu, liên kết qua nhiều tầng và allocation riêng trên nguồn hợp nhất. Hợp nhất một bản gốc vào bản gốc khác chuyển các nguồn phụ thuộc cùng sang đích mới trong một revision. Đây là chính sách kiến trúc và biến đổi xác định được ghi nhận qua Human Review, chưa phải kết quả phân loại tự động của LLM.
 
 Kiểm chứng mốc B1 đạt **168 tests**, bao gồm sáu test mới về scoring, scope độc lập, invalidation, liên kết hợp lệ và đường bấm review/lưu phiên. `compileall` hoàn tất. Không có lần inference mới phục vụ mốc hợp nhất.
+
+## Mốc B2 — bất định của mode tương tác
+
+Với phân hoạch cố định `P`, gọi `J_known(P)` là điểm năm trục hiện có, trong đó chỉ cạnh đã xác định SYNC/ASYNC góp chi phí mode. Đặt `M_e={SYNC,ASYNC}` cho cạnh UNKNOWN chưa có điều kiện được review. Nếu có tập điều kiện còn khớp source hash và quote, `M_e` là các mode trong tập đó. Với mỗi cạnh UNKNOWN, đóng góp giả thuyết là:
+
+```text
+c(P,e,m) = weight_e × [lambda_sync × I(m=SYNC và khác Quantum)
+                      + lambda_async × I(m=ASYNC và cùng Quantum)]
+L(P) = J_known(P) + sum_e min_{m thuộc M_e} c(P,e,m)
+U(P) = J_known(P) + sum_e max_{m thuộc M_e} c(P,e,m)
+```
+
+Hai đầu mút chính xác cho một phân hoạch trong mô hình cho phép các mode trên mỗi cạnh thay đổi độc lập. Không gán xác suất cho SYNC/ASYNC. Các hard constraints được giữ nguyên. Khoảng có thể bảo thủ nếu các điều kiện giữa nhiều cạnh có tương quan mà mô hình chưa biểu diễn. Nếu tập mode giả định bỏ sót hành vi thật, khoảng cũng chưa bao phủ hành vi đó.
+
+Giao diện hiển thị `[L,U]` trên thẻ và trong bảng. `Ưu tiên chi phí biên trên khi còn bất định` chọn `argmin U(P)` trên **mọi phân hoạch thỏa hard constraints**, với tie-break theo L, số Quantum và ID. Cách này tránh bỏ lỡ một phương án vốn bị trội khi chỉ xét chi phí mode đã rõ. Nhãn Pareto và ma trận năm trục vẫn mô tả chi phí đã xác định. Khi tắt lựa chọn biên trên, ba chế độ xếp hạng cũ dùng chi phí mode đã rõ, cùng cảnh báo và khoảng điểm để reviewer đánh giá phần chưa biết. Hồ sơ chọn phương án ghi chính sách xếp hạng và các khoảng tương ứng.
+
+`Review tương tác theo điều kiện` nhận hai đến bốn nhánh. Mỗi nhánh có tên điều kiện, mode, requirement nguồn và quote nguyên văn. Quyết định có actor/rationale, source hash và checkpoint trước–sau. Chỉ áp dụng trên cạnh không có giao dịch cục bộ bắt buộc. Nguồn sửa làm tập điều kiện mất hiệu lực và quay về hai giả thuyết UNKNOWN. Reviewer có trách nhiệm xác nhận phạm vi bao phủ, tính loại trừ của các nhánh và quan hệ phụ thuộc giữa chúng. Độ phủ hiển thị là số cạnh có mode hoặc tập điều kiện còn hiệu lực trên tổng số cạnh, không phải semantic accuracy.
+
+[Bertsimas và Sim, *The Price of Robustness*, Operations Research 52(1), 2004, 35–53, DOI 10.1287/opre.1030.0065](https://www.mit.edu/~dbertsim/papers/Robust%20Optimization/The%20price%20of%20Robustness.pdf) nghiên cứu tối ưu dưới dữ liệu bất định và mức bảo thủ. Studio dùng tập mode rời rạc và minimax theo biên trên như thiết kế riêng. Chưa triển khai mô hình bất định có ngân sách Γ của bài, nên chưa có bảo đảm xác suất hay kết quả tối ưu của bài chuyển trực tiếp sang dự án.
+
+Kiểm định xác định trong `tests/test_studio_uncertainty.py` liệt kê đủ bốn tổ hợp của hai cạnh UNKNOWN, đối chiếu min/max với L/U cho từng phân hoạch. Test khác chứng minh phương án minimax có thể nằm ngoài biên Pareto của chi phí đã biết. Có test giữ hard rule, từ chối quote sai, giữ giao dịch cục bộ, invalidation khi sửa nguồn và đường bấm review/lưu hồ sơ trên UI. Đây là ca do dự án tạo cho kiểm thử thuật toán.
+
+Regression mốc B2 đạt **174 tests**. `compileall` và kiểm cú pháp JavaScript qua. Browser 8501 nạp OC-09 ở chế độ oracle tổng hợp, hiện P031 `5–7`, P011 `6–8`, P029 `7–9`. Bật xếp theo biên trên vẫn chọn P031 vì biên trên 7 thấp nhất trong 37 nghiệm. Đây là kết quả giữ nguyên có lý do theo mô hình đã khai báo, không phải đề xuất mới của Ollama. Lượt browser không ghi Human Review cho dữ liệu oracle và đã quay lại sơ đồ người dùng.
 
 ## Bằng chứng chạy ngày 26/11/2026 cho mốc A
 

@@ -173,12 +173,13 @@ def open_oracle_case(case: dict, mode: str) -> None:
     if "studio_case_return" not in session:
         session.studio_case_return = {
             name: session.get(name) for name in ("architecture", "studio_layout", "studio_analyzed",
-                                                  "studio_weights", "studio_ranking", "studio_output_slot")
+                                                  "studio_weights", "studio_ranking", "studio_output_slot", "studio_conservative")
         }
     session.studio_replay = (case["id"], mode)
     session.architecture = fixture
     session.studio_layout = {}
     session.studio_analyzed = True
+    session.studio_conservative = False
     session.studio_canvas_error = ""
     session.editor_version += 1
     session.studio_canvas_commit = session.get("studio_canvas_commit", 0) + 1
@@ -645,6 +646,9 @@ st.session_state.setdefault("studio_analyzed", False)
 st.session_state.setdefault("studio_pending", False)
 st.session_state.setdefault("studio_weights", Preferences())
 st.session_state.setdefault("studio_ranking", "SYNC_FIRST")
+st.session_state.setdefault("studio_conservative", False)
+if type(st.session_state.architecture) is not Architecture:
+    st.session_state.architecture = Architecture.model_validate(st.session_state.architecture.model_dump(mode="json"))
 architecture = st.session_state.architecture
 replay = st.session_state.get("studio_replay")
 

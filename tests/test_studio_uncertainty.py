@@ -139,3 +139,23 @@ def test_ui_conditions_and_conservative_review_are_persisted(tmp_path, monkeypat
     review = view.session_state.studio_last_review
     assert review["uncertainty_policy"] == "MINIMIZE_WEIGHTED_UPPER_BOUND"
     assert all(item["score_interval"]["upper"] >= item["score_interval"]["lower"] for item in review["comparison"])
+
+
+def test_replay_restores_user_ranking_preference_and_model_type(tmp_path, monkeypatch):
+    from eqcr.quantum_example import ticket_example
+
+    class EarlierArchitecture(Architecture):
+        """Simulate an instance left in Session State across a module reload."""
+
+    monkeypatch.setattr(storage, "ARTIFACT_ROOT", tmp_path)
+    monkeypatch.setattr(studio_canvas, "render_board", lambda **kwargs: None)
+    view = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30)
+    view.session_state.architecture = EarlierArchitecture.model_validate(ticket_example().model_dump(mode="json"))
+    view.session_state.studio_conservative = True
+    view.run()
+    assert not view.exception and type(view.session_state.architecture) is Architecture
+    next(item for item in view.button if item.label == "Nạp ca vào sơ đồ").click().run()
+    assert not view.exception and view.session_state.studio_conservative is False
+    next(item for item in view.button if item.label == "Quay lại sơ đồ của tôi").click().run()
+    assert not view.exception and view.session_state.studio_conservative is True
+    assert view.session_state.architecture == ticket_example()

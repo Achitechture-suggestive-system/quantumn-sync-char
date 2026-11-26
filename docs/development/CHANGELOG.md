@@ -1,5 +1,11 @@
 # Changelog
 
+## Khoảng chi phí và tương tác theo điều kiện — 2026-11-26
+
+- Thêm biên dưới/trên theo giả thuyết mode, review điều kiện có quote/hash/checkpoint và tùy chọn tối thiểu hóa biên trên trên mọi nghiệm thỏa hard constraints.
+- Commit `8a34f5a2b39925d56cfcb8e4ca7af3f0f6f17cde` đã push, CI đạt với 174 tests. Browser OC-09 hiển thị P031 5–7, P011 6–8, P029 7–9, kiểm tra khổ 400 px không tràn ngang toàn trang.
+- Sau phép thử đã bổ sung khôi phục lựa chọn biên trên khi rời oracle và chuẩn hóa instance mô hình qua lần tải lại module. Có test tái hiện lưu/khôi phục cả mô hình và ưu tiên.
+
 ## Review mục tiêu chất lượng trùng — 2026-11-26
 
 - Thêm quan hệ `duplicate_of` do reviewer xác nhận, giữ source IDs cùng truy vết nhưng tính một mục tiêu trên ánh xạ gốc. Có checkpoint hợp nhất/tách, chặn liên kết sai và yêu cầu xác nhận lại khi nguồn đổi.

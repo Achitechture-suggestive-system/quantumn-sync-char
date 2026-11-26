@@ -18,10 +18,10 @@ from eqcr.quantum_tradeoff import (
 from eqcr.storage import save_quantum_review
 from eqcr.studio_canvas import read_layout, render_board
 from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
-from eqcr.studio_conflicts import conflict_witnesses, minimal_repairs, simulate_repair
+from eqcr.studio_conflicts import apply_reviewed_repair, conflict_witnesses, enforce_protected_rules, minimal_repairs, simulate_repair
 from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
 from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
-from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_interaction_review, show_live_review, show_session_history
+from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_interaction_review, show_live_review, show_rule_policy_review, show_session_history
 from eqcr.studio_sessions import invalidate_changed_sources
 from eqcr.studio_uncertainty import cases_are_current, conservative_order, score_bounds
 from eqcr.studio_views import (
@@ -131,7 +131,7 @@ def diagnose_conflicts(architecture: Architecture):
     return conflict_witnesses(rules), minimal_repairs(architecture, rules)
 
 
-def show_conflict_repairs(architecture: Architecture, weights: Preferences, ranking: Ranking) -> None:
+def show_conflict_repairs(architecture: Architecture, weights: Preferences, ranking: Ranking, *, can_apply: bool = True) -> None:
     st.header("Vì sao không có nghiệm?", anchor="studio-conflicts")
     names = {item.id: item.name for item in architecture.components}
     conflicts, repairs = diagnose_conflicts(architecture)
@@ -150,10 +150,12 @@ def show_conflict_repairs(architecture: Architecture, weights: Preferences, rank
                "KEEP_SHARED": "Cho phép tách kho"}
     labels = [" + ".join(f"{actions[rule.kind]} · {constraint_subject(rule, architecture, names)}"
                          for rule in repair.rules) for repair in repairs]
-    st.dataframe([{"Phương án": f"M{index}", "Thay đổi giả định": label, "Nghiệm khả thi": repair.feasible}
+    st.dataframe([{"Phương án": f"M{index}", "Thay đổi giả định": label,
+                   "Chi phí sửa": repair.review_cost, "Số quy tắc": len(repair.rules), "Nghiệm khả thi": repair.feasible}
                   for index, (repair, label) in enumerate(zip(repairs, labels, strict=True), 1)],
                  hide_index=True, width="stretch", column_config={"Thay đổi giả định": st.column_config.TextColumn(width="large")})
     if not repairs:
+        st.warning("Không có cách gỡ tuân thủ chính sách bảo vệ hiện hành. Review chính sách hoặc bổ sung yêu cầu làm rõ.")
         return
     selected = st.selectbox("Xem chi tiết mô phỏng", range(len(repairs)), format_func=lambda index: f"M{index + 1} · {labels[index]}")
     repair = repairs[selected]
@@ -163,6 +165,21 @@ def show_conflict_repairs(architecture: Architecture, weights: Preferences, rank
     st.markdown(f"**M{selected + 1} · {len(result.feasible)} nghiệm khả thi · {best.id} xếp đầu · {best.score(weights)} điểm**")
     plan = plan_graph(alternative, best)
     st.html(quantum_cards(plan, names))
+    if can_apply:
+        st.caption("Các quy tắc thay đổi đã liệt kê phía trên. Áp dụng sẽ tạo revision mới từ bản sao đã xem.")
+        actor = st.text_input("Người duyệt cách sửa", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+        rationale = st.text_area("Lý do áp dụng cách sửa", max_chars=1000)
+        if st.button("Áp dụng cách sửa đã review"):
+            try:
+                changed, event = apply_reviewed_repair(architecture, repair, actor=actor, rationale=rationale)
+                if commit_revision(changed, event):
+                    st.session_state.architecture = changed
+                    st.session_state.editor_version += 1
+                    st.session_state.studio_analyzed = True
+                    st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                    st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
 
 
 def open_oracle_case(case: dict, mode: str) -> None:
@@ -464,7 +481,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
         st.markdown("[Xem xung đột và các cách gỡ](#studio-conflicts)")
         with details_panel:
-            show_conflict_repairs(architecture, preferences, ranking)
+            show_conflict_repairs(architecture, preferences, ranking, can_apply=replay is None)
         return [], True, None
     uncertain = any(edge.mode == "UNKNOWN" for edge in architecture.interactions)
     conservative = uncertain and st.checkbox("Ưu tiên chi phí biên trên khi còn bất định", key="studio_conservative")
@@ -676,6 +693,7 @@ if replay is None:
         show_session_history()
         show_duplicate_review(architecture)
         show_interaction_review(architecture)
+        show_rule_policy_review(architecture)
         st.html('<span id="studio-ollama" class="qs-anchor"></span>')
         show_requirement_cases(architecture)
 
@@ -706,7 +724,13 @@ if isinstance(event, dict) and event.get("token") != st.session_state.get("studi
     if event.get("action") == "analyze":
         try:
             submitted = invalidate_changed_sources(architecture, Architecture.model_validate(event.get("model")))
-        except ValidationError as exc:
+            enforce_protected_rules(architecture, submitted)
+        except (ValidationError, ValueError) as exc:
+            if not isinstance(exc, ValidationError):
+                st.session_state.studio_canvas_error = str(exc)
+                st.session_state.studio_blocked_edit = event.get("model")
+                st.session_state.studio_pending = True
+                st.rerun()
             issue = exc.errors(include_url=False)[0]
             field = " / ".join(str(part + 1) if isinstance(part, int) else part for part in issue["loc"])
             st.session_state.studio_canvas_error = f"{field} · {issue['msg']}" if field else issue["msg"]

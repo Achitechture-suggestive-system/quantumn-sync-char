@@ -1,5 +1,10 @@
 # Nhật ký publish GitHub
 
+## Khôi phục ưu tiên sau phiên oracle — 2026-11-26
+
+- Commit `0aea6c991e58665ad0aeddfbf78b1441bf3b2656` đã đẩy lên `feat/quantum-tradeoff-workbench`. 175 tests và compileall qua; browser tải lại mẫu Ticket Support không có exception.
+- [GitHub Actions 45838778112](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/45838778112) đạt trên cùng SHA.
+
 ## Khoảng chi phí và tương tác theo điều kiện — 2026-11-26
 
 - Commit `8a34f5a2b39925d56cfcb8e4ca7af3f0f6f17cde` đã đẩy lên `feat/quantum-tradeoff-workbench`, remote branch cùng SHA.

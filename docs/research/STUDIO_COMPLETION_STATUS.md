@@ -10,7 +10,7 @@ Mục tiêu đang thực hiện là hoàn thiện dự án theo mười gap tron
 | G4 · UNKNOWN và điều kiện | Khoảng chi phí theo mode, độ phủ khai báo, review hai đến bốn điều kiện và xếp hạng tùy chọn theo biên trên trên toàn bộ tập khả thi. Nguồn điều kiện đổi làm bằng chứng hết hiệu lực. | Tập mode là giả thuyết do reviewer khai báo. Chưa có xác suất, tương quan mode hay bằng chứng vận hành xác nhận tập điều kiện đầy đủ. |
 | G5 · NFR và phép đo | Giữ `NOT_MEASURED`. | Structured scenario, adapter profile và bằng chứng đo hoặc dự đoán phù hợp. |
 | G6 · Revision và tải lại | Checkpoint chứa input, proposal, quyết định trước–sau, thời điểm, rationale và trạng thái hiển thị. Sửa nguồn yêu cầu xác nhận lại. Đã tải lại phiên sau khi khởi động lại app và tái tạo P011/8 điểm cùng đặc tính trên sơ đồ. | Còn mở rộng kiểm thử các đường sửa khi bổ sung scenario, conditional interaction và policy. |
-| G7 · Policy sửa hard constraint | Giữ bộ chẩn đoán và mô phỏng hiện có. | Quy tắc bảo vệ, ưu tiên sửa và áp dụng thay đổi qua revision. |
+| G7 · Policy sửa hard constraint | Bảo vệ từng quy tắc, chi phí sửa, lọc/xếp MCS theo policy, xem trước và áp dụng qua revision. Chặn sửa quy tắc bảo vệ từ canvas/model review/restore. Lưu riêng bản input bị chặn. | Chi phí và quyết định bảo vệ do reviewer khai báo, chưa có mô hình chi phí nghiệp vụ thực nghiệm hoặc xác thực danh tính reviewer. |
 | G8 · Bằng chứng boundary | Giữ boundary ở mức ứng viên. | Hợp đồng lỗi/data ownership và mục tiêu vận hành có hệ thống chạy được để kiểm tra. |
 | G9 · Backend lớn | Giữ giới hạn hiện tại của Studio. | Adapter objective tương đương, kiểm bộ nhỏ và benchmark backend lớn. |
 | G10 · Đánh giá độc lập | Tách dữ liệu test và lần gọi thật trong báo cáo. | Bộ ca mới sau khi chốt prompt, reference labels độc lập và thí nghiệm có adjudication. |
@@ -65,6 +65,22 @@ Giao diện hiển thị `[L,U]` trên thẻ và trong bảng. `Ưu tiên chi ph
 Kiểm định xác định trong `tests/test_studio_uncertainty.py` liệt kê đủ bốn tổ hợp của hai cạnh UNKNOWN, đối chiếu min/max với L/U cho từng phân hoạch. Test khác chứng minh phương án minimax có thể nằm ngoài biên Pareto của chi phí đã biết. Có test giữ hard rule, từ chối quote sai, giữ giao dịch cục bộ, invalidation khi sửa nguồn và đường bấm review/lưu hồ sơ trên UI. Đây là ca do dự án tạo cho kiểm thử thuật toán.
 
 Regression mốc B2 đạt **174 tests**. `compileall` và kiểm cú pháp JavaScript qua. Browser 8501 nạp OC-09 ở chế độ oracle tổng hợp, hiện P031 `5–7`, P011 `6–8`, P029 `7–9`. Bật xếp theo biên trên vẫn chọn P031 vì biên trên 7 thấp nhất trong 37 nghiệm. Đây là kết quả giữ nguyên có lý do theo mô hình đã khai báo, không phải đề xuất mới của Ollama. Lượt browser không ghi Human Review cho dữ liệu oracle và đã quay lại sơ đồ người dùng.
+
+## Mốc D1 — chính sách và quyết định sửa ràng buộc
+
+Mỗi quy tắc có `review_policy.protected` và `change_cost` dương từ 1–1000, mặc định false/1 để giữ hành vi input cũ. Các quy tắc vẫn là hard constraints trong mô hình đang phân tích. Chi phí sửa chỉ dùng xếp hạng thay đổi được đề nghị, tách riêng với năm trục chi phí kiến trúc.
+
+`minimal_repairs` loại các tập vi phạm chứa quy tắc bảo vệ, giữ các tập sửa tối thiểu theo bao hàm rồi sắp theo tổng `change_cost`, số quy tắc và ID quy tắc. Với chi phí dương, tập thay đổi có chi phí thấp nhất luôn có thể chọn trong các tập tối thiểu. Studio tiếp tục liệt kê chính xác trong giới hạn tám component. Khi mọi cách gỡ đều đụng quy tắc bảo vệ, hệ thống giữ `INFEASIBLE` và hiện không có cách sửa được phép.
+
+`Review chính sách ràng buộc` ghi actor/rationale và checkpoint riêng cho việc bảo vệ, bỏ bảo vệ hoặc đổi chi phí. `Áp dụng cách sửa đã review` kiểm lại tập sửa còn hiện hành, giữ các quy tắc bảo vệ, ghi danh sách quy tắc thay đổi, chi phí sửa, input trước–sau và số nghiệm sau thay đổi. Bản mô phỏng vẫn giữ riêng cho đến khi bấm áp dụng. Mô phỏng oracle không ghi quyết định vào phiên người dùng.
+
+Canvas, quyết định model và việc tải lại checkpoint đều kiểm quy tắc bảo vệ của mô hình hiện hành. Nếu sửa sơ đồ bị chặn, người dùng có thể tải input nháp, hoặc lưu input bị chặn trong checkpoint `PROTECTED_EDIT_RETAINED` rồi quay lại review policy. Dữ liệu nháp này chưa được áp dụng vào bộ giải. Sửa policy là thao tác có người review và lý do, chưa có phân quyền hay xác thực reviewer bằng tài khoản.
+
+Các ca tổng hợp kiểm OC-10 khi bảo vệ cả hai quy tắc, chỉ bảo vệ một quy tắc, đổi chi phí và thay đổi thật sau review. Chi phí tách bằng 100 và chi phí đổi giao dịch bằng 2 đưa cách đổi giao dịch lên trước. Giữ giao dịch được bảo vệ chỉ cho phép sửa quy tắc tách, cho 10 nghiệm. Giữ quy tắc tách được bảo vệ chỉ cho phép sửa giao dịch, cho 27 nghiệm. Bảo vệ cả hai giữ 0 nghiệm và không có MCS được phép. Các con số thuộc ca oracle đã chuẩn bị, không phải nhãn hoặc chính sách do LLM tạo.
+
+Mốc D1 đạt **182 tests**, `compileall`, kiểm cú pháp JavaScript và staged diff. Bảy test mới gồm API và AppTest cho bảo vệ hai phía, chi phí ưu tiên, proposal không được sửa giao dịch bảo vệ, bản nháp bị chặn được giữ và thao tác áp dụng ghi diff. Phần UI được kiểm thêm trên cổng 8501.
+
+[Liffiton, Previti, Malik và Marques-Silva, *Fast, Flexible MUS Enumeration*, DOI 10.1007/s10601-015-9183-0](https://markliffiton.com/publications/constraints_liffiton_marco.pdf) cung cấp khái niệm MUS/MCS và thuật toán MARCO. [Ansótegui, Bonet và Levy, *A New Algorithm for Weighted Partial MaxSAT*, AAAI 2010](https://cdn.aaai.org/ojs/7545/7545-13-11075-1-2-20201228.pdf) phân biệt mệnh đề bắt buộc với mệnh đề có chi phí vi phạm. Studio dùng ý tưởng bảo vệ và chi phí sửa, triển khai bằng tập vi phạm của phân hoạch. Chưa triển khai MARCO hoặc solver WPM2 của hai bài, nên không nhận các kết quả benchmark của chúng làm kết quả Studio.
 
 ## Bằng chứng chạy ngày 26/11/2026 cho mốc A
 

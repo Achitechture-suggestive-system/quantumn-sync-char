@@ -7,7 +7,8 @@ import json
 import streamlit as st
 
 from . import ollama
-from .quantum_tradeoff import Architecture, Preferences, merge_quality_requirement
+from .quantum_tradeoff import Architecture, Preferences, hard_constraints, merge_quality_requirement
+from .studio_conflicts import enforce_protected_rules, review_rule_policy
 from .studio_extraction import decide_proposal, extract_proposals, proposal_is_current
 from .studio_quality import QualityCharacteristic
 from .studio_sessions import checkpoints, load_checkpoint, save_checkpoint
@@ -19,11 +20,13 @@ def commit_revision(architecture: Architecture, event: dict, *, proposals: list[
     session = st.session_state
     items = session.get("studio_live_proposals", []) if proposals is None else proposals
     try:
+        if event.get("action") != "HARD_RULE_POLICY_REVIEW":
+            enforce_protected_rules(session.architecture, architecture)
         view = {"preferences": session.studio_weights.model_dump(mode="json"), "ranking": session.studio_ranking,
                 "conservative": session.get("studio_conservative", False),
                 "layout": session.studio_layout if layout is None else layout}
         identifier = save_checkpoint(architecture, event=event, parent=session.get("studio_checkpoint"), proposals=items, view=view)
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         st.error(f"Chưa lưu được phiên. {exc}")
         return False
     session.studio_checkpoint = identifier
@@ -135,6 +138,7 @@ def show_live_review(architecture: Architecture) -> None:
 def restore_session() -> None:
     try:
         loaded = load_checkpoint(st.session_state.studio_restore_selector)
+        enforce_protected_rules(st.session_state.architecture, Architecture.model_validate(loaded["architecture"]))
         if not commit_revision(st.session_state.architecture, {"action": "BEFORE_RESTORE"}):
             return
         saved_view = loaded.get("view", {})
@@ -260,6 +264,49 @@ def show_interaction_review(architecture: Architecture) -> None:
                 if commit_revision(changed, event):
                     st.session_state.architecture = changed
                     st.session_state.studio_analyzed = True
+                    st.session_state.editor_version += 1
+                    st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                    st.rerun()
+            except ValueError as exc:
+                st.error(str(exc))
+
+
+def show_rule_policy_review(architecture: Architecture) -> None:
+    rules = hard_constraints(architecture)
+    if not rules:
+        return
+    with st.expander("Review chính sách ràng buộc"):
+        if st.session_state.studio_pending:
+            st.caption("Lưu sơ đồ trước khi review chính sách. Chỉnh sửa làm mất quy tắc được bảo vệ sẽ bị chặn.")
+            if blocked := st.session_state.get("studio_blocked_edit"):
+                st.download_button("Tải chỉnh sửa đang bị chặn", json.dumps(blocked, ensure_ascii=False, indent=2),
+                                   file_name="studio-blocked-edit.json", mime="application/json")
+                if st.button("Lưu bản nháp bị chặn và quay lại review chính sách"):
+                    if commit_revision(architecture, {"action": "PROTECTED_EDIT_RETAINED", "actor": "LOCAL_INPUT",
+                                                       "attempted_input": blocked}):
+                        st.session_state.studio_pending = False
+                        st.session_state.studio_canvas_error = ""
+                        st.session_state.pop("studio_blocked_edit", None)
+                        st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+                        st.rerun()
+            return
+        index = st.selectbox("Quy tắc cần review", range(len(rules)),
+                             format_func=lambda value: f"{rules[value].kind} · {' / '.join(rules[value].components)}")
+        rule = rules[index]
+        st.write(rule.basis)
+        st.caption("Quy tắc được bảo vệ không xuất hiện trong tập sửa được phép. Chi phí sửa là mức ưu tiên "
+                   "do reviewer đặt, tách riêng với điểm chi phí kiến trúc.")
+        prefix = f"policy_{index}_{st.session_state.editor_version}"
+        protected = st.checkbox("Bảo vệ quy tắc này", value=rule.protected, key=f"{prefix}_protected")
+        cost = st.number_input("Chi phí sửa quy tắc", min_value=1, max_value=1000, value=rule.change_cost, key=f"{prefix}_cost")
+        actor = st.text_input("Người review chính sách", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+        rationale = st.text_area("Căn cứ bảo vệ hoặc cho phép sửa", max_chars=1000)
+        if st.button("Lưu chính sách ràng buộc", disabled=(protected, cost) == (rule.protected, rule.change_cost)):
+            try:
+                changed, event = review_rule_policy(architecture, rule, protected=protected, change_cost=cost,
+                                                     actor=actor, rationale=rationale)
+                if commit_revision(changed, event):
+                    st.session_state.architecture = changed
                     st.session_state.editor_version += 1
                     st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
                     st.rerun()

@@ -59,6 +59,8 @@ Chế độ **Đầu ra Ollama đã lưu** của OC-10 cho 10 nghiệm vì phả
 
 ### Cơ sở nghiên cứu
 
+Trong **Review chính sách ràng buộc**, reviewer có thể bảo vệ từng quy tắc và đặt chi phí sửa. Bộ chẩn đoán chỉ đề nghị tập sửa không đụng quy tắc bảo vệ, xếp theo tổng chi phí sửa. Sau khi xem trước, dùng **Áp dụng cách sửa đã review** và ghi rationale để tạo revision mới. Nếu mọi cách sửa đều bị bảo vệ, trạng thái `INFEASIBLE` được giữ. Muốn bỏ bảo vệ cần quyết định policy riêng. [Chi tiết thuật toán và giới hạn](docs/research/STUDIO_COMPLETION_STATUS.md#mốc-d1--chính-sách-và-quyết-định-sửa-ràng-buộc).
+
 | Nguồn | Cách liên hệ với triển khai |
 |---|---|
 | [Wagstaff và Cardie (2000), *Clustering with Instance-level Constraints*](https://www.cs.cornell.edu/home/cardie/papers/icml-2000.pdf) | Cơ sở biểu diễn quan hệ `must-link` và `cannot-link`. Studio dùng đồ thị để lấy đường dẫn bằng chứng và dùng bộ giải phân hoạch hiện có. |

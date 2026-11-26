@@ -85,6 +85,11 @@ class InteractionCase(InputModel):
     source_quote: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
 
 
+class ConstraintReviewPolicy(InputModel):
+    protected: bool = False
+    change_cost: int = Field(default=1, ge=1, le=1000)
+
+
 class Interaction(InputModel):
     source: Key
     target: Key
@@ -93,6 +98,7 @@ class Interaction(InputModel):
     local_transaction: bool = False
     basis: str = Field(default="", max_length=240)
     cases: list[InteractionCase] = Field(default_factory=list, max_length=4)
+    review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
 
     @model_validator(mode="after")
     def check_coupling(self):
@@ -114,6 +120,7 @@ class DataStore(InputModel):
     policy: Literal["KEEP_SHARED", "SPLITTABLE"]
     weight: Cost = 1
     basis: str = Field(default="", max_length=240)
+    review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
 
     @model_validator(mode="after")
     def check_policy(self):
@@ -128,6 +135,7 @@ class SeparatePair(InputModel):
     left: Key
     right: Key
     basis: Label
+    review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
 
 
 class Architecture(InputModel):
@@ -257,6 +265,8 @@ class HardConstraint:
     index: int
     components: tuple[str, ...]
     basis: str
+    protected: bool = False
+    change_cost: int = 1
 
     def violated_by(self, assignment: dict[str, int]) -> bool:
         together = len({assignment[item] for item in self.components}) == 1
@@ -265,11 +275,11 @@ class HardConstraint:
 
 def hard_constraints(architecture: Architecture) -> tuple[HardConstraint, ...]:
     return (
-        *(HardConstraint("KEEP_APART", index, (rule.left, rule.right), rule.basis)
+        *(HardConstraint("KEEP_APART", index, (rule.left, rule.right), rule.basis, rule.review_policy.protected, rule.review_policy.change_cost)
           for index, rule in enumerate(architecture.keep_apart)),
-        *(HardConstraint("LOCAL_TRANSACTION", index, (edge.source, edge.target), edge.basis)
+        *(HardConstraint("LOCAL_TRANSACTION", index, (edge.source, edge.target), edge.basis, edge.review_policy.protected, edge.review_policy.change_cost)
           for index, edge in enumerate(architecture.interactions) if edge.local_transaction),
-        *(HardConstraint("KEEP_SHARED", index, tuple(store.members), store.basis)
+        *(HardConstraint("KEEP_SHARED", index, tuple(store.members), store.basis, store.review_policy.protected, store.review_policy.change_cost)
           for index, store in enumerate(architecture.stores) if store.policy == "KEEP_SHARED" and len(store.members) > 1),
     )
 

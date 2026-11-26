@@ -201,6 +201,9 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
             else:
                 rule["basis"] = payload["quote"]
     after = Architecture.model_validate(data)
+    from .studio_conflicts import enforce_protected_rules
+
+    enforce_protected_rules(architecture, after)
     decision = {"action": action, "actor": actor.strip(), "rationale": rationale.strip(),
                 "proposal_id": proposal["id"], "source_id": proposal["source_id"],
                 "source_digest": proposal["source_digest"], "run_id": proposal["run_id"],

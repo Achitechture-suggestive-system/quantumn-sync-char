@@ -2,6 +2,8 @@
 
 Mục tiêu đang thực hiện là hoàn thiện dự án theo mười gap trong [báo cáo ngày 26/11/2026](STUDIO_GAP_ANALYSIS_2026-11-26.md), với trích dẫn gắn đúng phạm vi phương pháp. Các mốc triển khai dưới đây phục vụ cùng một mục tiêu.
 
+[Bảng nguồn nghiên cứu](STUDIO_SOURCE_LEDGER.md) đối chiếu metadata và tách đóng góp của bài báo khỏi thiết kế, test và giới hạn của Studio. Citation Curto theo năm tập báo 2027, với ngày xuất bản online 03/11/2026.
+
 | Gap | Tiến độ triển khai | Điều kiện còn cần kiểm chứng |
 |---|---|---|
 | G1 · Ollama theo input hiện tại | Adapter gọi thật cho ISO/component, tương tác và bắt buộc tách. Có request, raw response, metadata và proposal chờ review. UI đã chạy requirement mới, sửa đề xuất và tái tính kết quả. | Còn mở rộng kiểm thử lỗi provider và phạm vi semantics ở G2. |

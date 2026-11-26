@@ -1,5 +1,11 @@
 # Changelog
 
+## Policy bảo vệ và áp dụng cách sửa — 2026-11-26
+
+- Commit `e2fe2b2bf1ad5e1911511db4e8ca374bd9ece485` thêm bảo vệ từng hard rule, chi phí sửa, xếp MCS theo policy và quyết định áp dụng có revision. Chặn sửa quy tắc bảo vệ từ input, review model và restore; giữ bản nháp bị chặn.
+- 182 tests và các kiểm tra cục bộ qua. CI đạt; browser 8501 hiển thị form policy không có exception.
+- Bổ sung bảng 12 nguồn nghiên cứu, phạm vi áp dụng và giới hạn. Chỉnh citation Curto thành tập báo 2027, xuất bản online tháng 11/2026.
+
 ## Khoảng chi phí và tương tác theo điều kiện — 2026-11-26
 
 - Thêm biên dưới/trên theo giả thuyết mode, review điều kiện có quote/hash/checkpoint và tùy chọn tối thiểu hóa biên trên trên mọi nghiệm thỏa hard constraints.

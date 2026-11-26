@@ -2,6 +2,8 @@
 
 Ngày rà soát 26/11/2026. Mã được kiểm tra tại `ce7be443e5d6211016cc2e939e775b939774a278`, nhánh `feat/quantum-tradeoff-workbench`. Phạm vi chính là entrypoint `app.py` và các module `studio_*`, `quantum_tradeoff.py`. Các chức năng của `research_app.py` được đối chiếu để xác định phần có thể tái sử dụng. Số liệu bên dưới là kiểm tra trên dữ liệu tổng hợp của repo.
 
+Đây là snapshot trước các mốc sửa. Xem [tiến độ hiện hành](STUDIO_COMPLETION_STATUS.md) và [bảng nguồn đã đối chiếu](STUDIO_SOURCE_LEDGER.md) để phân biệt gap đã xử lý, phần còn thiếu và citation đầy đủ.
+
 Studio đã có phân hoạch chính xác trong giới hạn tám component, truy vết đặc tính theo từng phương án, Human Review chọn phương án, chẩn đoán xung đột và mô phỏng tập sửa tối thiểu. Khoảng trống lớn nhất nằm ở việc tạo đầu vào có căn cứ từ yêu cầu mới, quản lý quyết định ánh xạ, xử lý thông tin chưa rõ và liên hệ điểm thiết kế với mục tiêu chất lượng.
 
 ## 1. Luồng nhân quả đang chạy
@@ -126,7 +128,7 @@ MCS/MUS và Weighted Partial MaxSAT cung cấp cơ sở cho tìm và xếp hạn
 
 Khung kiểm oracle và các quan hệ bất biến giữa hai đầu vào giúp kiểm bộ giải khi chưa có nhãn ngữ nghĩa. Các phép thử như thêm paraphrase, đổi thứ tự ID và nạp proposal chưa duyệt cần được định nghĩa theo hành vi kỳ vọng trước khi chạy. Tổng quan của Barr và cộng sự trình bày nhiều nguồn oracle, gồm specification và metamorphic testing. [Barr và cộng sự, *The Oracle Problem in Software Testing: A Survey*, IEEE TSE, 2015](https://discovery.ucl.ac.uk/id/eprint/1471263/)
 
-TraceLLM công bố cách chia dữ liệu và replication package. Curto, Semini và Marques-Neto lưu ý tác động của cấu hình nhiều LLM còn cần ablation và đánh giá thêm từ con người. Vì vậy, đổi prompt hoặc schema trên ca lỗi đã biết là bước phát triển cần thiết, sau đó cần ca mới để kiểm độ khái quát. [TraceLLM, Requirements Engineering, 2026](https://doi.org/10.1007/s00766-026-00460-1) · [Curto và cộng sự, Empirical Software Engineering, 2026](https://doi.org/10.1007/s10664-026-10981-6)
+TraceLLM công bố cách chia dữ liệu và replication package. Curto, Semini và Marques-Neto lưu ý tác động của cấu hình nhiều LLM còn cần ablation và đánh giá thêm từ con người. Vì vậy, đổi prompt hoặc schema trên ca lỗi đã biết là bước phát triển cần thiết, sau đó cần ca mới để kiểm độ khái quát. [TraceLLM, Requirements Engineering, 2026](https://doi.org/10.1007/s00766-026-00460-1) · [Curto và cộng sự, Empirical Software Engineering 32, 63 (2027), online 03/11/2026](https://doi.org/10.1007/s10664-026-10981-6)
 
 ## 4. Trình tự hoàn thiện đề xuất
 
@@ -149,6 +151,6 @@ TraceLLM công bố cách chia dữ liệu và replication package. Curto, Semin
 | 3 | Cortellessa, Di Pompeo, Stoico, Tucci. *Many-Objective Optimization of Non-Functional Attributes based on Refactoring of Software Models*, IST 157, 2023. Tối ưu nhiều mục tiêu có mô hình đánh giá chất lượng và chi phí thay đổi. | G5/G9, định nghĩa objectives và baselines trước khi chọn thuật toán tìm kiếm lớn. |
 | 4 | Bertsimas, Sim. *The Price of Robustness*, Operations Research 52(1), 2004. Điều chỉnh mức bảo thủ dưới bất định dữ liệu tối ưu. | G4, thử các kịch bản nhỏ đã được review và đo độ ổn định phương án. |
 | 5 | Liffiton và cộng sự. *Fast, Flexible MUS Enumeration*. Phân tích các tập xung đột và tập sửa. | G7, phân biệt tập sửa tối thiểu theo bao hàm với phương án sửa có chi phí nhỏ nhất. |
-| 6 | Curto, Semini, Marques-Neto. *Evaluating multi-LLM pipelines for early-stage software requirements elicitation*, EMSE, 2026. Thực nghiệm có đánh giá từ con người và giới hạn về khả năng quy nguyên nhân. | G10, thêm ablation theo từng thay đổi và giữ cấu hình chấm cố định. |
+| 6 | Curto, Semini, Marques-Neto. *Evaluating multi-LLM pipelines for early-stage software requirements elicitation*, EMSE 32, 63 (2027), online 03/11/2026. Thực nghiệm có đánh giá từ con người và giới hạn về khả năng quy nguyên nhân. | G10, thêm ablation theo từng thay đổi và giữ cấu hình chấm cố định. |
 
 Các nguồn bổ sung theo mục tiêu gồm [ADD 3.0 của Cervantes và Kazman](https://www.sei.cmu.edu/library/add-30-rethinking-drivers-and-decisions-in-the-design-process/) cho driver và quyết định thiết kế, cùng [Bailis và cộng sự, *Coordination Avoidance in Database Systems*](https://www.vldb.org/pvldb/vol8/p185-bailis.pdf) cho việc phân tích bất biến khi muốn giảm điều phối qua boundary. Các bước triển khai trong báo cáo là suy luận thiết kế cho repo dựa trên các nguồn đã đọc.

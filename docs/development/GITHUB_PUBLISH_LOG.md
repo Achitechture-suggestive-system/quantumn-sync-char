@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Policy bảo vệ và áp dụng cách sửa — 2026-11-26
+
+- Commit `e2fe2b2bf1ad5e1911511db4e8ca374bd9ece485` đã đẩy lên `feat/quantum-tradeoff-workbench`. Remote feature khớp SHA; `main` và tag P0 giữ nguyên.
+- 182 tests, compileall, kiểm cú pháp JavaScript, staged diff và secret scan qua. Browser 8501 hiện đủ các trường của form chính sách, không có exception. Tests mới lưu artifact vào thư mục tạm.
+- [GitHub Actions 45839790491](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/45839790491) hoàn tất thành công trên cùng SHA.
+
 ## Khôi phục ưu tiên sau phiên oracle — 2026-11-26
 
 - Commit `0aea6c991e58665ad0aeddfbf78b1441bf3b2656` đã đẩy lên `feat/quantum-tradeoff-workbench`. 175 tests và compileall qua; browser tải lại mẫu Ticket Support không có exception.

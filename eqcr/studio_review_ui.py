@@ -10,10 +10,12 @@ from . import ollama
 from .quantum_tradeoff import Architecture, Preferences, hard_constraints, merge_quality_requirement
 from .studio_conflicts import enforce_protected_rules, review_rule_policy
 from .studio_evidence import binding_issues, bound_items, rebind_evidence
-from .studio_extraction import decide_proposal, extract_proposals, proposal_is_current
+from .studio_extraction import author_clause, decide_proposal, extract_proposals, proposal_is_current
 from .studio_quality import QualityCharacteristic
 from .studio_sessions import checkpoints, load_checkpoint, save_checkpoint
 from .studio_uncertainty import review_interaction_cases
+from .studio_semantic_ui import edit_frame, show_frame, show_source_coverage
+from .studio_semantics import SCHEMA
 
 
 def commit_revision(architecture: Architecture, event: dict, *, proposals: list[dict] | None = None,
@@ -44,7 +46,7 @@ def show_live_review(architecture: Architecture) -> None:
         task = st.radio("Nội dung cần phân tích", ["QUALITY", "INTERACTION", "SEPARATION"], horizontal=True,
                         format_func=lambda item: {"QUALITY": "ISO và component", "INTERACTION": "Tương tác SYNC/ASYNC",
                                                    "SEPARATION": "Quy tắc bắt buộc tách"}[item])
-        available = [item.id for item in architecture.requirements if task == "INTERACTION" or item.kind == "NFR"]
+        available = [item.id for item in architecture.requirements if task != "QUALITY" or item.kind == "NFR"]
         selected = st.multiselect("Nguồn gửi Ollama", available, default=available[:4], max_selections=8)
         model = st.text_input("Model Ollama", value="qwen3:4b", max_chars=100)
         if st.button("Phân tích bằng Ollama", disabled=not selected or not model.strip()):
@@ -64,23 +66,36 @@ def show_live_review(architecture: Architecture) -> None:
             st.caption(f"{run['model']} · {run['ollama_version']} · {len(run['proposals'])} đề xuất · "
                        f"{run['tokens']} token · {run['recorded_at']}")
         items = st.session_state.get("studio_live_proposals", [])
+        with st.expander("Bổ sung mệnh đề reviewer thấy model bỏ sót"):
+            st.caption("Mệnh đề bổ sung ghi HUMAN_DECISION, không được tính là model đã trích xuất. Bản nháp giữ nguyên optimizer.")
+            if available:
+                source_id = st.selectbox("Nguồn bổ sung mệnh đề", available)
+                if st.button("Tạo mệnh đề bổ sung để review"):
+                    draft = author_clause(architecture, source_id, task)
+                    if commit_revision(architecture, {"action": "REVIEWER_CLAUSE_DRAFTED", "actor": "LOCAL_INTERACTIVE_REVIEWER",
+                                                       "source_id": source_id, "provenance": "HUMAN_DECISION", "proposal_id": draft["id"]},
+                                       proposals=[*items, draft]):
+                        st.rerun()
         st.caption("Đề xuất chờ review giữ nguyên đầu vào bộ giải. Đoạn trích khớp cần được kiểm tra cả ý nghĩa và phạm vi.")
+        show_source_coverage(architecture, run, items)
         for item in items:
             current = proposal_is_current(architecture, item)
             state = item["status"] if current else "STALE"
             applied = item.get("applied") or item["payload"]
-            label = applied.get("characteristic") or applied.get("mode") or "Quy tắc tách"
+            label = applied.get("characteristic") or applied.get("mode") or applied.get("disposition") or "Quy tắc tách"
             with st.expander(f"{item['source_id']} · {label} · {state}"):
+                names = {component.id: component.name for component in architecture.components}
                 source = next((r for r in architecture.requirements if r.id == item["source_id"]), None)
                 if source:
                     st.write(source.text)
-                st.write("Đề xuất gốc từ model")
+                st.write("Đề xuất gốc từ model" if item.get("provenance", "LLM_PROPOSAL") == "LLM_PROPOSAL" else "Mệnh đề do reviewer bổ sung")
                 st.write(item["payload"].get("quote", ""))
                 if item.get("issues"):
                     st.warning(" ".join(item["issues"]))
                 if item.get("applied"):
                     st.write("Căn cứ đã áp dụng sau review")
                     st.write(item["applied"].get("quote", ""))
+                show_frame(applied, names)
                 if not current:
                     st.warning("Nguồn hoặc danh mục đã đổi. Phân tích lại để có đề xuất theo phiên bản hiện tại.")
                     continue
@@ -90,27 +105,35 @@ def show_live_review(architecture: Architecture) -> None:
                     payload = dict(item["payload"])
                     names = {component.id: component.name for component in architecture.components}
                     if payload["kind"] == "QUALITY":
-                        labels = list(QualityCharacteristic)
+                        labels = [None, *list(QualityCharacteristic)]
                         default = next((n for n, label in enumerate(labels) if label == payload.get("characteristic")), 0)
                         payload["characteristic"] = st.selectbox("Characteristic", labels, index=default)
                         payload["component_ids"] = st.multiselect("Component chịu trách nhiệm", list(names),
                                                                   default=[c for c in payload.get("component_ids", []) if c in names],
                                                                   format_func=names.__getitem__)
                     elif payload["kind"] == "INTERACTION":
-                        keys = list(names)
+                        keys = [None, *names]
                         for field, name in [("source", "Component gọi"), ("target", "Component nhận")]:
                             payload[field] = st.selectbox(name, keys, index=keys.index(payload[field]) if payload.get(field) in keys else 0,
-                                                          format_func=names.__getitem__)
+                                                          format_func=lambda value: names.get(value, "Chưa xác định"))
                         modes = ["SYNC", "ASYNC", "UNKNOWN"]
                         payload["mode"] = st.selectbox("Mode sau review", modes,
                                                      index=modes.index(payload.get("mode")) if payload.get("mode") in modes else 2)
                         payload["local_transaction"] = st.checkbox("Cùng giao dịch cục bộ", value=bool(payload.get("local_transaction")))
                     else:
-                        keys = list(names)
+                        keys = [None, *names]
                         for field, name in [("left", "Component thứ nhất"), ("right", "Component cần tách")]:
                             payload[field] = st.selectbox(name, keys, index=keys.index(payload[field]) if payload.get(field) in keys else 0,
-                                                          format_func=names.__getitem__)
+                                                          format_func=lambda value: names.get(value, "Chưa xác định"))
                     payload["quote"] = st.text_area("Đoạn căn cứ nguyên văn", value=payload.get("quote", ""), max_chars=600)
+                    structured = item.get("semantic_schema") == SCHEMA or "frame" in payload
+                    if structured:
+                        edit_frame(payload, names)
+                        st.caption("Ngoài phạm vi/cần làm rõ phải để nhãn, scope và endpoints rỗng, effect NONE. "
+                                   "Các mệnh đề cùng ISO trong một NFR hợp nhất scope; mục tiêu độc lập cần tách NFR hoặc scenario riêng.")
+                    semantic_confirmed = st.checkbox("Tôi đã review chủ thể, điều kiện, phủ định và tác động của mệnh đề" if structured else
+                                                       "Tôi đã review thủ công đề xuất cũ chưa có cấu trúc mệnh đề")
+                    provenance = st.selectbox("Nguồn quyết định đề xuất", ["HUMAN_DECISION", "PREPARED_FIXTURE"])
                     actor = st.text_input("Người review", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
                     rationale = st.text_area("Lý do quyết định", max_chars=1000)
                     action = st.selectbox("Quyết định", ["APPROVE", "CORRECT", "REJECT", "DEFER"],
@@ -121,8 +144,11 @@ def show_live_review(architecture: Architecture) -> None:
                     try:
                         if action == "APPROVE" and payload != item["payload"]:
                             raise ValueError("Bạn đã chỉnh đề xuất. Chọn Áp dụng phần đã sửa để lưu các giá trị đang chọn.")
+                        if action in {"APPROVE", "CORRECT"} and not semantic_confirmed:
+                            raise ValueError("Xác nhận review nghĩa và phạm vi trước khi áp dụng đề xuất.")
                         changed, decision = decide_proposal(architecture, item, action=action, actor=actor,
-                                                            rationale=rationale, corrected=payload)
+                                                            rationale=rationale, corrected=payload, semantic_confirmed=semantic_confirmed,
+                                                            provenance=provenance)
                         updated = [{**row, "status": {"APPROVE": "APPROVED", "CORRECT": "CORRECTED", "REJECT": "REJECTED",
                                                        "DEFER": "DEFERRED"}[action], "applied": decision["applied"]}
                                    if row["id"] == item["id"] else row for row in items]

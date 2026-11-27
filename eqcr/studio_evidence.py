@@ -45,11 +45,22 @@ def binding_issues(architecture: Architecture, evidence: EvidenceBinding, *, col
         issues.append("Danh mục component đã đổi sau review.")
     if claim_digest(collection, item) != evidence.claim_digest:
         issues.append("Mode, giao dịch hoặc hai đầu quan hệ đã đổi sau review.")
+    if evidence.semantic_review:
+        from .studio_semantics import claim_fields, review_issues
+
+        record = evidence.semantic_review
+        issues.extend(review_issues(architecture, record))
+        raw = item.model_dump(mode="json")
+        raw["kind"] = "INTERACTION" if collection == "interactions" else "SEPARATION"
+        if (claim_fields(raw) != record.claim or record.source_ref.source_id != evidence.source_id
+                or record.source_ref.quote != evidence.source_quote or record.proposal_id != evidence.proposal_id):
+            issues.append("Quan hệ hoặc căn cứ không khớp quyết định mệnh đề đã lưu.")
     return issues
 
 
 def evidence_blockers(architecture: Architecture) -> list[dict]:
     from .studio_boundaries import contract_issues
+    from .studio_semantics import quality_review_blockers
 
     blockers = [{"collection": collection, "index": index, "source_id": item.evidence.source_id, "issues": issues}
             for collection, index, item in bound_items(architecture)
@@ -58,7 +69,7 @@ def evidence_blockers(architecture: Architecture) -> list[dict]:
         if review.contract.selected_mode != "UNDECIDED" and (issues := contract_issues(architecture, review)):
             blockers.append({"collection": "interaction_contracts", "index": index,
                              "source_id": review.contract.contract_id, "issues": issues})
-    return blockers
+    return [*blockers, *quality_review_blockers(architecture)]
 
 
 def ensure_current_evidence(architecture: Architecture) -> None:
@@ -80,6 +91,8 @@ def rebind_evidence(architecture: Architecture, collection: str, index: int, *, 
     item = getattr(architecture, collection)[index]
     if item.evidence is None:
         raise ValueError("Quan hệ chưa có liên kết review để cập nhật.")
+    if item.evidence.semantic_review:
+        raise ValueError("Quan hệ có review mệnh đề đầy đủ. Chạy phân tích và review proposal mới để cập nhật chủ thể, điều kiện và phủ định; xác nhận một quote không thay thế bước đó.")
     data = architecture.model_dump(mode="json")
     data[collection][index]["evidence"].update(source_id=source_id, source_digest=source.input_digest(),
                                              catalog_digest=catalog_digest(architecture), source_quote=quote,

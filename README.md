@@ -105,6 +105,8 @@ Mốc triển khai tiếp theo đã nối Ollama vào các requirement đang nh�
 
 **Hợp đồng tương tác và quyền ghi dữ liệu** bổ sung review ACK, retry, timeout, idempotency, writer và invariant cho boundary. Hợp đồng được duyệt cập nhật mode rồi phân nhóm lại; nháp giữ nguyên optimizer. Từng nguồn, claim và kho liên quan đều gắn revision. Trong **Boundary: hợp đồng, ownership và chạy thử**, có thể chạy giao thức mẫu bằng hai tiến trình HTTP/SQLite riêng và đọc kết quả mất ACK, timeout, restart, gửi trùng. Mã và dữ liệu giao thức này là `PREPARED_FIXTURE`; observation được thu từ tiến trình thực tế, chưa phải kiểm chứng nghiệp vụ Ticket/Tutor hay deployability. [Cách bấm, tái lập, nguồn bài báo và giới hạn](docs/research/STUDIO_BOUNDARY_EVIDENCE.md)
 
+**Review mệnh đề** tách chủ thể, hành vi, điều kiện, điều cấm và điều không bắt buộc. Đề xuất ngoài phạm vi nhưng còn mapping, sai role, quote hoặc effect bị giữ để sửa. Reviewer có thể bổ sung mệnh đề model bỏ sót với provenance riêng; proof sau áp dụng đi cùng allocation/binding và bị kiểm lại khi nguồn/catalog đổi. Lượt qwen3:4b thật vẫn còn lỗi trên bốn ca phát triển, đã được giữ lại cùng đường sửa trên UI; chưa có independent labels hay semantic accuracy. [Hướng dẫn, lỗi quan sát, before/after và phạm vi áp dụng bài báo](docs/research/STUDIO_CLAUSE_REVIEW.md)
+
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m compileall -q app.py research_app.py eqcr tests

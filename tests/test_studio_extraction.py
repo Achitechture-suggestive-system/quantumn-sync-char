@@ -19,8 +19,13 @@ def fake_inference(monkeypatch):
     def request(path, *, payload, timeout):
         assert path == "/api/chat"
         assert "NFR-03" in payload["messages"][1]["content"]
+        text = next(item["text"] for item in json.loads(payload["messages"][1]["content"]) if item["id"] == "NFR-03")
+        # Prepared response tests the new schema; no local inference is performed here.
         return {"model": "qwen3:4b", "done_reason": "stop", "eval_count": 10, "message": {"content": json.dumps({"proposals": [
-            {"source_id": "NFR-03", "characteristic": "Security", "component_ids": ["PROFILE"], "quote": "mã hóa"},
+            {"source_id": "NFR-03", "characteristic": "Security", "component_ids": ["PROFILE"], "quote": text,
+             "disposition": "PROPOSED", "frame": {"subject": "Dữ liệu hồ sơ cá nhân", "action": "mã hóa", "object": None,
+                "condition": "khi gửi và nhận qua mạng", "modality": "phải", "subject_ids": ["PROFILE"], "object_ids": [], "context_ids": [],
+                "statement_kind": "OBLIGATION", "effect": "QUALITY_OBLIGATION"}},
             {"source_id": "NFR-03", "characteristic": "Security", "component_ids": ["UNKNOWN_ID"], "quote": "unsupported"},
         ]})}}
 
@@ -41,7 +46,7 @@ def test_proposals_are_inert_and_review_is_revision_bound_with_restorable_decisi
         assert unchanged == original and event["applied"] is None
     with pytest.raises(ValueError):
         decide_proposal(original, invalid, action="APPROVE", actor="TEST_REVIEWER", rationale="Test only")
-    changed, event = decide_proposal(original, valid, action="APPROVE", actor="TEST_REVIEWER", rationale="Exact clause reviewed")
+    changed, event = decide_proposal(original, valid, action="APPROVE", actor="TEST_REVIEWER", rationale="Exact clause reviewed", semantic_confirmed=True, provenance="PREPARED_FIXTURE")
     assert event["before"] != event["after"]
     assert event["source_digest"] == original.requirements[-1].input_digest()
     assert analyze(changed, Preferences()) != baseline
@@ -75,6 +80,8 @@ def test_live_ui_review_then_restore_reproduces_diagram_inputs(tmp_path, monkeyp
     assert not Architecture.model_validate(captures[-1]["model"]).requirements[-1].quality_allocations
     original_checkpoint = view.session_state.studio_checkpoint
     widget(view, "text_area", "Lý do quyết định").set_value("TEST ONLY: source clause checked")
+    widget(view, "checkbox", "Tôi đã review chủ thể, điều kiện, phủ định và tác động của mệnh đề").check()
+    widget(view, "selectbox", "Nguồn quyết định đề xuất").select("PREPARED_FIXTURE")
     widget(view, "button", "Lưu quyết định và tính lại").click().run()
     assert not view.exception
     assert view.session_state.studio_checkpoint != original_checkpoint

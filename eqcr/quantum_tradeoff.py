@@ -15,6 +15,7 @@ from .pipeline import _partitions
 from .studio_quality import QualityCharacteristic
 from .studio_scenarios import ReviewedScenario
 from .studio_boundaries import OwnershipDecision, ReviewedContract
+from .studio_semantics import ClauseReview
 
 
 Key = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")]
@@ -38,6 +39,7 @@ class QualityAllocation(InputModel):
     characteristic: QualityCharacteristic
     component_ids: list[Key] = Field(min_length=1, max_length=8)
     source_quote: str = Field(default="", max_length=600)
+    semantic_reviews: list[ClauseReview] = Field(default_factory=list, max_length=20)
 
 
 class RequirementGeneration(InputModel):
@@ -104,6 +106,7 @@ class EvidenceBinding(InputModel):
     review_provenance: Literal["HUMAN_DECISION", "PREPARED_FIXTURE"] = "HUMAN_DECISION"
     review_actor: Label
     review_rationale: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+    semantic_review: ClauseReview | None = None
 
 
 class Interaction(InputModel):
@@ -112,7 +115,7 @@ class Interaction(InputModel):
     mode: Literal["SYNC", "ASYNC", "UNKNOWN"]
     weight: Cost = 1
     local_transaction: bool = False
-    basis: str = Field(default="", max_length=240)
+    basis: str = Field(default="", max_length=600)
     cases: list[InteractionCase] = Field(default_factory=list, max_length=4)
     review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
     evidence: EvidenceBinding | None = None
@@ -151,7 +154,7 @@ class DataStore(InputModel):
 class SeparatePair(InputModel):
     left: Key
     right: Key
-    basis: Label
+    basis: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
     review_policy: ConstraintReviewPolicy = Field(default_factory=ConstraintReviewPolicy)
     evidence: EvidenceBinding | None = None
 

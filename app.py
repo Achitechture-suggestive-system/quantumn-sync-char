@@ -28,6 +28,8 @@ from eqcr.studio_scenario_ui import show_prediction_comparison, show_scenario_re
 from eqcr.studio_scenarios import predict_scenario
 from eqcr.studio_boundaries import boundary_profiles
 from eqcr.studio_boundary_ui import show_boundary_outputs, show_boundary_review
+from eqcr.studio_semantic_ui import show_confirmed_clauses
+from eqcr.studio_semantics import clause_reviews
 from eqcr.studio_uncertainty import cases_are_current, conservative_order, score_bounds
 from eqcr.studio_views import (
     candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
@@ -348,6 +350,8 @@ def show_nfr_review(architecture: Architecture, plans: list[dict], replay: tuple
             st.html(iso_route_preview(components, names, plans, origin=origin, applied=False))
             return
         saved = confirmed.get(label)
+        if saved:
+            show_confirmed_clauses(saved, names, plans)
         selected = st.multiselect("Component ứng viên", list(names),
                                   default=saved.component_ids if saved else components,
                                   format_func=names.__getitem__, key=f"quality_components_{requirement.id}_{labels.index(label)}_{generation}")
@@ -625,6 +629,8 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                              "MIXED_WITH_PREPARED_BOUNDARY_DATA" if any(item.provenance == "PREPARED_FIXTURE" or item.reference_protocol
                                                                        for item in architecture.interaction_contracts) or
                                                                        any(item.provenance == "PREPARED_FIXTURE" for item in architecture.ownership_decisions) else
+                             "MIXED_WITH_PREPARED_CLAUSE_REVIEW" if any(item.provenance == "PREPARED_FIXTURE" or item.claim_provenance == "PREPARED_FIXTURE"
+                                                                       for item in clause_reviews(architecture)) else
                              "MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
                              else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED"),
         "architecture": architecture.model_dump(mode="json"),

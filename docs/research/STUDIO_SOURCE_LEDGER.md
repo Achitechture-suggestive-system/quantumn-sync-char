@@ -30,12 +30,14 @@
 
 ## Nguồn đọc thêm cho G2 — 27/11/2026
 
-| ID | Metadata và bản đã đọc | Đóng góp của nguồn | Hướng áp dụng, chưa phải kết quả triển khai |
+| ID | Metadata và bản đã đọc | Đóng góp của nguồn | Phạm vi áp dụng trong Studio |
 |---|---|---|---|
 | S17 | Alistair Mavin, Philip Wilkinson, Adrian Harwood, Mark Novak. **Easy Approach to Requirements Syntax (EARS)**. RE 2009, 317–322. DOI `10.1109/RE.2009.9`. [Bản accepted manuscript do tác giả cung cấp](https://www.researchgate.net/profile/Alistair-Mavin-2/publication/224079416_Easy_approach_to_requirements_syntax_EARS/links/568ce3bf08aeb488ea311990/Easy-approach-to-requirements-syntax-EARS.pdf) | Năm template tổ chức yêu cầu theo trigger/state/response; nghiên cứu trên quy định điều khiển động cơ. Bài nêu không xét xung đột và thiếu trace links trong case đó. | Tách actor/action/target, trigger, condition và polarity để reviewer kiểm từng mệnh đề. Studio chưa có parser EARS được đánh giá. Có template không chứng minh diễn giải/ISO/link đúng; chưa dùng kết quả case hàng không cho Studio. |
 | S18 | Jane Cleland-Huang, Raffaella Settimi, Xuchang Zou, Peter Solc. **Automated classification of non-functional requirements**. *Requirements Engineering* 12, 103–120, 2007. DOI `10.1007/s00766-007-0045-1`, online 23/03/2007. [PDF bài báo lưu tại University of Cincinnati](https://homepages.uc.edu/~niunn/courses/RE-refs/Huang-REJ07.pdf) | Học indicator terms để tìm/phân loại NFR; tách training/classification/application và đề cập retraining khi đổi domain/document. | Phân biệt phát hiện NFR, gán ISO và tìm component chịu trách nhiệm thành các quyết định khác nhau. Chưa triển khai classifier của bài; không fine-tune hoặc chuyển accuracy từ tập của bài sang nhiệm vụ Studio. |
 
 ## Công thức và thuật toán của dự án
+
+Mốc A3 đã thêm frame và review mệnh đề, tách role/modality/effect, giữ nhãn ngoài nguồn của reviewer và guard nguồn/catalog/claim. Đây là thiết kế của repo tham khảo S09/S17, chưa phải triển khai parser EARS hoặc classifier của S18. Các lượt thật còn lỗi và bộ ca OC đã được dùng trong phát triển; chưa có đánh giá ngữ nghĩa độc lập. [Policy, raw-run evidence và giới hạn](STUDIO_CLAUSE_REVIEW.md).
 
 - Điểm `3×SYNC + 6×data + 1×ASYNC + 2×spread + 2×mix` là lựa chọn mặc định của Studio. Các nguồn trên không xác nhận bộ hệ số này tối ưu cho nghiệp vụ.
 - Gộp hai NFR dưới `duplicate_of` là quyết định Human Review. Biến đổi scoring sau đó xác định và chỉ tính một mục tiêu. Tương đương ngữ nghĩa vẫn cần reviewer đánh giá.

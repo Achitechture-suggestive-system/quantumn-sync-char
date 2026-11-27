@@ -1,5 +1,11 @@
 # Changelog
 
+## Review mệnh đề, phủ định và vai trò — 2026-11-27
+
+- Commit `d3a1dc6d5fa608c87968716048248c8761c2edba` thêm frame clause, review role/modality/effect và provenance phần ngoài nguồn, source-bound proof trên allocation/quan hệ, guard trạng thái/điều kiện/duplicate và đường reviewer bổ sung mệnh đề model bỏ sót.
+- 241 tests, compileall, JavaScript syntax và CI qua. Hai lượt qwen3:4b thật trên ca phát triển vẫn có lỗi và được giữ ngoài optimizer. Browser sửa proposal thật DEV-OC-12 với review fixture, quan sát P011 6→8, source→COMPLETE→Q2, giữ hard rules; khổ 400 px không tràn ngang. Input mẫu được khôi phục, checkpoint/run giữ local.
+- [Cách bấm, các lượt lỗi, before/after và phạm vi nghiên cứu](../research/STUDIO_CLAUSE_REVIEW.md). Chưa có independent labels hoặc semantic accuracy.
+
 ## Hợp đồng boundary và probe lỗi cục bộ — 2026-11-27
 
 - Commit `60bac8559cec079da3ae490c208711633fe5340d` bổ sung review hợp đồng/ownership, binding mọi nguồn và kho, checkpoint, boundary profiles theo candidate và hai tiến trình HTTP/SQLite thực thi giao thức mẫu. Giữ hard rules, UNKNOWN, NOT_MEASURED và nguồn fixture.

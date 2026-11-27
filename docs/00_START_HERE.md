@@ -8,6 +8,8 @@ Rà soát hiện tại của Studio, các phép đối chứng và hướng nghi
 
 [Tiến độ từng gap](research/STUDIO_COMPLETION_STATUS.md), [bảng đối chiếu nguồn](research/STUDIO_SOURCE_LEDGER.md), [quality scenario có điều kiện](research/STUDIO_QUALITY_SCENARIOS.md) và [hợp đồng boundary/ownership cùng probe cục bộ](research/STUDIO_BOUNDARY_EVIDENCE.md) ghi các mốc triển khai tiếp theo và giới hạn đã kiểm tra.
 
+[Review mệnh đề, phủ định và vai trò component](research/STUDIO_CLAUSE_REVIEW.md) mô tả prompt @2, các guard, proposal do reviewer bổ sung và phản hồi Ollama còn lỗi đã quan sát; không coi structured output là semantic accuracy.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

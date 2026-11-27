@@ -8,6 +8,7 @@ def ticket_example() -> Architecture:
     ticket_consistency = "Nhất quán luồng ticket"
     reporting_isolation = "Cô lập tải báo cáo"
     return Architecture.model_validate({
+        "input_origin": "PREPARED_FIXTURE",
         "requirements": [
             {"id": "REQ-01", "kind": "FR", "component_ids": ["LOGIN", "PROFILE", "CREATE"],
              "text": "Khách hàng có thể đăng nhập, quản lý hồ sơ và gửi ticket trong luồng tự phục vụ."},

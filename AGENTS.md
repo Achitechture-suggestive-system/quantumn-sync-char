@@ -28,3 +28,5 @@ Không tuyên bố precision/recall khi thiếu labels độc lập, deployabili
 Ollama là tùy chọn; tests xác định không yêu cầu daemon hay credential. Chỉ ghi nhận inference chạy thật khi đã gọi model cục bộ thực tế.
 
 Optimizer dùng enumerator Python cổ điển/exhaustive đến tám responsibility IDs; pipeline tự dispatch CP-SAT cho 9–50 IDs. “Quantum” là tên đơn vị ứng viên, không phải quantum computing. P2 review protocol vẫn giới hạn tối đa tám responsibility IDs. Boundaries, interactions và quality profiles là ứng viên cần review, không phải sự thật production.
+
+Studio cũng dispatch riêng 9–50 component sang `studio_cpsat.py`, bảo toàn năm trục của Studio thay vì dùng objective pairwise của pipeline nghiên cứu. Số ứng viên và Pareto cỡ lớn chỉ thuộc tập đã tìm; không gọi số branches là số phân hoạch. `FEASIBLE`/`UNKNOWN` chưa chứng minh tối ưu, timeout không phải `INFEASIBLE`. Sửa xung đột >8 dùng bounded CP-SAT, không liệt kê Bell(n).

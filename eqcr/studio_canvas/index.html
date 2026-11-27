@@ -19,12 +19,15 @@
         <button id="connect" aria-pressed="false">Nối</button>
         <button id="separate" aria-pressed="false">Bắt buộc tách</button>
         <button id="reset">Nạp mẫu</button>
+        <button id="arrange">Sắp xếp vị trí</button>
         <button id="analyze" class="primary">Phân tích sơ đồ</button>
       </div>
       <p id="message" role="status"></p>
       <p id="hint" class="hint" aria-live="polite"></p>
+      <div class="diagram-scroll" tabindex="0" role="region" aria-label="Cuộn sơ đồ đầu vào lớn">
       <div id="input-graph" class="diagram input-graph" aria-label="Sơ đồ component có thể kéo thả">
         <canvas aria-hidden="true"></canvas><div id="input-nodes"></div><div id="input-edges"></div>
+      </div>
       </div>
       <div id="inspector" class="inspector" aria-label="Chỉnh phần tử được chọn"></div>
       <details id="requirements-editor" class="requirements-editor">
@@ -47,8 +50,10 @@
           <li id="unknown-legend" hidden><span class="wire wire-unknown"></span>Chưa rõ</li>
         </ul>
       </div>
+      <div class="diagram-scroll" tabindex="0" role="region" aria-label="Cuộn sơ đồ Quantum lớn">
       <div id="output-graph" class="diagram output-graph" aria-label="Sơ đồ Quantum được suy ra">
         <canvas aria-hidden="true"></canvas><div id="quanta"></div>
+      </div>
       </div>
       <div id="trace" class="inspector" aria-live="polite"></div>
     </section>

@@ -27,6 +27,7 @@ def commit_revision(architecture: Architecture, event: dict, *, proposals: list[
             enforce_protected_rules(session.architecture, architecture)
         view = {"preferences": session.studio_weights.model_dump(mode="json"), "ranking": session.studio_ranking,
                 "conservative": session.get("studio_conservative", False),
+                "time_limit_seconds": session.get("studio_search_seconds", 8),
                 "layout": session.studio_layout if layout is None else layout}
         identifier = save_checkpoint(architecture, event=event, parent=session.get("studio_checkpoint"), proposals=items, view=view)
     except (OSError, ValueError) as exc:
@@ -176,6 +177,8 @@ def restore_session() -> None:
         st.session_state.studio_weights = preferences
         st.session_state.studio_ranking = saved_view.get("ranking", "SYNC_FIRST")
         st.session_state.studio_conservative = saved_view.get("conservative", False)
+        limit = saved_view.get("time_limit_seconds", 8)
+        st.session_state.studio_search_seconds = limit if type(limit) is int and 1 <= limit <= 30 else 8
         for field, value in preferences.model_dump().items():
             st.session_state[f"studio_weight_{field}"] = value
         st.session_state.studio_layout = saved_view.get("layout", {})

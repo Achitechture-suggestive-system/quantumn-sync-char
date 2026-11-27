@@ -31,9 +31,9 @@ class ClauseFrame(BaseModel):
     object: Text | None = None
     condition: Text | None = None
     modality: Text | None = None
-    subject_ids: list[str] = Field(default_factory=list, max_length=8)
-    object_ids: list[str] = Field(default_factory=list, max_length=8)
-    context_ids: list[str] = Field(default_factory=list, max_length=8)
+    subject_ids: list[str] = Field(default_factory=list, max_length=50)
+    object_ids: list[str] = Field(default_factory=list, max_length=50)
+    context_ids: list[str] = Field(default_factory=list, max_length=50)
     statement_kind: Literal["OBLIGATION", "PROHIBITION", "PERMISSION", "EXEMPTION", "DESCRIPTION", "UNKNOWN"] = "UNKNOWN"
     effect: Literal["QUALITY_OBLIGATION", "WAIT_COMPLETION", "RETURN_BEFORE_COMPLETION", "WORKFLOW_ONLY", "LOCAL_ATOMIC_TRANSACTION", "REQUIRE_SEPARATION", "NONE"] = "NONE"
     human_fields: list[Literal["subject", "action", "object", "condition", "modality", "subject_ids", "object_ids", "context_ids", "statement_kind", "effect"]] = Field(default_factory=list, max_length=10)
@@ -66,7 +66,7 @@ class ClauseReview(BaseModel):
 
 def frame_schema(catalog: list[str]) -> dict:
     fields = {part: {"type": ["string", "null"], "maxLength": 600} for part in PARTS}
-    fields.update({key: {"type": "array", "maxItems": 8, "items": {"enum": catalog}}
+    fields.update({key: {"type": "array", "maxItems": 50, "items": {"enum": catalog}}
                    for key in ("subject_ids", "object_ids", "context_ids")})
     fields.update(statement_kind={"enum": list(KINDS)}, effect={"enum": list(EFFECTS)})
     return {"type": "object", "properties": fields, "required": list(fields), "additionalProperties": False}

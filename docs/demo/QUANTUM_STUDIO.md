@@ -11,9 +11,11 @@
 
 ## Pipeline
 
+Studio hỗ trợ 1–50 component. Các số liệu Bell/Pareto và ID Pxxx bên dưới mô tả luồng liệt kê ≤8. Từ 9–50, UI chuyển sang CP-SAT với thời hạn, ID CP-…, số phương án đã tìm và phạm vi Pareto trong pool. Chưa tìm hết không được đọc là vô nghiệm. [Công thức bảo toàn, cách sửa và benchmark](../research/STUDIO_LARGE_BACKEND.md). Protocol P2 vẫn giới hạn tám responsibility IDs.
+
 | Bước | Dữ liệu và quyết định |
 |---|---|
-| 1. Nhập mô hình | Khai báo 1–8 component và các tập characteristics, requirement có mã và loại, cạnh SYNC/ASYNC/UNKNOWN, kho dữ liệu và cặp bắt buộc tách. Xác nhận ánh xạ NFR và component để thêm characteristic ISO vào đầu vào bộ giải. |
+| 1. Nhập mô hình | Khai báo 1–50 component và các tập characteristics, requirement có mã và loại, cạnh SYNC/ASYNC/UNKNOWN, kho dữ liệu và cặp bắt buộc tách. Xác nhận ánh xạ NFR và component để thêm characteristic ISO vào đầu vào bộ giải. |
 | 2. Loại vi phạm | Liệt kê mọi cách chia, mỗi component vào đúng một nhóm. Loại phương án tách giao dịch cục bộ, tách kho KEEP_SHARED hoặc gom cặp bắt buộc tách. Nếu hết phương án, báo INFEASIBLE. |
 | 3. Tính trade-off | Tính tiền phạt theo bảng dưới. Cạnh UNKNOWN được giữ trong sơ đồ, với cảnh báo và trạng thái cần xác nhận. |
 | 4. Xếp hạng | Tính biên Pareto theo năm chi phí. **Chia theo SYNC** so SYNC bị cắt, ASYNC giữ chung, rồi điểm trọng số. **Chia theo characteristics** so chi phí rải đặc tính, chi phí trộn đặc tính, rồi điểm trọng số. Hai nút ưu tiên so điểm trọng số ngay. Nếu hòa, ưu tiên ít nhóm hơn rồi theo ID. |

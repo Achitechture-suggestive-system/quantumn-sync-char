@@ -14,7 +14,7 @@ Mục tiêu đang thực hiện là hoàn thiện dự án theo mười gap tron
 | G6 · Revision và tải lại | Checkpoint chứa input, proposal, quyết định trước–sau, rationale và view. Allocation/điều kiện, quan hệ, scenario, contract/ownership gắn nguồn/revision. Contract kiểm mọi nguồn, claim và kho liên quan. Căn cứ quan hệ/hợp đồng cũ chặn bộ giải, giữ hard rules. v2 đọc v1 không sửa file cũ. | Chưa xác thực danh tính reviewer bằng tài khoản. |
 | G7 · Policy sửa hard constraint | Bảo vệ từng quy tắc, chi phí sửa, lọc/xếp MCS theo policy, xem trước và áp dụng qua revision. Chặn sửa quy tắc bảo vệ từ canvas/model review/restore. Lưu riêng bản input bị chặn. | Chi phí và quyết định bảo vệ do reviewer khai báo, chưa có mô hình chi phí nghiệp vụ thực nghiệm hoặc xác thực danh tính reviewer. |
 | G8 · Bằng chứng boundary | Review hợp đồng lỗi và ownership, hồ sơ theo candidate; hai tiến trình HTTP/SQLite chạy giao thức mẫu có mất ACK, timeout, retry, restart và chống trùng. | Prototype chỉ thực thi APPLY_EVENT chuẩn bị sẵn. Nghiệp vụ Ticket/Tutor, invariant thật, broker, build/deploy, tải và migration vẫn chưa được kiểm chứng; deployability NOT_VERIFIED. |
-| G9 · Backend lớn | Giữ giới hạn hiện tại của Studio. | Adapter objective tương đương, kiểm bộ nhỏ và benchmark backend lớn. |
+| G9 · Backend lớn | ≤8 giữ enumerator; 9–50 dispatch CP-SAT riêng bảo toàn năm trục, mode bounds, hard rules và protected repair. Đối chiếu toàn bộ nghiệm/vector ở bộ nhỏ và benchmark hai họ tổng hợp. UI phân biệt tập đã tìm, proof và timeout. | Pareto cỡ lớn chưa liệt kê toàn cục; runtime phụ thuộc input/phần cứng. Benchmark tổng hợp chưa chứng minh khả năng khái quát ngữ nghĩa hoặc chất lượng nghiệp vụ. |
 | G10 · Đánh giá độc lập | Tách dữ liệu test và lần gọi thật trong báo cáo. | Bộ ca mới sau khi chốt prompt, reference labels độc lập và thí nghiệm có adjudication. |
 
 ## Mốc A — đầu vào thật, đề xuất và quyết định có lịch sử
@@ -159,3 +159,11 @@ Hai lượt qwen3:4b thật trên các OC đã biết được giữ raw. Batch 
 UI 8501 đã CORRECT proposal thật của DEV-OC-12 trong checkpoint `checkpoint-07b06b4948c64e1f9afc35582d10888f`: Reliability→COMPLETE, REPORT chỉ là điều kiện lỗi. P011 giữ thứ hạng, điểm 6→8 do mix tăng; P031 5→7, hard rules và 37 nghiệm giữ nguyên. Source→proposal→correction fixture→component→Q2 hiển thị đúng. Decision fixture của agent không phải human/expert label độc lập.
 
 Regression hiện **241 tests**, thêm 23 trường hợp về clause guard, OC-02/03/07/12, prohibition, alias, hai target, nguồn/catalog/scope cũ, mode/effect có điều kiện, duplicate, lẫn câu, reviewer bổ sung và đường UI/checkpoint. Proposal chưa duyệt, từ chối hoặc defer giữ nguyên optimizer; outcome này được kiểm độc lập với khả năng model hiểu câu. Khổ browser 400 px không tràn ngang toàn trang; input mẫu được khôi phục sau smoke, checkpoint review giữ local. [Schema, policy, nguồn nghiên cứu, các lượt lỗi và hướng dẫn](STUDIO_CLAUSE_REVIEW.md).
+
+## Mốc D2 — backend Studio 9–50 component
+
+Adapter CP-SAT mới mã hóa đúng năm chi phí, hard closure, canonical target và biên UNKNOWN của Studio. Bộ liệt kê ≤8 giữ ID/Pareto và hành vi cũ. Cỡ lớn có thời hạn, seed hợp lệ, nhiều objective để tạo lựa chọn và kiểm lại từng vector bằng Python. Bộ sửa xung đột lớn tìm tối đa ba MCS có protected policy, không đếm Bell(n), không tự áp dụng. JSON giữ tổng số nghiệm/Pareto toàn cục là null, tách số đã tìm và phạm vi chứng minh.
+
+**264 tests** qua, gồm 23 tests mới về tập phân hoạch/vector/L/U tương đương ở bộ nhỏ, Bell(9), ba ranking, trọng số 0, timeout UNKNOWN, min-cost repair và UI/checkpoint cỡ lớn. Compileall, JavaScript syntax và diff check qua. Benchmark tám fixture ở cỡ 9/12/20/50 đều giữ hard rules; pressure 20/50 mới FEASIBLE, chưa tối ưu được chứng minh. Đây là fixture do repo chuẩn bị, không phải LLM hoặc expert annotation.
+
+Browser 8501 chạy ca pressure 50: A/B/C lần lượt 3/2/4 Quantum với điểm 84/89/153, chọn C vẽ đúng và hiện scope characteristics theo target. Không có nút ngoài vùng vẽ hoặc exception ứng dụng; khổ 400 px không tràn ngang toàn trang. [Công thức, raw-run ID, bảng benchmark, nguồn S19/S20 và giới hạn](STUDIO_LARGE_BACKEND.md).

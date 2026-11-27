@@ -99,7 +99,7 @@ def extract_proposals(architecture: Architecture, source_ids: list[str], task: s
                   "disposition": {"enum": ["PROPOSED", "OUT_OF_SCOPE", "AMBIGUOUS"]}, "frame": frame_schema(list(catalog))}
     if task == "QUALITY":
         properties.update(characteristic={"enum": [*list(QualityCharacteristic), None]},
-                          component_ids={"type": "array", "maxItems": 8, "items": {"enum": list(catalog)}})
+                          component_ids={"type": "array", "maxItems": 50, "items": {"enum": list(catalog)}})
         instructions = (
             "Extract only quality requirements as ISO 25010:2023 characteristics, each with its own directly accountable "
             "component IDs and a contiguous verbatim quote. Split independent clauses into separate mappings. "

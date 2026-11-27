@@ -19,7 +19,9 @@ class Conflict:
 @dataclass(frozen=True)
 class Repair:
     rules: tuple[HardConstraint, ...]
-    feasible: int
+    feasible: int | None
+    solver_status: str = "EXHAUSTIVE"
+    cost_optimality_proven: bool = True
 
     @property
     def review_cost(self) -> int:
@@ -56,6 +58,10 @@ def conflict_witnesses(rules: tuple[HardConstraint, ...]) -> tuple[Conflict, ...
 
 def minimal_repairs(architecture: Architecture, rules: tuple[HardConstraint, ...]) -> tuple[Repair, ...]:
     """A partition becomes feasible by relaxing every hard rule it violates."""
+    if len(architecture.components) > 8:
+        from .studio_cpsat_repair import bounded_repairs
+
+        return bounded_repairs(architecture, rules)
     counts = Counter()
     for groups in _partitions([component.id for component in architecture.components]):
         assignment = group_index(groups)
@@ -132,4 +138,5 @@ def apply_reviewed_repair(architecture: Architecture, repair: Repair, *, actor: 
                      "changes": [{"kind": rule.kind, "index": rule.index, "components": list(rule.components),
                                   "basis": rule.basis, "change_cost": rule.change_cost} for rule in repair.rules],
                      "review_cost": repair.review_cost, "feasible_after": repair.feasible,
+                     "repair_solver_status": repair.solver_status, "repair_cost_optimality_proven": repair.cost_optimality_proven,
                      "before": architecture.model_dump(mode="json"), "after": changed.model_dump(mode="json")}

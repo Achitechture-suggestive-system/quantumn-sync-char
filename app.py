@@ -130,8 +130,8 @@ def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
 
 
 @st.cache_data(show_spinner=False)
-def calculate(architecture: Architecture, preferences: Preferences, ranking: Ranking):
-    return analyze(architecture, preferences, ranking=ranking)
+def calculate(architecture: Architecture, preferences: Preferences, ranking: Ranking, conservative=False, time_limit_seconds=8.0):
+    return analyze(architecture, preferences, ranking=ranking, conservative=conservative, time_limit_seconds=time_limit_seconds)
 
 
 @st.cache_data(show_spinner=False)
@@ -155,12 +155,16 @@ def show_conflict_repairs(architecture: Architecture, weights: Preferences, rank
     st.subheader("Mô phỏng các cách gỡ xung đột")
     st.caption("Mỗi hàng nêu các quy tắc cần sửa cùng nhau để có nghiệm trở lại. Kết quả dùng bản sao mô phỏng, "
                "mô hình gốc vẫn ở trạng thái INFEASIBLE.")
+    if len(architecture.components) > 8:
+        st.caption("CP-SAT tìm tối đa ba tập sửa trong thời hạn. Mỗi tập đã kiểm tối thiểu theo bao hàm bằng closure; "
+                   "chưa liệt kê mọi MCS hoặc đếm toàn bộ phân hoạch sau sửa. OPTIMAL nói về chi phí sửa của lần tìm tương ứng.")
     actions = {"KEEP_APART": "Bỏ yêu cầu tách", "LOCAL_TRANSACTION": "Bỏ yêu cầu giao dịch cục bộ, giữ SYNC",
                "KEEP_SHARED": "Cho phép tách kho"}
     labels = [" + ".join(f"{actions[rule.kind]} · {constraint_subject(rule, architecture, names)}"
                          for rule in repair.rules) for repair in repairs]
     st.dataframe([{"Phương án": f"M{index}", "Thay đổi giả định": label,
-                   "Chi phí sửa": repair.review_cost, "Số quy tắc": len(repair.rules), "Nghiệm khả thi": repair.feasible}
+                   "Chi phí sửa": repair.review_cost, "Số quy tắc": len(repair.rules), "Nghiệm khả thi": repair.feasible,
+                   "Bộ giải": repair.solver_status, "Chi phí sửa đã chứng minh": repair.cost_optimality_proven}
                   for index, (repair, label) in enumerate(zip(repairs, labels, strict=True), 1)],
                  hide_index=True, width="stretch", column_config={"Thay đổi giả định": st.column_config.TextColumn(width="large")})
     if not repairs:
@@ -171,7 +175,8 @@ def show_conflict_repairs(architecture: Architecture, weights: Preferences, rank
     alternative = simulate_repair(architecture, repair)
     result = calculate(alternative, weights, ranking)
     best = result.ranked[0]
-    st.markdown(f"**M{selected + 1} · {len(result.feasible)} nghiệm khả thi · {best.id} xếp đầu · {best.score(weights)} điểm**")
+    qualifier = "ít nhất " if result.search else ""
+    st.markdown(f"**M{selected + 1} · {qualifier}{len(result.feasible)} nghiệm khả thi · {best.id} xếp đầu · {best.score(weights)} điểm**")
     plan = plan_graph(alternative, best)
     st.html(quantum_cards(plan, names))
     if can_apply:
@@ -494,25 +499,41 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
             key = f"studio_weight_{name}"
             st.session_state.setdefault(key, getattr(st.session_state.studio_weights, name))
             column.slider(label, 0, 10, key=key, on_change=save_slider_weights)
-    result = calculate(architecture, preferences, ranking)
+    uncertain = any(edge.mode == "UNKNOWN" for edge in architecture.interactions)
+    conservative = uncertain and st.checkbox("Ưu tiên chi phí biên trên khi còn bất định", key="studio_conservative")
+    large = len(architecture.components) > 8
+    if large:
+        st.session_state.setdefault("studio_search_seconds", 8)
+        limit = st.slider("Thời hạn tìm phương án (giây)", 1, 30, key="studio_search_seconds")
+    else:
+        limit = 8
+    with st.spinner("Đang tìm phương án theo ràng buộc và năm trục chi phí…", show_time=large):
+        result = calculate(architecture, preferences, ranking, conservative, limit)
     if not result.ranked:
-        st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
+        if large:
+            st.error("INFEASIBLE · Closure của các quy tắc cùng Quantum xung đột với một yêu cầu khác Quantum.")
+        else:
+            st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
         st.markdown("[Xem xung đột và các cách gỡ](#studio-conflicts)")
         with details_panel:
             show_conflict_repairs(architecture, preferences, ranking, can_apply=replay is None)
         return [], True, None
-    uncertain = any(edge.mode == "UNKNOWN" for edge in architecture.interactions)
-    conservative = uncertain and st.checkbox("Ưu tiên chi phí biên trên khi còn bất định", key="studio_conservative")
+    if large:
+        details_panel.caption(f"CP-SAT {result.search['solver_version']} · mục tiêu chính {result.search['primary_status']} · "
+                              f"{result.search['elapsed_seconds']:.2f} giây. Chi phí được tính lại bằng Python và hard constraints được kiểm cho từng phương án.")
+        details_panel.caption("Tập ứng viên gồm nghiệm từ các mục tiêu tìm kiếm và seed hợp lệ. Chưa liệt kê mọi nghiệm hoặc Pareto toàn cục. "
+                              "Chứng minh tối ưu chỉ áp dụng chi phí chính khi OPTIMAL; tie theo số nhóm/ID và so Pareto được giới hạn trong tập đã tìm.")
     robust = conservative_order(architecture, result.feasible, preferences) if conservative else ()
     best = robust[0] if conservative else result.ranked[0]
     if conservative:
-        details_panel.caption("Đang giảm chi phí biên trên theo trọng số trên toàn bộ phương án thỏa ràng buộc cứng. "
+        details_panel.caption(("Đang chọn biên trên thấp nhất trong tập đã tìm; trạng thái chứng minh của mục tiêu chính ghi phía trên. " if large else
+                               "Đang giảm chi phí biên trên theo trọng số trên toàn bộ phương án thỏa ràng buộc cứng. ") +
                               "Nhãn Pareto và ma trận năm trục bên dưới dựa trên các cạnh đã xác định mode.")
     elif ranking == "SYNC_FIRST":
         details_panel.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
                               "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
         if best.sync:
-            details_panel.info(f"Chi phí SYNC thấp nhất qua ranh giới là {best.sync} với các ràng buộc đang bật.")
+            details_panel.info(f"Chi phí SYNC {'của phương án đang xếp đầu' if large else 'thấp nhất qua ranh giới'} là {best.sync} với các ràng buộc đang bật.")
     elif ranking == "CHARACTERISTIC_FIRST":
         details_panel.caption("Đang chia theo characteristics. Bộ giải giảm đặc tính rải nhiều Quantum trước, "
                               "sau đó giảm trộn đặc tính trong một Quantum, rồi mới so điểm trọng số.")
@@ -524,8 +545,9 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     best_bounds = score_bounds(architecture, best, preferences)
     best_cost = f"{best_bounds.lower}–{best_bounds.upper}" if uncertain else str(best.score(preferences))
     for column, (label, value) in zip(summaries, (
-        ("Đã xét", result.enumerated), ("Khả thi", len(result.feasible)),
-        ("Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best_cost} điểm"),
+        ("Bộ giải" if large else "Đã xét", "CP-SAT" if large else result.enumerated),
+        ("Khả thi đã tìm" if large else "Khả thi", len(result.feasible)),
+        ("Không trội trong tập đã tìm" if large else "Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best_cost} điểm"),
     ), strict=True):
         column.metric(label, value)
     if uncertain:
@@ -543,10 +565,10 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     frontier_ids = {item.id for item in result.frontier}
 
     def option(candidate: Candidate) -> str:
-        status = "Pareto" if candidate.id in frontier_ids else "Ngoài Pareto"
+        status = ("Không trội trong tập tìm" if candidate.id in frontier_ids else "Đã có phương án trội") if large else "Pareto" if candidate.id in frontier_ids else "Ngoài Pareto"
         return f"{candidate.id} · {len(candidate.groups)} Quantum · {status}"
 
-    show_all = st.checkbox("Cho chọn từ toàn bộ phương án khả thi")
+    show_all = st.checkbox("Cho chọn từ toàn bộ tập khả thi đã tìm" if large else "Cho chọn từ toàn bộ phương án khả thi")
     default_order = sorted(result.frontier, key=lambda item: ranking_key(item, Preferences(), "WEIGHTED"))
     initial_left = default_order[0]
     defaults = list(dict.fromkeys([initial_left, best, *default_order]))[:3]
@@ -556,9 +578,9 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     options = other_feasible if show_all else list(dict.fromkeys([*result.ranked, *defaults]))
     choices = {item.id: item for item in options}
     if len(defaults) < 3:
-        details_panel.info(f"Chỉ có {len(defaults)} phương án khả thi theo ràng buộc hiện tại.")
+        details_panel.info(f"{'Đang có' if large else 'Chỉ có'} {len(defaults)} phương án khả thi {'trong tập đã tìm' if large else 'theo ràng buộc hiện tại'}.")
     elif any(item.id not in frontier_ids for item in defaults):
-        details_panel.caption("Biên Pareto có ít hơn ba phương án. Studio bổ sung phương án khả thi ngoài biên để so sánh.")
+        details_panel.caption(("Biên không trội trong tập đã tìm" if large else "Biên Pareto") + " có ít hơn ba phương án. Studio bổ sung phương án khả thi ngoài biên để so sánh.")
     if not conservative and ranking == "WEIGHTED" and best.id != initial_left.id:
         details_panel.info(f"Ưu tiên hiện tại đổi phương án xếp đầu từ {initial_left.id} sang {best.id} · {initial_left.score(preferences)} → {best.score(preferences)} điểm với cùng bộ trọng số.")
     generation = st.session_state.editor_version
@@ -609,7 +631,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         candidate_card(slot, item, baseline=baseline, axes=AXES, weights=axis_weights, points=details[item.id],
                        plan=plans[item.id], names=names, ranked=item.id == best.id, frontier=item.id in frontier_ids,
                        displayed=item.id == active_id, dominator=dominated_by.get(item.id), scale=scale,
-                       interval=intervals[item.id] if uncertain else None)
+                       interval=intervals[item.id] if uncertain else None, frontier_scope="FOUND_POOL" if large else "GLOBAL")
         for slot, item in zip(slots, candidates, strict=True)
     )
     details_panel.html(f'<div class="qs-candidate-grid">{cards}</div>')
@@ -632,14 +654,19 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                              "MIXED_WITH_PREPARED_CLAUSE_REVIEW" if any(item.provenance == "PREPARED_FIXTURE" or item.claim_provenance == "PREPARED_FIXTURE"
                                                                        for item in clause_reviews(architecture)) else
                              "MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
-                             else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED"),
+                             else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example()
+                             else "CONTAINS_PREPARED_FIXTURE_INPUT" if architecture.input_origin == "PREPARED_FIXTURE" else architecture.input_origin),
         "architecture": architecture.model_dump(mode="json"),
         "preferences": preferences.model_dump(mode="json"),
         "ranking": ranking,
         "uncertainty_policy": "MINIMIZE_WEIGHTED_UPPER_BOUND" if conservative else "KNOWN_MODE_COSTS",
         "enumerated": result.enumerated,
-        "feasible": len(result.feasible),
-        "pareto": len(result.frontier),
+        "feasible": None if large else len(result.feasible),
+        "feasible_found": len(result.feasible),
+        "pareto": None if large else len(result.frontier),
+        "pareto_in_found_pool": len(result.frontier) if large else None,
+        "search": result.search or {"backend": "EXHAUSTIVE", "complete_feasible_set": True, "frontier_scope": "GLOBAL",
+                                    "status": "OPTIMAL", "optimality_proven": True},
         "baseline_under_default_weights": initial_left.id,
         "recommended_under_weights": min(result.frontier, key=lambda item: ranking_key(item, preferences, "WEIGHTED")).id,
         "recommended_candidate": best.id,
@@ -649,7 +676,9 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                         "score_interval": {"lower": intervals[item.id].lower, "upper": intervals[item.id].upper,
                                            "unresolved_edges": intervals[item.id].unresolved_edges,
                                            "conditional_edges": intervals[item.id].conditional_edges},
-                        "pareto": item.id in frontier_ids, "dominated_by": dominated_by.get(item.id),
+                        "pareto": None if large else item.id in frontier_ids,
+                        "pareto_in_found_pool": item.id in frontier_ids if large else None,
+                        "pareto_scope": "FOUND_POOL" if large else "GLOBAL", "dominated_by": dominated_by.get(item.id),
                         "cost_delta_vs_a": deltas[item.id],
                         "costs": dict(zip(AXES, item.vector, strict=True)), "cost_drivers": details[item.id],
                         "assignment": plans[item.id]["assignment"], "quantum_profiles": plans[item.id]["groups"],
@@ -665,7 +694,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                                 "input_edited": architecture != replay_architecture(case, mode)}
         if mode == "saved_model":
             comparison["replay"]["response_sha256"] = case["saved_model"]["response_sha256"]
-    with details_panel.expander("Danh sách phương án Pareto"):
+    with details_panel.expander("Các phương án không trội trong tập đã tìm" if large else "Danh sách phương án Pareto"):
         st.dataframe(
             [{"Phương án": option(item), "Điểm": item.score(preferences),
               "Nhóm": " | ".join(", ".join(group) for group in item.groups),

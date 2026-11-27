@@ -197,7 +197,7 @@ def cost_matrix(axes, weights, candidates, slots: str) -> str:
     """
 
 
-def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, names, ranked, frontier, displayed, dominator, scale, interval=None):
+def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, names, ranked, frontier, displayed, dominator, scale, interval=None, frontier_scope="GLOBAL"):
     profile = "".join(
         f'<li><span class="qs-code">{escape(group["id"])}</span><span>'
         f'{escape(", ".join(names[item] for item in group["components"]))}</span></li>'
@@ -210,7 +210,8 @@ def candidate_card(slot, candidate, *, baseline, axes, weights, points, plan, na
         for index, value in enumerate(weighted) if value
     )
     bars_label = ", ".join(f"{axis} {value} điểm" for axis, value in zip(axes, weighted, strict=True))
-    status = tag("Pareto" if frontier else "Ngoài Pareto", "accent" if frontier else "neutral")
+    label = ("Không trội trong tập tìm" if frontier else "Đã có phương án trội") if frontier_scope == "FOUND_POOL" else "Pareto" if frontier else "Ngoài Pareto"
+    status = tag(label, "accent" if frontier else "neutral")
     if ranked:
         status += tag("Xếp đầu", "accent")
     if displayed:

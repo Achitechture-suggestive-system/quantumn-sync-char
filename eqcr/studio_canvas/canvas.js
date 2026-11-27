@@ -64,9 +64,19 @@ function graphNodes() {
 }
 
 function arrangeDefaults() {
+    const large = model.components.length > 8;
+    document.body.classList.toggle("large", large);
+    inputGraph.style.minWidth = large ? "720px" : "";
+    const height = large ? Math.max(455, Math.max(Math.ceil(model.components.length / 3), model.stores.length) * 88 + 64) : 455;
+    inputGraph.style.height = height + "px";
     const lists = [model.components, model.stores];
     lists.forEach((items, kind) => items.forEach((item, index) => {
         const type = kind ? "store" : "component";
+        if (large) {
+            positions[key(type, item.id)] ??= [kind ? .84 : .13 + (index % 3) * .23,
+                (40 + ((kind ? index : Math.floor(index / 3)) + .5) * 88) / height];
+            return;
+        }
         const grid = kind ? 8 : 4;
         const columns = Math.ceil(items.length / grid);
         const column = index % columns;
@@ -572,6 +582,12 @@ function quantumCharacteristics(plan, group, names, requirements) {
     for (const [label, owners] of characteristics) {
         const entry = element("div", undefined, "characteristic");
         entry.append(element("strong", label));
+        const ownerList = owners.length > 6 ? element("details", undefined, "characteristic-owners") : entry;
+        if (ownerList !== entry) {
+            ownerList.append(element("summary", owners.length + " component phụ trách"));
+            ownerList.open = owners.some(owner => highlighted(componentKey(owner)));
+            entry.append(ownerList);
+        }
         for (const owner of owners) {
             const line = element("div", undefined, "characteristic-owner");
             line.append(element("span", names.get(owner) || owner));
@@ -584,7 +600,7 @@ function quantumCharacteristics(plan, group, names, requirements) {
                 line.append(ref);
             }
             if (!ids.length) line.append(element("small", "Chưa gắn requirement"));
-            entry.append(line);
+            ownerList.append(line);
         }
         const shared = plan.groups.filter(other => other.id !== group.id && other.characteristics.includes(label));
         if (shared.length) entry.append(element("small", "Cùng phụ trách: " + shared.map(other => other.id).join(", ")));
@@ -699,8 +715,8 @@ function renderInput() {
     arrangeDefaults();
     $("input-nodes").replaceChildren(...graphNodes().map(node => makeNode(node)));
     $("input-count").textContent = model.components.length + " component · " + model.stores.length + " kho";
-    $("add-component").disabled = model.components.length >= 8;
-    $("add-store").disabled = model.stores.length >= 16;
+    $("add-component").disabled = model.components.length >= 50;
+    $("add-store").disabled = model.stores.length >= 100;
     scheduleWires();
 }
 
@@ -750,6 +766,11 @@ $("reset").onclick = () => {
     focusKey = selected = first = tool = null;
     markDirty();
     render();
+};
+$("arrange").onclick = () => {
+    positions = {};
+    render();
+    emit("layout", {layout: positions});
 };
 $("analyze").onclick = () => {
     setMessage("Đang phân tích…");

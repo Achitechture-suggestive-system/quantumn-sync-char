@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections.abc import Iterator
 from hashlib import sha256
 import json
@@ -37,7 +37,7 @@ class Component(InputModel):
 
 class QualityAllocation(InputModel):
     characteristic: QualityCharacteristic
-    component_ids: list[Key] = Field(min_length=1, max_length=8)
+    component_ids: list[Key] = Field(min_length=1, max_length=50)
     source_quote: str = Field(default="", max_length=600)
     semantic_reviews: list[ClauseReview] = Field(default_factory=list, max_length=20)
 
@@ -56,7 +56,7 @@ class Requirement(InputModel):
     id: Key
     text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
     kind: Literal["UNSPECIFIED", "FR", "NFR"] = "UNSPECIFIED"
-    component_ids: list[Key] = Field(default_factory=list, max_length=8)
+    component_ids: list[Key] = Field(default_factory=list, max_length=50)
     quality_allocations: list[QualityAllocation] = Field(default_factory=list, max_length=9)
     generation: RequirementGeneration | None = None
     duplicate_of: Key | None = None
@@ -136,7 +136,7 @@ class Interaction(InputModel):
 class DataStore(InputModel):
     id: Key
     name: Label
-    members: list[Key] = Field(min_length=1, max_length=8)
+    members: list[Key] = Field(min_length=1, max_length=50)
     policy: Literal["KEEP_SHARED", "SPLITTABLE"]
     weight: Cost = 1
     basis: str = Field(default="", max_length=240)
@@ -160,14 +160,15 @@ class SeparatePair(InputModel):
 
 
 class Architecture(InputModel):
-    components: list[Component] = Field(min_length=1, max_length=8)
-    interactions: list[Interaction] = Field(default_factory=list, max_length=56)
-    stores: list[DataStore] = Field(default_factory=list, max_length=16)
-    keep_apart: list[SeparatePair] = Field(default_factory=list, max_length=28)
+    input_origin: Literal["UNCLASSIFIED", "USER_SUPPLIED", "PREPARED_FIXTURE"] = "UNCLASSIFIED"
+    components: list[Component] = Field(min_length=1, max_length=50)
+    interactions: list[Interaction] = Field(default_factory=list, max_length=2450)
+    stores: list[DataStore] = Field(default_factory=list, max_length=100)
+    keep_apart: list[SeparatePair] = Field(default_factory=list, max_length=1225)
     requirements: list[Requirement] = Field(default_factory=list, max_length=40)
     quality_scenarios: list[ReviewedScenario] = Field(default_factory=list, max_length=20)
-    interaction_contracts: list[ReviewedContract] = Field(default_factory=list, max_length=56)
-    ownership_decisions: list[OwnershipDecision] = Field(default_factory=list, max_length=16)
+    interaction_contracts: list[ReviewedContract] = Field(default_factory=list, max_length=2450)
+    ownership_decisions: list[OwnershipDecision] = Field(default_factory=list, max_length=100)
 
     @model_validator(mode="after")
     def check_references(self):
@@ -276,10 +277,11 @@ class Candidate:
 
 @dataclass(frozen=True)
 class Analysis:
-    enumerated: int
+    enumerated: int | None
     feasible: tuple[Candidate, ...]
     frontier: tuple[Candidate, ...]
     ranked: tuple[Candidate, ...]
+    search: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -426,11 +428,16 @@ def ranking_key(candidate: Candidate, weights: Preferences, ranking: Ranking) ->
     return weighted_order
 
 
-def analyze(architecture: Architecture, weights: Preferences, *, ranking: Ranking = "WEIGHTED") -> Analysis:
-    """Visit all partitions, filter hard rules, and retain the exact Pareto frontier."""
+def analyze(architecture: Architecture, weights: Preferences, *, ranking: Ranking = "WEIGHTED", conservative: bool = False,
+            time_limit_seconds: float = 8.0) -> Analysis:
+    """Enumerate through eight components; dispatch bounded five-axis CP-SAT search for 9–50."""
     from .studio_evidence import ensure_current_evidence
 
     ensure_current_evidence(architecture)
+    if len(architecture.components) > 8:
+        from .studio_cpsat import analyze_cpsat
+
+        return analyze_cpsat(architecture, weights, ranking=ranking, conservative=conservative, time_limit_seconds=time_limit_seconds)
     feasible = []
     profiles = component_profiles(architecture)
     rules = hard_constraints(architecture)

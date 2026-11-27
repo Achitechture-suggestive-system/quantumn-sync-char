@@ -36,8 +36,8 @@ class ReviewedScenario(BaseModel):
     source_digest: Digest
     catalog_digest: Digest
     characteristic: QualityCharacteristic
-    component_path: list[str] = Field(min_length=1, max_length=8)
-    responsible_component_ids: list[str] = Field(min_length=1, max_length=8)
+    component_path: list[str] = Field(min_length=1, max_length=50)
+    responsible_component_ids: list[str] = Field(min_length=1, max_length=50)
     metric: Literal["RESPONSE_LATENCY", "RECOVERY_TIME", "UNSUPPORTED"] = "UNSUPPORTED"
     target_value: Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)] | None = None
     target_unit: Literal["ms", "s", "min"] | None = None

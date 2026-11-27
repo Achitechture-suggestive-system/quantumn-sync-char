@@ -10,6 +10,8 @@ Rà soát hiện tại của Studio, các phép đối chứng và hướng nghi
 
 [Review mệnh đề, phủ định và vai trò component](research/STUDIO_CLAUSE_REVIEW.md) mô tả prompt @2, các guard, proposal do reviewer bổ sung và phản hồi Ollama còn lỗi đã quan sát; không coi structured output là semantic accuracy.
 
+[Backend Studio 9–50 component](research/STUDIO_LARGE_BACKEND.md) ghi mã hóa bảo toàn năm trục, giới hạn thời gian, sửa xung đột có bảo vệ và benchmark tổng hợp. Các số lượng/Pareto cỡ lớn chỉ nói về tập đã tìm.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

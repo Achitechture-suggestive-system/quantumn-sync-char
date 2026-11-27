@@ -51,6 +51,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-
     background: #f2f6ef radial-gradient(#bfcec2 .72px, transparent .72px) 0 0/17px 17px;
 }
 .input-graph { height: 455px; }
+.diagram-scroll { min-width: 0; }
+body.large .diagram-scroll { max-height: 720px; overflow: auto; }
 .output-graph { min-height: 455px; display: grid; align-content: start; }
 canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
 #input-nodes, #input-edges { position: absolute; inset: 0; pointer-events: none; }

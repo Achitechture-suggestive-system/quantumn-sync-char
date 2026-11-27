@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Hợp đồng boundary và probe lỗi cục bộ — 2026-11-27
+
+- Commit `60bac8559cec079da3ae490c208711633fe5340d` đã push lên `feat/quantum-tradeoff-workbench`; remote cùng SHA. Main `5ece0157bf2372fb879f694cee9f5f0846fcbe1a` và tag P0 `02531985dd915318fc7a30f800c6b17bf9e6f95f` giữ nguyên.
+- 218 tests, compileall, JavaScript syntax, staged diff và secret scan qua. Có hai mode probe thực thi trong tests, UI chạy ASYNC trên P011 với 9/9 assertion và kiểm stale khi đổi candidate. Actor/protocol gắn `PREPARED_FIXTURE`, observation lấy từ tiến trình thật. Không có inference hoặc measurement chất lượng nghiệp vụ mới.
+- [GitHub Actions 46032194120](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46032194120) thành công trên cùng SHA. Runs, hai database, checkpoint và ảnh browser giữ local, không đưa vào Git.
+
 ## Scenario sáu phần và bound có điều kiện — 2026-11-27
 
 - Commit `d17ca17e6dcbe220ebaf674b006119847bfd0e26` đã đẩy lên `feat/quantum-tradeoff-workbench`. Remote feature cùng SHA; main và tag P0 giữ nguyên.

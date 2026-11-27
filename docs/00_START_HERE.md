@@ -6,6 +6,8 @@ Giao diện mặc định là Quantum Studio. Xem [pipeline và kịch bản Tic
 
 Rà soát hiện tại của Studio, các phép đối chứng và hướng nghiên cứu nằm trong [gap analysis ngày 26/11/2026](research/STUDIO_GAP_ANALYSIS_2026-11-26.md).
 
+[Tiến độ từng gap](research/STUDIO_COMPLETION_STATUS.md), [bảng đối chiếu nguồn](research/STUDIO_SOURCE_LEDGER.md), [quality scenario có điều kiện](research/STUDIO_QUALITY_SCENARIOS.md) và [hợp đồng boundary/ownership cùng probe cục bộ](research/STUDIO_BOUNDARY_EVIDENCE.md) ghi các mốc triển khai tiếp theo và giới hạn đã kiểm tra.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

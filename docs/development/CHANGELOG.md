@@ -1,5 +1,11 @@
 # Changelog
 
+## Hợp đồng boundary và probe lỗi cục bộ — 2026-11-27
+
+- Commit `60bac8559cec079da3ae490c208711633fe5340d` bổ sung review hợp đồng/ownership, binding mọi nguồn và kho, checkpoint, boundary profiles theo candidate và hai tiến trình HTTP/SQLite thực thi giao thức mẫu. Giữ hard rules, UNKNOWN, NOT_MEASURED và nguồn fixture.
+- 218 tests, compileall, JavaScript syntax và CI qua. Browser 8501 duyệt contract fixture CREATE→ROUTE cho P011, chạy 9/9 assertion thật, kiểm PID đã dừng, đổi candidate làm báo cáo STALE và nạp lại mẫu. Khổ 400 px không tràn ngang toàn trang.
+- [Nguồn, hướng dẫn và phạm vi kiểm chứng](../research/STUDIO_BOUNDARY_EVIDENCE.md). Bổ sung hai nguồn đọc cho G2: EARS 2009 và NFR classification 2007, ghi rõ parser/classifier của các bài chưa được triển khai trong Studio.
+
 ## Scenario sáu phần và bound có điều kiện — 2026-11-27
 
 - Commit `d17ca17e6dcbe220ebaf674b006119847bfd0e26` đã thêm review scenario, scope ISO vào phân nhóm, hai adapter thời gian và Quality Profiles theo candidate. Giữ UNKNOWN/NOT_MEASURED và provenance reviewer/fixture.

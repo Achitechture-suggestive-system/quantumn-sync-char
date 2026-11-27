@@ -1,5 +1,11 @@
 # Changelog
 
+## Backend 9–50 component và đánh giá phản hồi LLM — 2026-11-28
+
+- Commit `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3` thêm CP-SAT bảo toàn năm trục Studio, mode bounds, bounded repair có protected rules, thời hạn và found-pool scope. ≤8 giữ enumerator cũ. 264 tests, compileall, JavaScript syntax và CI qua.
+- Tám benchmark fixture ở cỡ 9/12/20/50 đều giữ hard constraints; pressure 20/50 mới FEASIBLE. Browser 50 component chọn A/B/C đúng 3/2/4 Quantum, đặc tính/truy vết đi theo; 67 nút trong bounds, khổ 400 px không tràn toàn trang. Mẫu sáu component đã khôi phục. [Bằng chứng D2](../research/STUDIO_LARGE_BACKEND.md).
+- [Báo cáo output LLM](../research/STUDIO_LLM_OUTPUT_EVALUATION.md) kiểm lại bảy run, 12 payload nguyên gốc, request/response hashes, chín quote khớp và tám hàng có issue lịch sử. Phân tích lỗi ngữ nghĩa riêng, giữ metric null và ghi correction của agent không phải nhãn chuyên gia. Không gọi model mới trong lần chốt báo cáo.
+
 ## Review mệnh đề, phủ định và vai trò — 2026-11-27
 
 - Commit `d3a1dc6d5fa608c87968716048248c8761c2edba` thêm frame clause, review role/modality/effect và provenance phần ngoài nguồn, source-bound proof trên allocation/quan hệ, guard trạng thái/điều kiện/duplicate và đường reviewer bổ sung mệnh đề model bỏ sót.

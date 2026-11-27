@@ -12,6 +12,8 @@ Rà soát hiện tại của Studio, các phép đối chứng và hướng nghi
 
 [Backend Studio 9–50 component](research/STUDIO_LARGE_BACKEND.md) ghi mã hóa bảo toàn năm trục, giới hạn thời gian, sửa xung đột có bảo vệ và benchmark tổng hợp. Các số lượng/Pareto cỡ lớn chỉ nói về tập đã tìm.
 
+[Báo cáo phản hồi LLM hiện có](research/STUDIO_LLM_OUTPUT_EVALUATION.md) đối chiếu bảy run thật, 12 proposal, citation, lỗi nghĩa và tác động sau correction; không có semantic accuracy khi thiếu nhãn độc lập.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

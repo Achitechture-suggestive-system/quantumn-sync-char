@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Backend 9–50 component — 2026-11-28
+
+- Commit `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3` đã push lên `feat/quantum-tradeoff-workbench`; remote khớp SHA. Main `5ece0157bf2372fb879f694cee9f5f0846fcbe1a` và tag P0 `02531985dd915318fc7a30f800c6b17bf9e6f95f` giữ nguyên khi kiểm lại.
+- [GitHub Actions 46041605823](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46041605823) thành công trên cùng SHA, gồm 264 tests và compile. Kiểm cục bộ có compileall, JavaScript syntax, staged diff và secret scan.
+- Benchmark, checkpoint và ảnh browser giữ local. Báo cáo tài liệu kế tiếp ghi số liệu quan sát, run IDs và giới hạn FOUND_POOL/FEASIBLE; không gắn fixture scale là output LLM. Bảy extraction được kiểm lại theo hash mà không sửa raw artifacts.
+
 ## Review mệnh đề, phủ định và vai trò — 2026-11-27
 
 - Commit `d3a1dc6d5fa608c87968716048248c8761c2edba` đã push lên `feat/quantum-tradeoff-workbench`; remote cùng SHA. Main `5ece0157bf2372fb879f694cee9f5f0846fcbe1a` và tag P0 `02531985dd915318fc7a30f800c6b17bf9e6f95f` giữ nguyên.

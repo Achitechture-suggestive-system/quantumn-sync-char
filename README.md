@@ -19,6 +19,8 @@ Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket S
 
 Tình trạng các gap và bằng chứng hiện tại nằm trong [theo dõi hoàn thiện](docs/research/STUDIO_COMPLETION_STATUS.md). [Bảng nguồn nghiên cứu](docs/research/STUDIO_SOURCE_LEDGER.md) ghi metadata, DOI, phần áp dụng và giới hạn của từng nguồn.
 
+[Đánh giá output Ollama ngày 28/11/2026](docs/research/STUDIO_LLM_OUTPUT_EVALUATION.md) ghi bảy lượt thật, 12 proposal, kiểm hash/citation, lỗi endpoint/phủ định/bỏ sót và hai correction được tái tính. Đây là phân tích phát triển, chưa có nhãn độc lập để tính semantic accuracy.
+
 Một phương án là một cách chia 1–50 component vào các Quantum. Đầu vào gồm sơ đồ component, kho và chính sách dữ liệu, cạnh `SYNC`/`ASYNC`/`UNKNOWN`, requirement và ánh xạ đặc tính đã được xác nhận. Với NFR, chuỗi truy vết là **đoạn nguồn → characteristic ISO → component → Quantum của phương án**. Ollama cung cấp đề xuất để review. Việc nạp văn bản nháp chỉ bổ sung nguồn; chi phí đặc tính phản ánh các ánh xạ đã đưa vào mô hình. [ISO/IEC 25010:2023](https://www.iso.org/standard/78176.html) · [Bộ ca đánh giá và nguồn gốc dữ liệu](docs/demo/STUDIO_TRICKY_CASES_ORACLE.md)
 
 | Ràng buộc cứng | Điều kiện để một cách chia hợp lệ |

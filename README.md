@@ -103,6 +103,8 @@ Rà soát ngày 26/11/2026 ghi nhận 158 bài kiểm tra đạt và mười kho
 
 Mốc triển khai tiếp theo đã nối Ollama vào các requirement đang nhập. Mở **Phân tích yêu cầu hiện tại bằng Ollama**, chọn nguồn và tác vụ, rồi bấm **Phân tích bằng Ollama**. Mỗi đề xuất có đoạn nguồn, lỗi cấu trúc và các lựa chọn approve/correct/reject/defer. Quyết định áp dụng được lưu cùng input trước–sau. **Lịch sử và tải lại phiên Studio** khôi phục mô hình và ưu tiên từ checkpoint. Khi sửa nguồn, cần xác nhận lại allocation. [Tiến độ, hướng dẫn và bằng chứng từng gap](docs/research/STUDIO_COMPLETION_STATUS.md)
 
+**Hợp đồng tương tác và quyền ghi dữ liệu** bổ sung review ACK, retry, timeout, idempotency, writer và invariant cho boundary. Hợp đồng được duyệt cập nhật mode rồi phân nhóm lại; nháp giữ nguyên optimizer. Từng nguồn, claim và kho liên quan đều gắn revision. Trong **Boundary: hợp đồng, ownership và chạy thử**, có thể chạy giao thức mẫu bằng hai tiến trình HTTP/SQLite riêng và đọc kết quả mất ACK, timeout, restart, gửi trùng. Mã và dữ liệu giao thức này là `PREPARED_FIXTURE`; observation được thu từ tiến trình thực tế, chưa phải kiểm chứng nghiệp vụ Ticket/Tutor hay deployability. [Cách bấm, tái lập, nguồn bài báo và giới hạn](docs/research/STUDIO_BOUNDARY_EVIDENCE.md)
+
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m compileall -q app.py research_app.py eqcr tests

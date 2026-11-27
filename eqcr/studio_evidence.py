@@ -49,9 +49,16 @@ def binding_issues(architecture: Architecture, evidence: EvidenceBinding, *, col
 
 
 def evidence_blockers(architecture: Architecture) -> list[dict]:
-    return [{"collection": collection, "index": index, "source_id": item.evidence.source_id, "issues": issues}
+    from .studio_boundaries import contract_issues
+
+    blockers = [{"collection": collection, "index": index, "source_id": item.evidence.source_id, "issues": issues}
             for collection, index, item in bound_items(architecture)
             if (issues := binding_issues(architecture, item.evidence, collection=collection, item=item))]
+    for index, review in enumerate(architecture.interaction_contracts):
+        if review.contract.selected_mode != "UNDECIDED" and (issues := contract_issues(architecture, review)):
+            blockers.append({"collection": "interaction_contracts", "index": index,
+                             "source_id": review.contract.contract_id, "issues": issues})
+    return blockers
 
 
 def ensure_current_evidence(architecture: Architecture) -> None:

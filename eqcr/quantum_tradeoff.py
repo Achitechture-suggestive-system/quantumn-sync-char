@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 from .pipeline import _partitions
 from .studio_quality import QualityCharacteristic
 from .studio_scenarios import ReviewedScenario
+from .studio_boundaries import OwnershipDecision, ReviewedContract
 
 
 Key = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32, pattern=r"^[A-Za-z][A-Za-z0-9_-]*$")]
@@ -99,8 +100,8 @@ class EvidenceBinding(InputModel):
     source_quote: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
     proposal_id: Annotated[str, StringConstraints(min_length=1, max_length=200)]
     run_id: Annotated[str, StringConstraints(min_length=1, max_length=100)]
-    citation_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION"]
-    review_provenance: Literal["HUMAN_DECISION"] = "HUMAN_DECISION"
+    citation_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION", "PREPARED_FIXTURE"]
+    review_provenance: Literal["HUMAN_DECISION", "PREPARED_FIXTURE"] = "HUMAN_DECISION"
     review_actor: Label
     review_rationale: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
 
@@ -162,6 +163,8 @@ class Architecture(InputModel):
     keep_apart: list[SeparatePair] = Field(default_factory=list, max_length=28)
     requirements: list[Requirement] = Field(default_factory=list, max_length=40)
     quality_scenarios: list[ReviewedScenario] = Field(default_factory=list, max_length=20)
+    interaction_contracts: list[ReviewedContract] = Field(default_factory=list, max_length=56)
+    ownership_decisions: list[OwnershipDecision] = Field(default_factory=list, max_length=16)
 
     @model_validator(mode="after")
     def check_references(self):
@@ -175,6 +178,12 @@ class Architecture(InputModel):
             raise ValueError("ID requirement phải duy nhất.")
         if len({item.scenario.id for item in self.quality_scenarios}) != len(self.quality_scenarios):
             raise ValueError("ID quality scenario phải duy nhất.")
+        if len({(item.source, item.target) for item in self.interaction_contracts}) != len(self.interaction_contracts):
+            raise ValueError("Chỉ giữ một hợp đồng hiện hành cho mỗi tương tác.")
+        if len({item.contract.contract_id for item in self.interaction_contracts}) != len(self.interaction_contracts):
+            raise ValueError("ID hợp đồng tương tác phải duy nhất.")
+        if len({item.store_id for item in self.ownership_decisions}) != len(self.ownership_decisions):
+            raise ValueError("Chỉ giữ một quyết định ownership hiện hành cho mỗi kho.")
         for requirement in self.requirements:
             visited = {requirement.id}
             target = requirement

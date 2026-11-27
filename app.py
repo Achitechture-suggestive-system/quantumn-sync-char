@@ -26,6 +26,8 @@ from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_e
 from eqcr.studio_sessions import invalidate_changed_sources
 from eqcr.studio_scenario_ui import show_prediction_comparison, show_scenario_review
 from eqcr.studio_scenarios import predict_scenario
+from eqcr.studio_boundaries import boundary_profiles
+from eqcr.studio_boundary_ui import show_boundary_outputs, show_boundary_review
 from eqcr.studio_uncertainty import cases_are_current, conservative_order, score_bounds
 from eqcr.studio_views import (
     candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
@@ -112,6 +114,7 @@ def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
         "assignment": assignment,
         "groups": groups,
         "quality_profiles": [predict_scenario(architecture, candidate, scenario) for scenario in architecture.quality_scenarios],
+        "boundary_profiles": boundary_profiles(architecture, candidate),
         "interactions": [
             {
                 **edge.model_dump(mode="json"),
@@ -475,6 +478,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
         for blocker in blockers:
             details_panel.write(f"{blocker['source_id']} · {' '.join(blocker['issues'])}")
         st.markdown("[Review căn cứ nguồn](#studio-source-review)")
+        st.markdown("[Review hợp đồng tương tác](#studio-boundaries)")
         return [], False, None
     preferences = st.session_state.studio_weights
     ranking = st.session_state.studio_ranking
@@ -608,6 +612,7 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
     details_panel.caption("Điểm so sánh là chi phí thiết kế. Độ trễ và độ tin cậy cần được đo riêng.")
     with details_panel:
         show_prediction_comparison(candidates, plans)
+        show_boundary_outputs(architecture, next(item for item in candidates if item.id == active_id), replay=bool(replay))
 
     comparison = {
         "status": "PROPOSED_NOT_VERIFIED",
@@ -617,6 +622,9 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                              "MIXED_WITH_PREPARED_SCENARIO_DATA" if any(item.decision_provenance == "PREPARED_FIXTURE" or
                                                                          item.assumptions.provenance == "PREPARED_FIXTURE"
                                                                          for item in architecture.quality_scenarios) else
+                             "MIXED_WITH_PREPARED_BOUNDARY_DATA" if any(item.provenance == "PREPARED_FIXTURE" or item.reference_protocol
+                                                                       for item in architecture.interaction_contracts) or
+                                                                       any(item.provenance == "PREPARED_FIXTURE" for item in architecture.ownership_decisions) else
                              "MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
                              else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example() else "USER_SUPPLIED"),
         "architecture": architecture.model_dump(mode="json"),
@@ -640,7 +648,8 @@ def show_comparison(architecture: Architecture, details_panel, evidence_panel,
                         "costs": dict(zip(AXES, item.vector, strict=True)), "cost_drivers": details[item.id],
                         "assignment": plans[item.id]["assignment"], "quantum_profiles": plans[item.id]["groups"],
                         "interaction_routing": plans[item.id]["interactions"],
-                        "quality_profiles": plans[item.id]["quality_profiles"]}
+                        "quality_profiles": plans[item.id]["quality_profiles"],
+                        "boundary_profiles": plans[item.id]["boundary_profiles"]}
                        for slot, item in zip(slots, candidates, strict=True)],
     }
     if replay:
@@ -712,6 +721,7 @@ if replay is None:
         show_rule_policy_review(architecture)
         show_evidence_review(architecture)
         show_scenario_review(architecture)
+        show_boundary_review(architecture)
         st.html('<span id="studio-ollama" class="qs-anchor"></span>')
         show_requirement_cases(architecture)
 

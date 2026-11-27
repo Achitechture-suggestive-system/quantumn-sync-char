@@ -59,6 +59,7 @@ def diagram_header(architecture, *, example: bool, analyzed: bool, pending: bool
     if not replay:
         links.append('<a href="#studio-live">Ollama và review</a>')
         links.append('<a href="#studio-ollama">Requirement Ollama</a>')
+        links.append('<a href="#studio-boundaries">Hợp đồng và ownership</a>')
         if any(item.kind == "NFR" for item in architecture.requirements):
             links.append('<a href="#studio-scenarios">Quality scenario</a>')
     if analyzed and not pending:

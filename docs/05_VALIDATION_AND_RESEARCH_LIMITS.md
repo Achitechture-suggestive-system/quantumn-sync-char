@@ -13,6 +13,7 @@
 | Interaction trace | Options có references và thiếu sót được giữ lại | Sync/Async đúng, contract, consistency, failure handling. |
 | QAME allocation | Scenario gắn với FR/responsibility/quantum và có trạng thái đo | Target đạt, metric calibrated hay quality PASS. |
 | Human review | Decision, actor, reason và nguồn được ghi lại | Sự thật kỹ thuật hay xác minh độc lập. |
+| Traceability graph | Node/edge IDs, endpoint references, recorded spans, review-state và candidate membership nhất quán | Citation hỗ trợ ngữ nghĩa, policy đúng, architecture tốt hay production-ready. |
 | Empirical quality | Chưa triển khai trong case này | Không thể nêu benchmark hay hiệu năng đạt. |
 
 ## Các status không thể thay thế nhau
@@ -27,12 +28,10 @@
 
 ## Kết quả P0 có thể tái hiện
 
-Ngày 14/11/2026: regression suite 30 tests pass; AppTest không exception; Streamlit localhost health/root HTTP 200; fixture Bell(6)=203, mười co-optima J=0. H4 MUST_LINK(R4,R6) đối nghịch H3 tạo INFEASIBLE/0; tắt H3 tạo 5. [Báo cáo P0](verification/P0_BASELINE_VERIFICATION.md) ghi lệnh/môi trường/phạm vi.
-
-P0 so sánh bằng chính code enumerator, chưa có oracle độc lập. Không tuyên bố cross-validation thuật toán trước khi P1 bổ sung oracle riêng.
+Ngày 14/11/2026: P0 regression suite có 30 tests pass; trên nhánh P1, 44 tests pass, compileall pass và AppTest có 0 exception. Oracle độc lập dùng mọi phép gán nhãn rồi canonicalize blocks, không gọi generator restricted-growth của production: 203 partitions, 10 optima baseline; H4 tạo 0 feasible; tắt H3 còn 5 optimal. Chi tiết trong [P0 baseline](verification/P0_BASELINE_VERIFICATION.md) và [P1 semantic evaluation](verification/P1_SEMANTIC_EVALUATION.md).
 
 ## Giới hạn khoa học
 
-Input requirements-only; responsibilities và policies có sẵn hoặc do model đề xuất; không có expert labels độc lập. H1/H2/H3 là giả định what-if. Fixture không có soft constraints nên 10 ứng viên hòa ở J=0. Pet–Visit thiếu protocol, contract, consistency và quality target; edge UNRESOLVED, options PROPOSED_NOT_VERIFIED. Owner Search target p95 ≤ 250 ms @ 300 requests/s nhưng không load test, nên NOT_MEASURED.
+Input requirements-only; responsibilities và policies có sẵn hoặc do model đề xuất; không có expert labels độc lập. H1/H2/H3 là giả định what-if. Fixture không có soft constraints nên 10 ứng viên hòa ở J=0. Pet–Visit thiếu protocol, contract, consistency và quality target; edge UNRESOLVED, options PROPOSED_NOT_VERIFIED. Owner Search target p95 ≤ 250 ms @ 300 requests/s nhưng không load test, nên NOT_MEASURED. Live Ollama `qwen3:4b` trên prompt v5 tạo sáu responsibility proposals, sáu normalized requirement references, một evidence proposal và một boundary hypothesis; span checks qua, mọi đề xuất còn REVIEW_REQUIRED. Đây không phải semantic evaluation.
 
 Không có bằng chứng cho semantic accuracy/F1, architectural quality, deployability, operability, security hoặc generalization.

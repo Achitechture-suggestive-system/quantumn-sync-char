@@ -1,5 +1,302 @@
 # Changelog
 
+## Backend 9–50 component và đánh giá phản hồi LLM — 2026-11-28
+
+- Commit `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3` thêm CP-SAT bảo toàn năm trục Studio, mode bounds, bounded repair có protected rules, thời hạn và found-pool scope. ≤8 giữ enumerator cũ. 264 tests, compileall, JavaScript syntax và CI qua.
+- Tám benchmark fixture ở cỡ 9/12/20/50 đều giữ hard constraints; pressure 20/50 mới FEASIBLE. Browser 50 component chọn A/B/C đúng 3/2/4 Quantum, đặc tính/truy vết đi theo; 67 nút trong bounds, khổ 400 px không tràn toàn trang. Mẫu sáu component đã khôi phục. [Bằng chứng D2](../research/STUDIO_LARGE_BACKEND.md).
+- [Báo cáo output LLM](../research/STUDIO_LLM_OUTPUT_EVALUATION.md) kiểm lại bảy run, 12 payload nguyên gốc, request/response hashes, chín quote khớp và tám hàng có issue lịch sử. Phân tích lỗi ngữ nghĩa riêng, giữ metric null và ghi correction của agent không phải nhãn chuyên gia. Không gọi model mới trong lần chốt báo cáo.
+
+## Review mệnh đề, phủ định và vai trò — 2026-11-27
+
+- Commit `d3a1dc6d5fa608c87968716048248c8761c2edba` thêm frame clause, review role/modality/effect và provenance phần ngoài nguồn, source-bound proof trên allocation/quan hệ, guard trạng thái/điều kiện/duplicate và đường reviewer bổ sung mệnh đề model bỏ sót.
+- 241 tests, compileall, JavaScript syntax và CI qua. Hai lượt qwen3:4b thật trên ca phát triển vẫn có lỗi và được giữ ngoài optimizer. Browser sửa proposal thật DEV-OC-12 với review fixture, quan sát P011 6→8, source→COMPLETE→Q2, giữ hard rules; khổ 400 px không tràn ngang. Input mẫu được khôi phục, checkpoint/run giữ local.
+- [Cách bấm, các lượt lỗi, before/after và phạm vi nghiên cứu](../research/STUDIO_CLAUSE_REVIEW.md). Chưa có independent labels hoặc semantic accuracy.
+
+## Hợp đồng boundary và probe lỗi cục bộ — 2026-11-27
+
+- Commit `60bac8559cec079da3ae490c208711633fe5340d` bổ sung review hợp đồng/ownership, binding mọi nguồn và kho, checkpoint, boundary profiles theo candidate và hai tiến trình HTTP/SQLite thực thi giao thức mẫu. Giữ hard rules, UNKNOWN, NOT_MEASURED và nguồn fixture.
+- 218 tests, compileall, JavaScript syntax và CI qua. Browser 8501 duyệt contract fixture CREATE→ROUTE cho P011, chạy 9/9 assertion thật, kiểm PID đã dừng, đổi candidate làm báo cáo STALE và nạp lại mẫu. Khổ 400 px không tràn ngang toàn trang.
+- [Nguồn, hướng dẫn và phạm vi kiểm chứng](../research/STUDIO_BOUNDARY_EVIDENCE.md). Bổ sung hai nguồn đọc cho G2: EARS 2009 và NFR classification 2007, ghi rõ parser/classifier của các bài chưa được triển khai trong Studio.
+
+## Scenario sáu phần và bound có điều kiện — 2026-11-27
+
+- Commit `d17ca17e6dcbe220ebaf674b006119847bfd0e26` đã thêm review scenario, scope ISO vào phân nhóm, hai adapter thời gian và Quality Profiles theo candidate. Giữ UNKNOWN/NOT_MEASURED và provenance reviewer/fixture.
+- 208 tests, compileall, kiểm JavaScript và CI qua. Browser 8501 nhập hai scenario fixture, đối chiếu 600/1.000 ms và 655.000/405.000 ms, chọn C/P011 rồi kiểm đúng sơ đồ cùng đặc tính. Khổ 400 px không tràn ngang toàn trang. [Công thức và giới hạn](../research/STUDIO_QUALITY_SCENARIOS.md)
+
+## Revision căn cứ nguồn của quan hệ — 2026-11-27
+
+- Commit `85d0c767bbe76a238b9c6ad87de92c1e90e8ad1f` đã thêm binding nguồn/catalog/claim, chặn optimizer khi căn cứ cũ và review lại có checkpoint. v2 đọc v1 trong bộ nhớ, giữ nguyên file lịch sử.
+- 190 tests và CI đạt. Lượt qwen3:4b thật trả quote đúng nhưng sai endpoints; smoke kỹ thuật sửa lại, đổi nguồn để kiểm chặn và xác nhận lại. Không dùng làm annotation độc lập. [Bằng chứng A2](../research/STUDIO_COMPLETION_STATUS.md#mốc-a2--ràng-buộc-nguồn-theo-revision-của-quan-hệ)
+
+## Policy bảo vệ và áp dụng cách sửa — 2026-11-26
+
+- Commit `e2fe2b2bf1ad5e1911511db4e8ca374bd9ece485` thêm bảo vệ từng hard rule, chi phí sửa, xếp MCS theo policy và quyết định áp dụng có revision. Chặn sửa quy tắc bảo vệ từ input, review model và restore; giữ bản nháp bị chặn.
+- 182 tests và các kiểm tra cục bộ qua. CI đạt; browser 8501 hiển thị form policy không có exception.
+- Bổ sung bảng 12 nguồn nghiên cứu, phạm vi áp dụng và giới hạn. Chỉnh citation Curto thành tập báo 2027, xuất bản online tháng 11/2026.
+
+## Khoảng chi phí và tương tác theo điều kiện — 2026-11-26
+
+- Thêm biên dưới/trên theo giả thuyết mode, review điều kiện có quote/hash/checkpoint và tùy chọn tối thiểu hóa biên trên trên mọi nghiệm thỏa hard constraints.
+- Commit `8a34f5a2b39925d56cfcb8e4ca7af3f0f6f17cde` đã push, CI đạt với 174 tests. Browser OC-09 hiển thị P031 5–7, P011 6–8, P029 7–9, kiểm tra khổ 400 px không tràn ngang toàn trang.
+- Sau phép thử đã bổ sung khôi phục lựa chọn biên trên khi rời oracle và chuẩn hóa instance mô hình qua lần tải lại module. Có test tái hiện lưu/khôi phục cả mô hình và ưu tiên.
+
+## Review mục tiêu chất lượng trùng — 2026-11-26
+
+- Thêm quan hệ `duplicate_of` do reviewer xác nhận, giữ source IDs cùng truy vết nhưng tính một mục tiêu trên ánh xạ gốc. Có checkpoint hợp nhất/tách, chặn liên kết sai và yêu cầu xác nhận lại khi nguồn đổi.
+- 168 tests, compileall và kiểm tra UI trên 8501 qua. Commit triển khai `efd200ebe3e07abb215428e3c867b4e1ad51bfd0` đã được đẩy và CI đạt. Test paraphrase là đối chứng tổng hợp, chưa cung cấp nhãn ngữ nghĩa độc lập. [Bằng chứng](../research/STUDIO_COMPLETION_STATUS.md#mốc-b1--danh-tính-mục-tiêu-chất-lượng)
+
+## Ollama theo input hiện tại và lịch sử review — 2026-11-26
+
+- Thêm ba tác vụ gọi Ollama trực tiếp từ requirement đang nhập, kiểm quote/ID và giữ proposal ở trạng thái chờ quyết định. Người vận hành có thể approve/correct/reject/defer, lưu rationale và mô hình trước–sau.
+- Checkpoint tải lại được sau khi khởi động app. Sửa nguồn yêu cầu xác nhận lại allocation. Lượt smoke bằng agent đã sửa đề xuất thật của model và quan sát P031→P011 trên cùng sơ đồ. [Tiến độ và bằng chứng](../research/STUDIO_COMPLETION_STATUS.md)
+- 162 tests qua cùng compileall và kiểm tra trình duyệt trên cổng 8501.
+
+## Rà soát gap và hướng nghiên cứu Studio — 2026-11-26
+
+- Ghi mười gap từ input Ollama, ngữ nghĩa, mục tiêu trùng, UNKNOWN, quality scenarios, lịch sử review, policy sửa ràng buộc, bằng chứng vận hành, backend lớn và protocol đánh giá.
+- Tái hiện điểm P031 tăng 7→9 khi thêm paraphrase, target 900/9.000 ms giữ cùng phương án và UNKNOWN làm giảm điểm. Báo cáo ánh xạ nguồn bài báo vào từng bước và nêu điều kiện hoàn thành. [Báo cáo](../research/STUDIO_GAP_ANALYSIS_2026-11-26.md)
+- Regression suite ngày 26/11/2026 đạt 158 tests. Đợt này là kiểm tra mã và dữ liệu thử, kèm cập nhật tài liệu.
+
+## Giải thích INFEASIBLE và mô phỏng cách gỡ — 2026-11-21
+
+- Studio truy vết đường bắt buộc cùng nhóm gây xung đột với quy tắc tách, gồm giao dịch cục bộ và kho `KEEP_SHARED`. Bộ phân tích liệt kê các tập sửa tối thiểu theo bao hàm và kiểm tra phương án chọn trên bản sao.
+- OC-10 giữ 0 nghiệm cho mô hình gốc. Hai mô phỏng lần lượt cho 10 nghiệm với P031 và 27 nghiệm với P008. README ghi cách tiếp cận, ví dụ chạy và nguồn nghiên cứu. [Hướng dẫn và nguồn](../../README.md#xử-lý-infeasible)
+
+## Chạy lại 12 ca oracle trên Quantum Studio — 2026-11-21
+
+- Thêm bảng chạy cả bộ và nút nạp từng ca lên sơ đồ. Chế độ nguồn nháp giữ nguyên mẫu. Chế độ oracle áp dụng ánh xạ và ràng buộc dựng sẵn trong phiên mô phỏng, có nút quay lại mô hình và bố cục gốc.
+- Bộ giải khớp cả 12 ca. Kiểm tra 8501 cho thấy OC-01 chuyển từ P031 sang P011, còn OC-10 lần lượt cho 37, 0 và 10 nghiệm khi nạp nháp, áp dụng oracle và phát lại Ollama đã lưu. [Hướng dẫn chạy](../demo/STUDIO_TRICKY_CASES_ORACLE.md)
+
+## Oracle cho 12 ca khó của Quantum Studio — 2026-11-21
+
+- Ghi bộ đầu vào, oracle khóa trước inference và đối chiếu hai lượt chạy thật của `qwen3:4b`. Lượt dùng prompt chung khớp 0/12 ca, lượt tách prompt và schema khớp 4/12 ca.
+- Xác minh 12 ca nháp giữ nguyên tập nghiệm. Ca giao dịch cục bộ xung đột với ràng buộc tách cho 0 nghiệm, còn đầu ra LLM thiếu chính sách tách cho 10 nghiệm. [Bộ ca và báo cáo](../demo/STUDIO_TRICKY_CASES_ORACLE.md)
+
+## Kịch bản requirement Ollama và sơ đồ so sánh — 2026-11-20
+
+- Gộp bộ chọn A/B/C, sơ đồ và ma trận trong một vùng làm việc. Một lựa chọn điều khiển cả sơ đồ đầu ra và hồ sơ truy vết.
+- Thêm 15 requirement giả lập từ ba phản hồi Ollama `qwen3:4b`. Kiểm tra request, response và từng trường gốc. Sáu ánh xạ có đoạn trích khớp được dùng trong phép thử what-if. Khi chỉ nạp nháp, 37 nghiệm khả thi giữ nguyên điểm và phân nhóm.
+- 154 bài kiểm tra cục bộ và CI đều qua. Đã kiểm tra luồng 8501 trên desktop và khổ 400 px. [Báo cáo đánh giá](../demo/LLM_REQUIREMENT_EVALUATION.md) · [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44761972312)
+
+## Phạm vi requirement và tuyến Quantum — 2026-11-20
+
+- Requirement có thể khai báo component phụ trách ngay trong trình chỉnh sơ đồ. Ánh xạ ISO ưu tiên phạm vi này, rồi đến liên kết characteristic đã có và tên hoặc mã component xuất hiện trong văn bản.
+- Bảng tuyến ánh xạ hiện Quantum chứa từng component theo từng phương án trước và sau xác nhận. Mẫu mới NFR-03 cho thấy phạm vi khai báo định vị được Customer Profile ở Q1. Kiểm tra thêm REQ-04 từ giao diện cho thấy Operations Reporting ở Q3 trong A/B và Q1 trong C.
+- 153 bài kiểm tra cục bộ và CI đều qua. [CI trên commit triển khai](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44757122151)
+
+## Đồng bộ giao diện Quantum Studio — 2026-11-20
+
+- Thêm điều hướng theo phần, cập nhật hai sơ đồ và đưa nút phân tích lên thanh công cụ. Ánh xạ ISO và quyết định review dùng thẻ nguồn và biên bản.
+- Ma trận A/B/C hiện mức chênh lệch theo từng trục, thanh đóng góp vào điểm và mục mở rộng cho từng khoản chi phí. Hồ sơ truy vết tách Quantum, tương tác, kho và ràng buộc, cùng Requirements theo phương án đang chọn.
+- Kiểm tra 8501 trên desktop và khổ 390 px, gồm xác nhận ISO, xem nguồn REQ-01 ở Q2 của P031, kiểm căn cứ Ticket DB, thay ưu tiên và tải JSON. 150 bài kiểm tra cục bộ và CI đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44754934853)
+
+## Hoàn tác bản nghiên cứu ISO trên cổng 8502 — 2026-11-20
+
+- Hoàn tác bản triển khai `4446cbb`, khôi phục mã trước đó tại `f041afb` và dừng phiên nghiên cứu trên cổng 8502.
+- Kiểm tra trên cổng 8501 xác nhận sơ đồ đầu ra hiện đặc tính trong từng Quantum, cùng ánh xạ ISO và ba lựa chọn A/B/C. 149 bài kiểm tra cục bộ và CI đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44750146560)
+
+## Phân rã Quantum theo chất lượng có truy vết — 2026-11-20
+
+- Thêm registry ISO/IEC 25010:2023 gồm 9 characteristics và 40 subcharacteristics, và registry driver riêng. Phân loại requirement nguyên tử giữ span, provenance và review.
+- Luồng nghiên cứu tự chọn tạo scenario matrix, trace P4, exposure theo chiều coupling và profile từng ứng viên. Policy kiểm căn cứ hard rule, bảo toàn UNKNOWN và đưa preference chất lượng hoặc tương tác đã review vào optimizer hiện hữu.
+- Ca đặt thiết bị trả ba ứng viên P004, P001 và P002 từ 52 phân hoạch. Bổ sung span timing chuyển I-RESERVE từ UNRESOLVED sang đề xuất SYNC_REQUEST_RESPONSE, với J và phân hoạch giữ nguyên. Bundle, graph JSON và Draw.io đã xuất và kiểm. Studio mở Quality Profile ở panel riêng.
+- 174 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44749579232)
+
+## NFR theo ISO/IEC 25010 và ba phương án Quantum — 2026-11-20
+
+- Thêm đề xuất nhãn ISO/IEC 25010:2023 từ NFR, đoạn chữ khớp và component được nêu trong văn bản. Ánh xạ được xác nhận mới tham gia phân hoạch, truy vết theo NFR và xuất JSON. Các chỉ số vận hành vẫn `NOT_MEASURED`.
+- So sánh và lưu lựa chọn A/B/C theo các chi phí có thể truy vết. Studio ưu tiên biên Pareto và ghi rõ phương án trội hơn khi bổ sung một phương án ngoài biên.
+- Browser smoke xác nhận NFR-01 làm đổi phương án xếp đầu từ P011 sang P031 ở chế độ characteristics. Ba phương án là P031, P011 và P029. Kiểm tra thêm một NFR tự nhập cho Customer Login nhận hai nhãn đề xuất và chỉ cập nhật sơ đồ sau xác nhận.
+- 149 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44714611105)
+
+## Truy vết requirement và chia theo characteristics — 2026-11-20
+
+- Studio nhập requirement có mã và cho gắn mỗi nguồn vào characteristic của component. Sơ đồ đầu ra hiển thị mã có thể bấm để mở nội dung nguồn. Bảng truy vết và JSON review cho biết đường từ requirement đến Quantum.
+- Chế độ **Chia theo characteristics** xếp phương án khả thi theo chi phí rải, chi phí trộn, rồi điểm trọng số. So sánh theo SYNC và trọng số tiếp tục có trong Studio.
+- Kiểm tra trình duyệt trên cổng 8501. Sau khi chuyển Ticket Creation sang đặc tính Nhất quán luồng ticket và gắn `REQ-04`, đổi chế độ xếp từ P047 sang P031 đưa Ticket Creation vào Q2 cùng Ticket Router. Chi phí tách kho giảm 1 xuống 0, chi phí ASYNC giữ chung tăng 0 lên 1. Đã kiểm tra bấm mã mở đúng nguồn và gỡ mã vẫn giữ đặc tính đã gán.
+- 147 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44682122391)
+
+## Khôi phục luồng Quantum Studio — 2026-11-20
+
+- Khôi phục bộ giải, chính sách SYNC/ASYNC và so sánh A/B của `e10bd81`. Gỡ bảng độ nhạy và phân tích Ollama khỏi Studio. Phần **Characteristics** trong từng Quantum vẫn hiện đặc tính, component phụ trách và các nhóm cùng phụ trách.
+- Kiểm tra trực tiếp trên cổng 8501. **Phân tích sơ đồ** hiển thị P011 và ánh xạ Q1–Q3. **Ưu tiên giữ dữ liệu** xếp P031 đầu, nơi Q1 và Q2 cùng phụ trách Trải nghiệm khách hàng. Human Review hiển thị và lỗi `omit_axis` không xuất hiện.
+- 144 bài kiểm tra cục bộ và CI trên commit khôi phục đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44676901252)
+
+## Ollama và characteristics trong sơ đồ Quantum — 2026-11-20
+
+- Đầu ra hiển thị từng characteristic, component phụ trách và Quantum cùng phụ trách. Bảng độ nhạy thử bỏ lần lượt điểm rải và điểm trộn đặc tính. Chi phí ASYNC giữ chung chỉ tính khi bật ưu tiên tách và ghi căn cứ.
+- Ollama `qwen3:4b` chọn các dữ kiện và câu hỏi từ cặp A/B. Studio dựng câu giải thích từ số liệu đã tính. Cách này xử lý trường hợp thử nghiệm ban đầu mô hình đọc ngược chiều chi phí tách kho. Kết quả gắn với cặp phương án và cấu hình đã dùng, có trạng thái cần review.
+- Kiểm tra Ticket Support trên trình duyệt cho thấy P011 so với P031 giảm chi phí ASYNC ưu tiên tách nhưng giữ chung từ 1 xuống 0 và tăng chi phí tách dữ liệu từ 0 lên 1. Ollama chọn câu hỏi về giao nhận, độ trễ và lỗi khi `CREATE → ROUTE` qua ranh giới. Lượt kiểm tra cuối hiển thị đề xuất sau khoảng 1,6 giây. Đổi ưu tiên làm bản phân tích cũ hết hiệu lực. Sơ đồ cũng hiển thị Q1 và Q2 cùng phụ trách Trải nghiệm khách hàng trong P031.
+- 151 bài kiểm tra cục bộ và CI trên commit triển khai đều qua. [GitHub Actions](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44674102902)
+
+## Chia Quantum theo SYNC — 2026-11-20
+
+- Studio xếp các phương án khả thi theo chi phí SYNC qua ranh giới, chi phí ASYNC giữ chung rồi điểm trọng số. Các chế độ theo trọng số vẫn có trên màn so sánh.
+- Kết quả truy characteristic về từng component phụ trách và phân luồng SYNC/ASYNC/UNKNOWN thành nội bộ hoặc qua ranh giới. JSON review lưu cách xếp hạng và các ánh xạ theo phương án.
+- Ticket Support mặc định chọn P011. Kiểm tra trình duyệt xác nhận SYNC nội bộ Q2, ASYNC từ Q1 đến Q2 và đổi thứ hạng khi chọn giữ dữ liệu. 144 bài kiểm tra và [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44667341488) qua trên commit `1f3ee3348f30f99827e735c13b6bf315c36bdca8`.
+
+## Sơ đồ tương tác Quantum Studio — 2026-11-19
+
+- Thay tab nhập bảng bằng sơ đồ kéo thả. Chỉnh component, tập characteristics, kho và quan hệ ngay trong sơ đồ. Tách tọa độ bố cục khỏi `Architecture`.
+- Vẽ đầu ra từ phân hoạch đã tính, truy vết component, cạnh và phần kho tới Quantum. Giải thích điểm bằng cùng đóng góp chi phí mà bộ giải sử dụng.
+- 143 bài kiểm tra qua. Browser smoke kiểm kéo thả, giữ tọa độ, ánh xạ cạnh ASYNC, truy kho tách, sửa characteristic, nối cạnh SYNC và tính lại trade-off. Ca kiểm tra khác Ticket Support đổi từ hai Quantum sang một khi đổi đặc tính.
+- [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44554382575) qua trên commit `f50836c40d5aa5bca7bda774b560423d69e25418`.
+
+## Quantum Studio — 2026-11-19
+
+- Entry point mặc định đọc component, quan hệ Sync/Async, kho và characteristics. Bộ giải liệt kê phân hoạch, lọc ràng buộc cứng và so sánh các phương án Pareto.
+- Human Review chọn nhanh ưu tiên, xem thứ hạng thay đổi, chọn A/B hoặc yêu cầu chỉnh. Mỗi quyết định lưu cùng mô hình và trade-off tại thời điểm review.
+- Ticket Support xét 203 cách chia, giữ 37 cách khả thi và tìm hai phương án tương ứng hình 2 và 3 dưới giả định demo. Giao diện nghiên cứu chuyển sang `research_app.py`.
+- 142 bài kiểm tra và compileall qua. Đã mở app cục bộ, kiểm tra hai sơ đồ và đổi ưu tiên trong trình duyệt. [CI](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44491723562) qua trên commit `1f28da61b65bca28afc9fe891d0408e247484fbf`.
+
+## Tutor exploratory demo isolation — 2026-11-19
+
+- Tạo nhánh `feat/tutor-exploratory-demo` từ feature P2 hiện tại, giữ `main`/P0 nguyên trạng. Thêm execution mode `EXPLORATORY_UNBLINDED_DEMO`, UI acknowledgement, storage root tách, demo eligibility trong metadata/manifest và evaluator gate để không nhận demo làm blind data.
+- Tutor Ollama proposals chỉ là audit artifacts lúc chờ review. Test-only AppTest đi qua explicit review → policy-derived soft constraint → optimizer → full evidence revision/recompute và hash/snapshot audit; đây là wiring test, không phải inference hoặc human decision thật.
+- Bổ sung capture Ollama/model metadata nếu endpoint khả dụng và yêu cầu actor/reason/source nhập thật cho demo review. Sửa trạng thái chờ review để chạy khi optimizer roles còn rỗng.
+- Verification: 138 tests pass; compileall và `git diff --check` pass. Commit `f981e55125ddee3f3c10a34d4adb8c4319b3fa04` đã push lên nhánh mới; GitHub Actions [run `44476894324`](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44476894324) completed success trên đúng SHA. Chưa có live inference hoặc stakeholder action; [demo result](../demo/TUTOR_E2E_DEMO_RESULT.md) giữ đúng trạng thái đó.
+- Scientific P2 vẫn `P2_BLOCKED_INDEPENDENT_ANNOTATION`; không có semantic metric, gold label hoặc thay đổi P0.
+
+## Automated UI regression — 2026-11-19
+
+- Thêm Streamlit `AppTest` chạy PetClinic offline flow từ load đến đủ 10 pipeline stages, kiểm tra trạng thái fixture, QAME trace chain và `NOT_MEASURED`/`INSUFFICIENT_EVIDENCE`.
+- Test cô lập `save_run` và `save_snapshot`, không ghi đè hoặc tạo dữ liệu trong `runs/`.
+- Verification: full suite **130 passed**, compileall và diff check passed. Code commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` đã push; [CI 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) success.
+- Đây là UI regression cho PetClinic `PRECOMPUTED` fixture; không phải Tutor model inference, reviewer decision, hay bằng chứng semantic correctness.
+
+## QAME allocation edge validation — 2026-11-19
+
+- Tăng `qame_allocations_resolve` từ kiểm tra node sang tính lại liên kết requirement/scenario/responsibility/quantum/interaction mong đợi và kiểm tra từng cạnh, gồm source/target quantum của interaction.
+- Thêm adversarial test dùng quantum endpoint không tồn tại; traceability trả `FAIL` thay vì pass khi tham chiếu sai.
+- Verification: 129 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `172856cfa718971aa83e0f09986e53ce11534e2b` đã push; [CI 44421428402](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44421428402) success.
+- Không thay đổi semantic status, ISO characteristic mapping hoặc measurement; Tutor vẫn thiếu annotation lock/model review thật.
+
+## QAME traceability chain — 2026-11-19
+
+- Traceability graph bổ sung liên kết FR→scenario→responsibility→quantum/interaction→characteristic mapping→measurement state, gồm cả các cạnh endpoint quantum cho interaction.
+- Thêm assertions kiểm tra allocations và cạnh QAME; trạng thái `UNMAPPED`, `NOT_MEASURED`, `null` và `NOT_RECORDED` được giữ nguyên khi thiếu human classification/measurement.
+- Verification: full suite 129 tests passed; compileall, `git diff --check` passed. Deterministic Tutor fixture replay bằng nhau qua hai lần; in-memory bundle validator `PASS`, 18 members. Code commit `c1e96767f38b6a04083789f630d5d7d9e07b4b25` đã push; [CI 44419855480](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44419855480) success.
+- Đây là `PREPARED_FIXTURE` + `DETERMINISTIC_TRANSFORMATION` trong `P2_TEST_ONLY`, không phải LLM output, reviewer decision, ISO classification hay đo lường.
+- Manual UI smoke: PetClinic fixture render/run và cả bốn tab hoạt động; Tutor trước lock chỉ hiển thị source-only, P1/P6 ẩn, offline run disabled. Không nhập review hoặc gọi Ollama; local ignored run `runs/run-20261118T232503Z-357cfb32/` được giữ nguyên. Một GraphViz worker fallback warning, không có console error trên trang hiện tại.
+
+## P2 structural evaluator payload guards — 2026-11-19
+
+- Kiểm tra raw requirements, proposal arrays và object rows trước khi evaluator truy cập trường; ID/endpoint/source ID sai kiểu trở thành structural error được nêu tên hoặc dừng bằng `P2ExperimentError` có kiểm soát.
+- Thêm adversarial tests cho list/object sai kiểu; không sinh semantic score và không thay `P2_TEST_ONLY` thành model output.
+- Verification: 128 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `00be77f5486023d3ad88e1f602b20167d30c710c` đã push; [CI 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) success.
+
+## P2 mapping and citation coverage separation — 2026-11-19
+
+- Sửa `evaluate_p2_structure`: `coverage_by_requirement` đếm FR IDs đã biết độc lập với exact citation resolution; citation invalid vẫn tạo lỗi riêng. FR bị map hợp lệ không còn bị báo nhầm là uncovered chỉ vì citation sai.
+- Thêm diễn giải machine-readable xác định coverage này chỉ là cấu trúc, không phải semantic correctness. Không tạo independent labels hoặc accuracy metrics.
+- Verification: 126 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af` đã push; [CI 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) success.
+
+## Exhaustive hard-conflict explanations — 2026-11-19
+
+- Khi exhaustive optimizer R1–R8 không có partition khả thi và không có conflict cùng cặp được báo riêng, giảm hard-rule set theo thứ tự ID ổn định để tạo `DELETION_MINIMAL_HARD_CONSTRAINT_CORE`.
+- Output nói rõ bỏ từng constraint trong core sẽ khôi phục ít nhất một partition. Không gọi đây là minimum-cardinality core hoặc bằng chứng rằng constraint có justification kiến trúc.
+- Verification: 125 tests passed; compileall, `git diff --check`, staged secret-pattern scan passed. Code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3` đã push; [CI 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744) success.
+
+## Deterministic evidence-claim audit — 2026-11-19
+
+- Thêm `eqcr.evidence_audit.audit_evidence_records` để báo cáo exact duplicate claim/citation, direct `PRESENT`/`SCOPED_ABSENT` conflict và mixed-with-`UNKNOWN`, đồng thời canonicalize endpoint chỉ khi relation direction khai báo là undirected.
+- Constraint policy abstain với mọi evidence ID bị duplicate hoặc conflict; artifact `evidence.audit` lưu nhóm, IDs, trạng thái và giới hạn structural. Không suy ra semantic contradiction, entailment, thời gian/context hay đổi `UNKNOWN` thành vắng mặt.
+- Verification: 124 tests passed; `compileall -q app.py eqcr scripts tests`, `git diff --check` và staged secret-pattern scan passed. Code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1` đã push và remote-verified; [CI 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) success.
+- Test dùng `P2_TEST_ONLY`; không có reviewer label, case inference hoặc semantic metric mới. `main` và P0 không thay đổi.
+
+## P2.1 browser smoke record — 2026-11-19
+
+- Chạy app Streamlit local và nạp Tutor case; DOM trước lock chỉ hiển thị source-only data, không có helper mappings hay mã proposal P1–P6/E1/B1.
+- Sau khi UI phát hiện `qwen3:4b`, nút chạy proposal vẫn disabled do thiếu lock. Không gọi model và không chạy pipeline/reviewer experiment.
+- Ghi nhận thủ công trong validation report. Đây không phải automated browser E2E test hoặc kết quả case-level.
+- Docs commit `5a2ed9e10b03860037afacdec73818d97370a393` đã push; [CI 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466) success.
+
+## P2.1 source-only reviewer package and lock validation — 2026-11-19
+
+- Thêm package Tutor source-only có manifest/hashes và blank 0..N responsibility/relation worksheets; pin lock protocol v3 với manifest hash.
+- Thêm CLI chỉ-đọc kiểm package/lock/time-order, từ chối lock timestamp tương lai, và truyền package path rõ ràng vào runner/model proposal path.
+- Sửa Input tab Tutor: trước lock chỉ render source-only package, không render raw helper mappings; AppTest kiểm tra payload nhìn thấy. Không tạo lock, inference, human decisions hay semantic metrics thay reviewer.
+- Commit code `931dea62472ea459eacd33b1fbe6196eb4e619ce` đã push; [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) success. Trước push: 121 tests, compileall, diff check, staged-path và credential-pattern scan đều qua. Remote `main` giữ nguyên SHA P0.
+- Không có lock annotation do reviewer cung cấp; `qwen3:4b` chỉ được kiểm tra khả dụng. P2 case experiment vẫn `BLOCKED_EXTERNAL`.
+
+## P2/research status recheck — 2026-11-17
+
+- Rechecked the feature branch and remote `main`/P0 ancestry; refreshed the P0–P11 audit, gap matrix, implementation plan, final status report and Ollama-to-optimizer dependency trace. Corrected the prior report's stale statement that interaction-contract review was unavailable in the UI.
+- Current checkout before this documentation follow-up was `dbe4a5f417535d11aab9696ff60e593be19b6e1a`; [CI run 44005282683](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44005282683) passed. Fresh local verification: 114 tests passed and compileall passed.
+- Local `qwen3:4b` is installed, but no eligible source-only lock or P2 run bundle exists. No inference, review decision, semantic score or real case revision was created; status remains `P2_BLOCKED_INDEPENDENT_ANNOTATION`.
+
+## Human-reviewed interaction contracts — 2026-11-16
+
+- Added a Human Review JSON editor for complete Sync/Async contracts, exact source-span checks, explicit reviewer/rationale/timestamp, decision/revision records and versioned snapshots. Recomputes interaction, QAME and traceability outputs; the mode does not create optimizer constraints, so partitions remain unchanged by design.
+- Updated interaction provenance in run manifests. Source-span mapping is structural only; the editor does not establish semantic entailment or reviewer qualification. No real Tutor interaction decision was supplied.
+- Verification: 114 tests passed locally, including UI render, test-only approved contract propagation, invalid citation rejection, audit trace, unchanged partition/QAME behavior and bundle provenance. Compileall and diff checks passed. Commit `8707334310dcd8fb7520b9d519a6023b753143a3` matches the remote feature ref; [GitHub Actions run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed.
+
+## Versioned run artifact bundle — 2026-11-16
+
+- App ZIP exports now include an `EQCR-REPRODUCIBILITY-BUNDLE@1.0.0` manifest, SHA-256 for input/source/review artifacts and each payload, code/runtime/dependency/optimizer metadata, and provenance counts. Missing source rights, versions, reviewer identity or CI result remain unrecorded.
+- Added `scripts/validate_artifact_bundle.py` to check member paths, JSON validity, checksum coverage and hashes. The validator does not replay the pipeline or authenticate a bundle.
+- Verification: local full suite 110 passed; compileall passed. First CI run `43895817702` exposed a test assumption about absent GitHub environment variables; follow-up test commit `fc477903cef93db892057cb94ccc71e2c27d5103` covers both CI and non-CI metadata. [CI run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed on the final code checkpoint.
+- Code commits: `27f556d7087466ca4c97663994077362fe51e6ff` and `fc477903cef93db892057cb94ccc71e2c27d5103`; latest feature ref matches `fc477903cef93db892057cb94ccc71e2c27d5103`. The P2 human experiment remains blocked externally.
+
+## P8–P9 graph, interaction contracts and QAME trace — 2026-11-16
+
+- Added graph schema 1.0.0 with an explicit UNKNOWN Integration layer, a deterministic editable Draw.io export/download, and endpoint/XML tests. Unknown layers are graph-policy placeholders, not system facts.
+- Added versioned interaction contract/decision table; pipeline remains UNDECIDED unless a complete cited human decision passes the schema gate. The app has no interaction approval editor.
+- Added six-part QAME scenario completeness, source-span/provenance checks and ISO/IEC 25010:2023 `UNMAPPED` status. Prepared fixture values not present in the cited quote remain `UNSUPPORTED`; no measurement is inferred.
+- Verification: 104 tests pass; compileall, staged diff check and secret scan pass. [GitHub Actions run 43892678200](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43892678200) passed. Code commit `722c18245e0a7bd7f94674b2fd55c3174785613c` matches the remote feature branch. P2 live experiment remains externally blocked.
+
+## P7 CP-SAT partition optimizer — 2026-11-16
+
+- Added a classical CP-SAT backend for 9–50 responsibility IDs while retaining exhaustive enumeration through R8. The backend proves the objective minimum, reports a capped optimal subset, and marks whether optimum enumeration completed; it does not enumerate/count every feasible partition.
+- Added oracle, transitivity, infeasibility explanation, deterministic setting, sensitivity, truncation and pipeline traceability tests. Added a Vietnamese mathematical description and updated capability/limitation reports. No runtime/quality benchmark or Tutor human decision is claimed.
+- Verification: 19 focused optimizer tests and 97 full-suite tests pass; compileall, staged whitespace check and staged secret-pattern scan pass. [GitHub Actions run 43887720769](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43887720769) passed. Code commit `91b6b2e733bf7aa8ac36a400bda0123c9377cd44` is pushed and matches the remote branch ref.
+
+## P6 versioned experimental policy evaluation — 2026-11-16
+
+- Thay hai policy rời bằng catalog Tutor Support có catalog/rule version, provenance nội bộ, quality driver, assumptions, điều kiện abstain và chỉ cho phép soft constraints.
+- Thêm rule-evaluation trace cho từng policy/evidence pair: `APPLIED`, `NOT_APPLICABLE`, hoặc `ABSTAINED` kèm lý do, source IDs, responsibility endpoints, versions và constraint ID. Explicit constraint override được ghi là catalog bị bypass; P0 không nhận field P2-only.
+- Catalog được đánh dấu `NOT_INDEPENDENTLY_VALIDATED`; đây là rule nội bộ thử nghiệm, không phải tactic được xác nhận. UNKNOWN evidence và citation sai có test abstain.
+- Verification: 78 tests pass; compileall và staged diff check pass; secret scan không có match; [GitHub Actions run 43882340244](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43882340244) success. Commit `ab26975b3bf9b8f2f8635ac825211a2a7a972ff6` đã push, remote SHA khớp.
+
+## P2 reproducible experiment runner — 2026-11-16
+
+- Bổ sung protocol lock v2 với timestamp timezone-aware và hash integrity cho metadata; ghi rõ identity và việc chưa tiếp xúc model là tự khai báo, không xác minh bên ngoài.
+- Thêm CLI preflight để chỉ gọi Ollama khi có source-only lock hợp lệ, checkout sạch, đúng `qwen3:4b`, prompt/schema và metadata model; xuất proposal, structural audit, manifest, checksums và ZIP vào thư mục run mới.
+- Structural audit chỉ kiểm tra ID/span, coverage, duplicate và lỗi định dạng; semantic correctness vẫn `NOT_MEASURED` khi thiếu nhãn độc lập. Không chạy inference vì chưa có annotator đủ điều kiện cung cấp lock.
+- Verification: 72 tests pass; compileall và `git diff --check` pass; secret scan staged không có match; [GitHub Actions run 43849233685](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43849233685) success. Commit `1fe23ed7886e02b02e44e5ebb850e1b1e6dd6628` đã push và khớp remote branch SHA.
+
+## Research completion capability audit — 2026-11-16
+
+- Audited the actual feature-branch modules, schemas, docs, tests, CI and P0 tag against the research-completion prompt. Added a P0–P11 capability audit, implementation gap matrix and staged implementation plan under `docs/research/`.
+- Confirmed the bounded current strengths: P0/P1 local flow and six-role partition oracle; P2 protocol/wiring tests; exhaustive optimizer up to R8; graph JSON, interaction hypotheses, QAME allocation and snapshot ZIP exports.
+- Recorded gaps without relabeling them complete: actual independent Tutor experiment, versioned tactic catalog, CP-SAT path, six-part ISO-mapped scenario validation, measurement adapters, integration-layer graph, editable Draw.io, and full reproducibility manifest.
+- Verification: relative links in the audit docs resolve; staged diff and secret/path checks pass. Commit `93c7edc06c25d9fd39cdf48355ca31377d5ec8d1` is on `feat/p1-semantic-validation`; [GitHub Actions run 43846206356](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43846206356) passed.
+
+## P2 blind annotation and causal review protocol — 2026-11-16
+
+- Tách source-only annotation khỏi post-lock model review, thêm checkpoint hash/thời gian trước inference, cardinality 0..N cho FR-role mapping, relation registry cố định và action `APPROVE/CORRECT/REJECT/DEFER`.
+- Chỉ evidence relation đã qua human review, có implication kiến trúc riêng và responsibility pairs tường minh mới được policy đã khai báo chuyển thành soft optimizer constraint. Business ordering không tự sinh constraint.
+- Thêm exact-citation checks, unknown-relation rationale gate, regression coverage, và hai artifact canonical `P2_BLIND_ANNOTATION.md` / `P2_MODEL_REVIEW.md`; giữ `HUMAN_REVIEW_WORKSHEET.md` là lối vào tương thích.
+- Verification: 63 tests pass; compileall và staged diff/secret/path checks pass. Commit `1ec2c1b649901873a12cb43dba703bf7a723a411` được push lên `feat/p1-semantic-validation`; [GitHub Actions run 43841700612](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43841700612) success.
+- Case study thật vẫn chờ source-only annotation do người review cung cấp, inference `qwen3:4b` sau lock, model-review decisions và revision experiment. Test-only wiring không được trình bày như kết quả LLM; chưa có semantic metric.
+
+## P2 Tutor Support initial prototype (pre-blind protocol) — 2026-11-16
+
+- Added a new source-backed Tutor Support case, live local `qwen3:4b` extraction path, explicit review gate, policy-based evidence constraint derivation, optimizer input tracing, and downstream interaction/quality generation.
+- Added the independent human-review worksheet and documented the actual live run, proposal limitations, provenance, and test-only before/after revision path. The actual case still awaits human decisions; no semantic metric is claimed.
+- Verification before publish: 54 tests pass; compileall and staged diff checks pass. Commit `4bbdb03d419ab6b556e3447de0b2130dd3f95fdb` was pushed to `feat/p1-semantic-validation`; GitHub Actions run `43818037929` passed tests and compile.
+- Historical v6 model output was unblinded and pre-protocol; its self-referential evidence was not accepted and the run produced zero accepted evidence-derived constraints. It is preserved as `UNBLINDED_EXPLORATORY_PRE_PROTOCOL`, not as a blind experiment. See the [P2 validation report](../p2/P2_VALIDATION_REPORT.md) and [source-only blind annotation](../p2/P2_BLIND_ANNOTATION.md).
+
+## P1 semantic-validation branch — 2026-11-14
+
+- Added an independent six-item partition oracle and negative validation tests for citation spans, evidence support, unknown references, and malformed project JSON.
+- Added a provenance graph across inputs, model proposals, evidence, constraints, partitions, quality allocations, and human decisions; graph PASS is limited to structural checks.
+- Added a labeled synthetic workshop fixture and an empty annotation worksheet; no expert labels or semantic metric claims were added.
+- P1 verification: 44 automated tests pass, compileall passes, Streamlit AppTest has zero exceptions; one local qwen3:4b proposal run resolves exact spans and remains REVIEW_REQUIRED. See [P1 evaluation](../verification/P1_SEMANTIC_EVALUATION.md).
+- Implementation commit `f14b534` was pushed to `feat/p1-semantic-validation`; GitHub SHA and private visibility are recorded in [publish log](GITHUB_PUBLISH_LOG.md).
+- Added a read-only Ubuntu 24.04/Python 3.13 GitHub Actions workflow for pytest and compileall. Runs `43609423803`, `43609612692`, `43609850489`, and final run `43610739439` passed; latest run has 44 tests and compileall green.
+- Browser walkthrough verified baseline → H4 conflict → H3 correction, graph refresh, ZIP with traceability/snapshots, and ten-step JSON report. UI status copy now accurately states that a human correction recomputes the full pipeline.
+
 Các mục dưới đây ghi nhận thay đổi đã được kiểm tra, không phải kế hoạch.
 
 ## 14/11/2026 — Baseline P0
@@ -16,3 +313,9 @@ Các mục dưới đây ghi nhận thay đổi đã được kiểm tra, không
 - Commit: 0dbd90675beb193c92d4fd06bd7ccf4bf95c61f3 — docs: explain implemented ten-step architecture pipeline.
 - Kiểm tra: 30 tests pass (1.10s), compileall PASS, AppTest zero exceptions, 21 Markdown files không có relative link hỏng, localhost health/root HTTP 200; staged secret scan không có match.
 - Push nhánh main được GitHub xác nhận cùng SHA; CI chưa có workflow.
+## 19/11/2026 — Tutor unblinded demo run
+
+- Connected the Tutor demo UI to the actual local qwen3:4b service and recorded run run-20261119T071904Z-ebd8fd64, its input/raw-response hashes, digest, prompt version, exact citation audit and all ten pre-review stage states.
+- The model returned 6 responsibility proposals, 2 relation proposals and 1 boundary hypothesis. No reviewer decisions were entered, so 0 responsibilities and constraints reached the optimizer; 0 partitions were enumerated. The UI remains at Human Review.
+- Corrected the validation report so a case without UNKNOWN evidence marks that assertion NOT_APPLICABLE instead of false. Added regression coverage; 139 tests and compileall passed.
+- Code commit 4a8b1a41f0f8eadea37d56e49dc68c1570fb3847 was pushed; GitHub Actions run 44479878846 passed. The live run remains local and excluded from blind research.

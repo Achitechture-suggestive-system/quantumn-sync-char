@@ -1,0 +1,335 @@
+{
+  "oracle_sha256": "2f923aca020db61a50cc4c004f541adba9d7454abbf72582c0c41b5413d8e8e5",
+  "cases": [
+    {
+      "id": "OC-01",
+      "kind": "NFR",
+      "text": "Trong chiến dịch cao điểm, p95 từ lúc Customer Login xác thực đến lúc Ticket Creation trả mã tiếp nhận phải không quá 900 ms ở 300 lượt/phút; phạm vi đo gồm cả hai bước.",
+      "context": [],
+      "title": "Độ trễ xuyên component",
+      "status": "PROPOSE",
+      "allocations": [
+        {
+          "characteristic": "Performance efficiency",
+          "component_ids": [
+            "LOGIN",
+            "CREATE"
+          ],
+          "source_quote": "không quá 900 ms"
+        }
+      ],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P011",
+        "score": 8
+      }
+    },
+    {
+      "id": "OC-02",
+      "kind": "NFR",
+      "text": "Operations Reporting không phải đáp ứng mốc 150 ms. Sau khi tiến trình xử lý bị dừng, Operations Reporting phải tự khôi phục trong vòng 90 giây.",
+      "context": [],
+      "title": "Ngưỡng bị phủ định",
+      "status": "PROPOSE",
+      "allocations": [
+        {
+          "characteristic": "Reliability",
+          "component_ids": [
+            "REPORT"
+          ],
+          "source_quote": "khôi phục trong vòng 90 giây"
+        }
+      ],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 7
+      }
+    },
+    {
+      "id": "OC-03",
+      "kind": "NFR",
+      "text": "Customer Profile phải mã hóa trường định danh trước khi truyền. Khi worker báo cáo bị dừng, Operations Reporting phải khôi phục trong 3 phút.",
+      "context": [],
+      "title": "Hai characteristic trong một yêu cầu",
+      "status": "PROPOSE",
+      "allocations": [
+        {
+          "characteristic": "Security",
+          "component_ids": [
+            "PROFILE"
+          ],
+          "source_quote": "mã hóa trường định danh"
+        },
+        {
+          "characteristic": "Reliability",
+          "component_ids": [
+            "REPORT"
+          ],
+          "source_quote": "khôi phục trong 3 phút"
+        }
+      ],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 9
+      }
+    },
+    {
+      "id": "OC-04",
+      "kind": "NFR",
+      "text": "Sau sự cố điện, thành phần cầu nối phải khôi phục trong 3 phút. Cụm từ ‘thành phần cầu nối’ chưa được ánh xạ vào danh mục component.",
+      "context": [],
+      "title": "Biệt danh chưa ánh xạ",
+      "status": "CLARIFY",
+      "allocations": [],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 5
+      }
+    },
+    {
+      "id": "OC-05",
+      "kind": "NFR",
+      "text": "Khi thông tin cá nhân đi qua mạng, Customer Profile phải bảo vệ danh tính bằng mã hóa trên đường truyền.",
+      "context": [
+        {
+          "id": "PREV-01",
+          "text": "Customer Profile phải mã hóa thông tin cá nhân khi gửi qua mạng."
+        }
+      ],
+      "title": "Yêu cầu trùng ý",
+      "status": "DUPLICATE",
+      "duplicate_of": "PREV-01",
+      "allocations": [],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 5
+      }
+    },
+    {
+      "id": "OC-06",
+      "kind": "NFR",
+      "text": "Khi lệnh hoàn tiền được gửi, Payment Gateway phải trả mã kết quả trong 200 ms. Payment Gateway là component mới, chưa có trong danh mục kiến trúc hiện tại.",
+      "context": [],
+      "title": "Component ngoài danh mục",
+      "status": "OUT_OF_SCOPE",
+      "allocations": [],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 5
+      }
+    },
+    {
+      "id": "OC-07",
+      "kind": "NFR",
+      "text": "Ticket Creation là nguồn sự kiện, chỉ cung cấp ngữ cảnh. Operations Reporting phải đọc được cả hai phiên bản hợp đồng v1 và v2 với bộ kiểm thử hợp đồng đạt đủ 40/40 mẫu.",
+      "context": [],
+      "title": "Thành phần bối cảnh và chủ thể",
+      "status": "PROPOSE",
+      "allocations": [
+        {
+          "characteristic": "Compatibility",
+          "component_ids": [
+            "REPORT"
+          ],
+          "source_quote": "đọc được cả hai phiên bản hợp đồng v1 và v2"
+        }
+      ],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 7
+      }
+    },
+    {
+      "id": "OC-08",
+      "kind": "INTERACTION",
+      "text": "Ticket Creation trả mã tiếp nhận sau khi lưu và không đợi Ticket Router; Ticket Router xử lý sau. Ticket Router phải chờ Ticket Completion trả phiên bản trạng thái trước khi phản hồi. Hai bước này không yêu cầu giao dịch cục bộ.",
+      "context": [],
+      "title": "Hai cạnh SYNC và ASYNC",
+      "status": "PROPOSE",
+      "allocations": [],
+      "relations": [
+        {
+          "source": "CREATE",
+          "target": "ROUTE",
+          "mode": "ASYNC",
+          "local_transaction": false,
+          "quote": "không đợi Ticket Router"
+        },
+        {
+          "source": "ROUTE",
+          "target": "COMPLETE",
+          "mode": "SYNC",
+          "local_transaction": false,
+          "quote": "phải chờ Ticket Completion"
+        }
+      ],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 5
+      }
+    },
+    {
+      "id": "OC-09",
+      "kind": "INTERACTION",
+      "text": "Bước định tuyến Ticket Router xảy ra trước bước Ticket Completion. Tài liệu chỉ mô tả thứ tự nghiệp vụ, chưa nói bên nào phải đợi phản hồi.",
+      "context": [],
+      "title": "Thứ tự chưa xác định chờ",
+      "status": "CLARIFY",
+      "allocations": [],
+      "relations": [
+        {
+          "source": "ROUTE",
+          "target": "COMPLETE",
+          "mode": "UNKNOWN",
+          "local_transaction": false,
+          "quote": "chưa nói bên nào phải đợi phản hồi"
+        }
+      ],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 5,
+        "probe": {
+          "id": "P006",
+          "vector": [
+            0,
+            1,
+            0,
+            1,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "OC-10",
+      "kind": "INTERACTION",
+      "text": "Ticket Router gọi Ticket Completion và bắt buộc chúng ghi trạng thái trong cùng một giao dịch cục bộ nguyên tử. Chính sách cách ly cũng bắt buộc Ticket Router và Ticket Completion nằm ở hai Quantum khác nhau.",
+      "context": [],
+      "title": "Giao dịch xung đột với tách nhóm",
+      "status": "CONFLICT",
+      "allocations": [],
+      "relations": [
+        {
+          "source": "ROUTE",
+          "target": "COMPLETE",
+          "mode": "SYNC",
+          "local_transaction": true,
+          "quote": "cùng một giao dịch cục bộ nguyên tử"
+        }
+      ],
+      "keep_apart": [
+        {
+          "left": "ROUTE",
+          "right": "COMPLETE",
+          "quote": "bắt buộc Ticket Router và Ticket Completion nằm ở hai Quantum khác nhau"
+        }
+      ],
+      "expected": {
+        "feasible": 0,
+        "leader": null,
+        "score": null
+      },
+      "saved_model": {
+        "model": "qwen3:4b",
+        "response_sha256": "0a61ba779b5cb85c5054098ef2571e5448bdbd342c623449f64a7d2568616e65",
+        "relations": [
+          {
+            "source": "ROUTE",
+            "target": "COMPLETE",
+            "mode": "SYNC",
+            "local_transaction": true,
+            "quote": "Ticket Router gọi Ticket Completion và bắt buộc chúng ghi trạng thái trong cùng một giao dịch cục bộ nguyên tử. Chính sách cách ly cũng bắt buộc Ticket Router và Ticket Completion nằm ở hai Quantum khác nhau."
+          }
+        ],
+        "keep_apart": [],
+        "expected": {
+          "feasible": 10,
+          "leader": "P031",
+          "score": 5
+        }
+      }
+    },
+    {
+      "id": "OC-11",
+      "kind": "INTERACTION",
+      "text": "Ticket Creation phải chờ Ticket Router khi xử lý ticket ưu tiên. Với ticket thông thường, Ticket Creation trả mã tiếp nhận trước và không chờ Ticket Router. Hai chế độ đều đang áp dụng.",
+      "context": [],
+      "title": "Một cặp có hai chế độ",
+      "status": "CLARIFY",
+      "allocations": [],
+      "relations": [
+        {
+          "source": "CREATE",
+          "target": "ROUTE",
+          "mode": "UNKNOWN",
+          "local_transaction": false,
+          "quote": "Ticket Creation phải chờ Ticket Router khi xử lý ticket ưu tiên. Với ticket thông thường, Ticket Creation trả mã tiếp nhận trước và không chờ Ticket Router. Hai chế độ đều đang áp dụng."
+        }
+      ],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 4,
+        "probe": {
+          "id": "P031",
+          "vector": [
+            0,
+            0,
+            0,
+            1,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "OC-12",
+      "kind": "NFR",
+      "text": "Trong 15 phút kể từ lúc Operations Reporting bị ngắt, Ticket Completion phải duy trì tỷ lệ hoàn tất thành công ít nhất 99,5%. Việc báo cáo có thể phục hồi sau.",
+      "context": [],
+      "title": "Thành phần lỗi và chủ thể",
+      "status": "PROPOSE",
+      "allocations": [
+        {
+          "characteristic": "Reliability",
+          "component_ids": [
+            "COMPLETE"
+          ],
+          "source_quote": "tỷ lệ hoàn tất thành công ít nhất 99,5%"
+        }
+      ],
+      "relations": [],
+      "keep_apart": [],
+      "expected": {
+        "feasible": 37,
+        "leader": "P031",
+        "score": 7
+      }
+    }
+  ]
+}

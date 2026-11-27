@@ -5,7 +5,7 @@
 PowerShell tại thư mục dự án:
 
 ```powershell
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv\Scripts\python.exe -m streamlit run research_app.py --server.port 8502
 ```
 
 Trong tab Input, nạp PetClinic demo data và chạy fixture xác định. Kịch bản chính không cần Ollama hay network. Fixture là requirements minh họa; responsibilities đã PRECOMPUTED.

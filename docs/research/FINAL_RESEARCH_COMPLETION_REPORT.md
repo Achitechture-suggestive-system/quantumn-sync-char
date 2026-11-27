@@ -1,0 +1,161 @@
+# EQCR + QAME — Research Completion Status Report
+
+**Report date:** 2026-11-19
+**Current verified code checkpoint:** `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8` on `feat/p1-semantic-validation`; [GitHub Actions run 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) passed. The full local suite passed 130 tests; compilation and diff checks succeeded. This report does not claim an actual post-lock Tutor model experiment.
+
+## 1. Repository baseline and audited capabilities
+
+- Development stayed on `feat/p1-semantic-validation`. At audit, remote `main` was `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; P0 tag `p0-demo-2026-11-14` resolves to `3d517b1a39158e539239dc73d594bc0938649feb`, an ancestor of `main`. No P0/main change was included in this work.
+- The repository audit covers P0–P11 in [`REPOSITORY_CAPABILITY_AUDIT.md`](REPOSITORY_CAPABILITY_AUDIT.md), with outstanding gaps in [`PIPELINE_GAP_MATRIX.md`](PIPELINE_GAP_MATRIX.md).
+- Local `runs/`, snapshots and prior review history were not staged or rewritten.
+- A 2026-11-17 recheck found no P2 annotation lock or `runs/p2-experiments/` output. Local `ollama list` showed `qwen3:4b` installed; no inference was run without the required independent lock. `main` remains `5ece0157bf2372fb879f694cee9f5f0846fcbe1a` and the P0 tag remains its ancestor.
+- The 2026-11-19 code commit adds a pinned five-file source-only Tutor reviewer package, manifest-bound annotation lock v3, read-only lock validation, future timestamp rejection and a pre-lock UI test. Remote `main` is still `5ece0157bf2372fb879f694cee9f5f0846fcbe1a`; the P0 baseline is untouched.
+
+## 2. Implementation changes
+
+- **P2 infrastructure:** a five-file source-only package, per-file/source hash manifest, v3 lock validation, source-only pre-lock UI gate, reproducible local proposal runner, structural citation/duplicate checks, review dispositions and test-only causal wiring exist. Structural FR-ID mapping coverage is counted independently of citation resolution; malformed evaluator payloads produce controlled errors. Semantic matching is still gated on independent adjudication. The actual post-lock Tutor experiment remains blocked.
+- **Typed evidence screening:** exact duplicate claim/citation rows, direct `PRESENT`/`SCOPED_ABSENT` conflicts, and known/`UNKNOWN` mixtures are reported deterministically. Conflicted or duplicated rows are explicitly blocked from evidence-derived policy constraints. This structural audit does not evaluate entailment, context/time scope or semantic truth.
+- **P6:** a versioned experimental Tutor policy catalog emits soft candidate constraints only after accepted evidence, separate human architectural implication, approved responsibility endpoints and citations. The catalog is not independently validated as an architecture tactic.
+- **P7:** exhaustive enumeration remains through R8 and now emits a tested deletion-minimal hard-rule core for transitive infeasibility; CP-SAT is dispatched for R9–R50 and explains must-link-path/cannot-link conflicts. It proves the declared objective before reporting capped optima; it does not enumerate or count the full feasible set. A minimal core is not an architecture-validity claim or minimum-cardinality guarantee. See [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md).
+- **P8:** architecture graph JSON now includes an explicit UNKNOWN Integration layer; Draw.io XML export is deterministic and available from Streamlit. The Human Review editor can store a complete, cited Sync/Async contract and recompute downstream artifacts. The Tutor mode remains UNDECIDED; exact citations do not establish semantic entailment.
+- **P9:** QAME profiles report all six scenario fields and citation/provenance state. The traceability graph now connects FR→scenario→responsibility→quantum/interaction→characteristic-mapping state→measurement state, with endpoint/allocation assertions. Unreviewed ISO/IEC 25010:2023 characteristic IDs remain UNMAPPED; four Tutor scenario parts remain unresolved. Target specifications are separated from outcomes; no `PREDICTED` or `MEASURED` result is produced, and targets do not create measurements.
+- **P10:** no measurement adapter was added because no runnable target and valid measurement conditions exist.
+- **Artifact export:** the app ZIP now includes versioned input/runtime/solver/provenance metadata and payload hashes, with a validator for checksum coverage and JSON members. It verifies archive integrity, not semantic validity or run authenticity.
+
+## 3. Formal method and optimizer
+
+For a partition `P`, the declared objective is `J(P) = Σ weight(c)` for each enabled SOFT constraint `c` that `P` violates. Enabled HARD constraints define feasibility. Hard constraints are not validated as semantically justified by the solver.
+
+CP-SAT uses binary same-group variables for responsibility pairs and transitivity inequalities for triples. The parsed float weights are converted through decimal string representation to bounded integer coefficients without further rounding. CP-SAT runs with a recorded package version, one worker, seed, time limit and optimum-candidate cap. It reports only proven optima; a timeout or cap leaves completeness false. Solver optimality is not architecture validity. The enumerator, CP-SAT formulation, limitations and sensitivity interface are documented in [`PARTITION_OPTIMIZATION.md`](PARTITION_OPTIMIZATION.md).
+
+## 4. Inputs, outputs and traceability
+
+| Output | Evidence source / transformation | Current validation boundary |
+|---|---|---|
+| FRs, workflows, scenarios | Prepared requirements case and SourceRefs | Exact source-span mapping is structural; it does not prove semantic entailment. |
+| Fresh Tutor LLM proposals | Would be `LOCAL_OLLAMA_PROPOSAL` after a valid source-only lock and actual local inference | No post-lock proposal run exists. Historical qwen v6 is unblinded pre-protocol and excluded. |
+| P1–P6, E1, B1 decisions | `HUMAN_DECISION` only if supplied by a real reviewer; no such Tutor decisions are present | No approval, correction, rejection or score is inferred here. |
+| Evidence-to-constraint output | Deterministic policy transformation of approved human evidence, separate architecture implication and approved endpoints | The Tutor rules are internal experimental policies; unit fixtures use `P2_TEST_ONLY`. |
+| Evidence conflict handling | Deterministic exact-claim/citation audit; conflict and duplicate IDs block policy application | Structural consistency only; no domain adjudication or independent label. |
+| Partitions and quantum groups | Deterministic optimizer transformation of responsibilities and constraints | Candidate partitions are not reviewed architecture or deployability claims. |
+| Integration placeholder | `ARCHITECTURAL_POLICY` required graph layer; explicitly `UNKNOWN` | It does not assert that an Integration component exists in the Tutor system. |
+| Interaction options and contracts | Deterministic hypotheses, cited to scenario/requirement inputs; contract defaults to `UNDECIDED` | No mode or production protocol is selected. |
+| QAME scenario and allocation trace | `PREPARED_FIXTURE` source fields and deterministic graph edges now connect requirements/scenarios/responsibilities/quanta/interactions/mapping/measurement state | Structural IDs and edge resolution only; source mapping is not semantic confirmation. Characteristic labels may be prepared-fixture data. |
+| Quality measurement | No operational observations are present; trace graph contains a measurement-state node with null result when none exists | `NOT_MEASURED` or `INSUFFICIENT_EVIDENCE`; no quality PASS. |
+
+The actual Ollama-to-optimizer dependency audit is [`INPUT_TO_QUANTUM_TRACE.md`](../p2/INPUT_TO_QUANTUM_TRACE.md). A local proposal is not itself evidence: accepted/reviewed evidence and explicit policy conditions are required before a relation can affect a partition.
+
+## 5. Verification commands and actual results
+
+At the P8/P9 code checkpoint:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q --tb=short
+.\.venv\Scripts\python.exe -m compileall -q app.py eqcr tests scripts
+```
+
+- Full existing and new regression suite: **104 passed**.
+- Compileall: passed.
+- `git diff --check`: passed.
+- Staged path and secret-pattern review: no secret matches; only explicit source/docs/test paths were staged.
+- Remote branch SHA matched `722c18245e0a7bd7f94674b2fd55c3174785613c`; CI run `43892678200` passed on Python 3.13, including dependency installation, regression/P1 tests and compilation.
+
+At the subsequent artifact-bundle milestone, the local full suite passed **110 tests**, compileall and `git diff --check` passed. The implementation commit `27f556d7087466ca4c97663994077362fe51e6ff` had an initial CI failure caused by a test assuming no GitHub environment metadata. Follow-up test commit `fc477903cef93db892057cb94ccc71e2c27d5103` isolates that environment and covers both local and CI metadata; [CI run 43896335329](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43896335329) passed.
+
+At the 2026-11-19 P2.1 reviewer-package milestone, the full local suite passed **121 tests**, `compileall -q app.py eqcr scripts tests` passed, and staged diff/credential-pattern checks passed. Commit `931dea62472ea459eacd33b1fbe6196eb4e619ce` matches the remote feature ref; [CI run 44410991542](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44410991542) passed. `main` remained unchanged. This verifies package/validator/UI behavior, not independent annotation or semantics.
+
+At evidence-audit code commit `a334fac8b4193c469ed0a1499a1383db4164bdf1`, the full local suite passed **124 tests**, compilation and `git diff --check` passed, the staged secret-pattern scan found no matches, and [CI run 44414391706](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44414391706) passed on the same SHA. Tests include direct-conflict and duplicate audit behavior plus optimizer abstention using `P2_TEST_ONLY`; they do not represent human Tutor decisions or semantic accuracy.
+
+At exhaustive conflict-core code commit `376e424f3ffcb3a0b9161d256230696b230d4ae3`, the full local suite passed **125 tests**, compilation and `git diff --check` passed, staged secret-pattern scan found no matches, and [CI run 44415600744](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44415600744) passed on the same SHA. A transitive hard-constraint test proves the reported core is deletion-minimal and excludes an irrelevant constraint. This is algorithmic validation of the declared input only.
+
+At P2 evaluator code commit `9c7c7337fd9e94b034dd0230ab1bd667282e39af`, the full local suite passed **126 tests**, compilation and `git diff --check` passed, staged secret-pattern scan found no matches, and [CI run 44416779052](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44416779052) passed on the same SHA. A test confirms a structurally valid FR mapping remains counted when its citation is invalid; the citation error is reported separately. This does not measure semantic accuracy.
+
+At P2 payload-validation code commit `00be77f5486023d3ad88e1f602b20167d30c710c`, the full local suite passed **128 tests**, compilation and `git diff --check` passed, staged secret-pattern scan found no matches, and [CI run 44417777751](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44417777751) passed on the same SHA. Adversarial ID/container-type inputs yield named structural errors or a controlled `P2ExperimentError`, not uncaught type errors. No semantic evaluation was added.
+
+At QAME traceability code commit `c1e96767f38b6a04083789f630d5d7d9e07b4b25`, the full local suite passed **129 tests**, compilation and `git diff --check` passed, the staged secret-pattern scan found no matches, and [CI run 44419855480](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44419855480) passed. A test checks requirement/scenario/responsibility/quantum/interaction/mapping/measurement links while asserting the Tutor mapping remains `UNMAPPED` and measurement remains `NOT_MEASURED`. A separate deterministic Tutor fixture replay produced identical artifacts twice; the in-memory ZIP integrity/schema validator passed with 18 members. These are structural and reproducibility checks over prepared fixture input, not model or human evidence.
+
+Follow-up QAME edge-validation commit `172856cfa718971aa83e0f09986e53ce11534e2b` also passed the full local suite (**129 tests**), compileall, `git diff --check`, staged secret-pattern review, and [CI run 44421428402](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44421428402). The added adversarial test changes an interaction's source quantum to an unknown ID and confirms `qame_allocations_resolve=false` and graph `FAIL`. This demonstrates the structural gate, not a domain interpretation.
+
+Manual Streamlit browser smoke loaded and ran the PetClinic `PRECOMPUTED` fixture, then opened Evidence & Constraints, Quantum & Contracts, and Human Review & Validation. It displayed 203 set partitions, 10 feasible candidates and 10 zero-cost optima, plus graph, interaction, quality and validation panels. Loading Tutor then showed the source-only package, hid P1/P6 proposal IDs and disabled offline run before lock. No human review action, annotation lock, or Ollama call was made. The app wrote local ignored run `runs/run-20261118T232503Z-357cfb32/`, which was preserved. The current page had zero console errors and one non-blocking GraphViz worker fallback warning. This is manual UI smoke evidence, not an automated E2E suite or a Tutor case result.
+
+At UI test commit `7e3d1e836eab2b04ee667506a9d2a4a72296f8f8`, a Streamlit `AppTest` regression loads PetClinic data, runs the offline flow, and asserts all ten stages, QAME allocation/trace assertions, partition counts and non-measured quality states. Persistence is monkeypatched so the test does not write into `runs/`. The full suite passed **130 tests**, compileall and `git diff --check` passed, and [CI run 44422385371](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44422385371) passed on the same SHA. This automates the PetClinic fixture flow only; it does not test a real Tutor inference, reviewer action, or semantic result.
+
+A separate manual browser smoke loaded the Tutor case in the running Streamlit app, confirmed the pre-lock DOM exposed only source-only content, and confirmed the Ollama proposal action remained disabled even though the local model was detected. No model inference or pipeline execution occurred. The report commit `5a2ed9e10b03860037afacdec73818d97370a393` also passed [CI run 44412232466](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/44412232466). This is a UI smoke check, not an automated browser E2E suite or case experiment.
+
+The interaction-contract review milestone then passed **114 tests** locally, including Streamlit render, exact-span rejection, before/after audit, and an explicit test-only unchanged-partition/QAME result. Compileall and `git diff --check` passed. Commit `8707334310dcd8fb7520b9d519a6023b753143a3` is pushed; [CI run 43898934609](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/43898934609) passed. No real reviewer decision was entered.
+
+These checks validate bounded code behavior, not case semantics or architecture quality.
+
+## 6. Experiment configurations and actual results
+
+| Experiment | Actual result | Evidence type |
+|---|---|---|
+| PetClinic baseline fixture | 203 partitions and ten zero-cost co-optima for the documented six-responsibility fixture/configuration; conflict/recovery tests preserve their configured what-if constraints. | `PREPARED_FIXTURE` + deterministic transformation; not PetClinic semantic validation. |
+| P2 Tutor model run | No post-lock qwen3:4b inference. Tag is installed locally; the valid external lock is absent. Historical v6 is pre-protocol and unblinded. | No eligible LLM experiment result; `BLOCKED_EXTERNAL`. |
+| CP-SAT oracle checks | Twelve seeded four-role synthetic cases matched an independent product-label partition oracle; a separate small case matched exhaustive optimization. | `P2_TEST_ONLY` algorithm tests. |
+| CP-SAT stress fixture | Nine roles have Bell(9)=21,147 set partitions; the test reports at most 20 proven optimum candidates and marks the optimum set incomplete. | Synthetic algorithm stress fixture; not a case study or runtime benchmark. |
+| Weight sensitivity | A unit example changes the optimum under an explicit reversed soft-weight assignment. The weights are test inputs, not domain-approved ranges. | Deterministic test fixture. |
+| Tutor review/revision | Test-only human-decision-shaped data exercises evidence → policy → optimizer → interaction/QAME propagation; no real reviewer decision or live before/after experiment exists. | `P2_TEST_ONLY`; no human label claim. |
+
+No responsibility/relation precision, recall, F1, accuracy, agreement, architectural validity score or measured quality result is reported.
+
+## 7. Independent validation status
+
+There is no reviewer-supplied, eligible source-only Tutor annotation lock, no two-reviewer reference set, no adjudication and no independently approved Tutor model review. The active case status remains `P2_BLOCKED_INDEPENDENT_ANNOTATION`. The source-only package and pre-lock UI boundary are now verified. Identity and exposure attestations remain self-reported and cannot be externally verified by the application. See the [P2.1 validity report](../p2/P2_RESEARCH_VALIDITY_REPORT.md) for independent status dimensions.
+
+## 8. Baselines, ablations and sensitivity
+
+The three evaluation tracks, future baselines, ablation configurations, measure definitions and gates are documented in [`EVALUATION_TRACKS.md`](EVALUATION_TRACKS.md). Only algorithm-level test comparisons have run. No LLM baseline, evidence/policy ablation on a real case, partition agreement against reviewed architecture, reviewer-effort study or cross-case evaluation has been run. The sensitivity example is synthetic and cannot validate domain weights.
+
+## 9. Known limitations and threats to validity
+
+- Tutor is a small prepared requirements case, not a licensed production corpus; the new source-only manifest hashes content but does not certify authorship or source rights.
+- No post-lock Ollama run and no human decisions mean that the main causal research question remains unanswered on actual Tutor inputs.
+- Literal citation/span matches do not establish semantic entailment; review approval does not create an experiment or gold label.
+- P2 review schemas cap at eight roles. CP-SAT handles larger generic inputs through a code limit of 50, but that upper range is unbenchmarked; optima are capped at 200 and feasible sets are not counted.
+- The Human Review UI can record a complete, cited interaction-contract decision and recompute downstream artifacts; no real Tutor decision exists, and contract review does not change optimizer constraints. Graph tiers remain placeholders when unsupported.
+- ISO characteristic IDs remain unmapped; four Tutor scenario parts remain UNKNOWN. No quality measurement target system, repeat protocol or raw observation exists.
+- Draw.io XML is parsed in tests, but no GUI round-trip is recorded. The generic app ZIP has a validated integrity manifest; the separately produced P2 proposal run has no post-lock Tutor results to combine with reviewed downstream artifacts.
+
+## 10. Reproducibility instructions
+
+Run regression/compile checks from the repository root using the commands in section 5. To run the gated local model experiment only after a real independent source-only annotation is completed and locked against the current canonical source hash, the checkout is committed/clean, Ollama is available, and the `qwen3:4b` model is installed:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_p2_experiment.py `
+  --annotation-lock ".\P2_BLIND_ANNOTATION_LOCK.json" `
+  --source-package ".\docs\p2\source_only_reviewer" `
+  --model qwen3:4b
+```
+
+The six-part Scenario fields changed canonical raw-input serialization; any future annotation must be newly locked to the current hash. The CLI refuses to treat an absent/invalid lock as permission to call the model. Review the per-run manifest/checksums under `runs/p2-experiments/`; keep generated runs out of Git.
+
+For an app artifact ZIP, validate its manifest, JSON payloads and checksums using the [bundle protocol](REPRODUCIBILITY_BUNDLE.md):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_artifact_bundle.py "path\to\run-artifacts.zip"
+```
+
+This checks archive integrity only; it does not replay the pipeline or authenticate the bundle.
+
+## 11. Outstanding human decisions
+
+1. Supply source-only independent Tutor annotations before any fresh inference; two independent annotators and a separately defined adjudication are required for reference metrics.
+2. After an eligible model run, decide each responsibility proposal P1–P6 and relation/boundary proposal E1/B1 as `APPROVE`, `CORRECT`, `REJECT` or `DEFER`, with actual source IDs, spans and rationale. A self-referential E1 must not be silently rewritten into another relation.
+3. Review the experimental policy catalog before treating any rule as a domain tactic or using it beyond this case.
+4. Provide a source-supported, complete interaction decision only if an architecture reviewer can justify it; otherwise keep the contract `UNDECIDED`.
+5. Provide a runnable target and agreed conditions before any QAME measurement. Confirm source rights/provenance before redistributing study materials.
+
+The worksheet remains unfilled. No human decision, label, model result or semantic score has been fabricated.
+
+## 12. Release readiness verdict
+
+| Status dimension | Result |
+|---|---|
+| `TECHNICALLY_COMPLETE` | `PARTIAL` — bounded P7–P9 behaviors, interaction review UI, P2 runner and generic ZIP integrity validator are tested; real architecture decisions, a combined post-review Tutor replay bundle and P10 measurement remain open. |
+| `CASE_EXPERIMENT_COMPLETE` | `BLOCKED_EXTERNAL` — no source-only lock, live post-lock model run, actual review decisions or real revision comparison. |
+| `RESEARCH_VALIDATED` | `BLOCKED_EXTERNAL` — no independent labels/adjudication, independent architecture validation or measured quality data. |
+| `BLOCKED_EXTERNAL` | `TRUE` — independent reviewers, source/license decisions and a runnable target are external dependencies. |
+| `PARTIAL` | `TRUE` — current evidence supports implementation/testing claims only. |
+
+**Overall release readiness: `PARTIAL`; not research-validated.** The P0/main baseline is preserved, and the feature branch has reproducible bounded software checks. The core unseen-case semantic-validation claim remains unproven until the outstanding independent human work is supplied.

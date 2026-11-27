@@ -1,841 +1,818 @@
-"""Streamlit entrypoint for the local EQCR + QAME MVP."""
+"""Interactive Quantum trade-off workbench."""
 
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
 
 import streamlit as st
+from pydantic import ValidationError
 
-from eqcr.fixture import get_fixture
-from eqcr.ollama import (
-    OllamaError,
-    apply_proposals_to_fixture,
-    list_models,
-    propose_responsibilities,
+from eqcr.quantum_example import ticket_example
+from eqcr.quantum_tradeoff import (
+    Architecture, Candidate, Preferences, Ranking, analyze, characteristic_index,
+    component_profiles, explain_candidate, group_index, hard_constraints, ranking_key,
 )
-from eqcr.pipeline import run_pipeline, validate_project_package
-from eqcr.review import (
-    apply_artifact_review,
-    apply_constraint_edit,
-    apply_responsibility_edit,
-    artifact_diff,
-    replay_artifact_review_decisions,
-)
-from eqcr.storage import (
-    list_snapshots,
-    load_snapshot,
-    make_export_zip,
-    new_run_id,
-    save_run,
-    save_snapshot,
-)
-
-
-st.set_page_config(page_title="EQCR + QAME MVP", page_icon="🧩", layout="wide")
-st.markdown(
-    """
-    <style>
-      :root {
-        --paper: #f2efe7;
-        --surface: #fbfaf6;
-        --ink: #203136;
-        --muted: #617174;
-        --rule: #d4d0c5;
-        --teal: #28665f;
-        --copper: #b65d3c;
-      }
-      .stApp { background: var(--paper); color: var(--ink); }
-      [data-testid="stAppViewContainer"] main {
-        background-image: radial-gradient(ellipse at 90% 0%, rgba(40,102,95,.07), transparent 36%);
-      }
-      .block-container { max-width: 1440px; padding-top: 2rem; padding-bottom: 4rem; }
-      h1, h2, h3 { color: var(--ink); font-family: Georgia, "Times New Roman", serif; }
-      h1 { font-size: clamp(2.1rem, 4vw, 3.25rem) !important; letter-spacing: -.045em; line-height: 1.04 !important; }
-      h2 { letter-spacing: -.025em; }
-      p, label, [data-testid="stCaptionContainer"] { color: var(--muted); }
-      [data-testid="stMarkdownContainer"] code, code {
-        color: #8f482f; background: #e8e3d8; border-radius: 2px; padding: .13rem .32rem;
-      }
-      [data-testid="stTabs"] [role="tablist"] { gap: .35rem; border-bottom: 1px solid var(--rule); }
-      [data-testid="stTabs"] button[role="tab"] {
-        color: var(--muted); border-radius: 2px 2px 0 0; padding: .65rem 1rem;
-      }
-      [data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-        color: var(--teal); background: rgba(40,102,95,.07); border-bottom: 2px solid var(--teal);
-      }
-      div.stButton > button, div.stDownloadButton > button, button[kind="primary"] {
-        border-radius: 3px; border: 1px solid var(--ink); min-height: 2.7rem;
-        font-weight: 600; transition: background-color .15s ease, transform .15s ease;
-      }
-      div.stButton > button:hover, div.stDownloadButton > button:hover {
-        border-color: var(--teal); color: var(--teal); transform: translateY(-1px);
-      }
-      [data-testid="stDataFrame"], [data-testid="stJson"] {
-        border: 1px solid var(--rule); border-radius: 3px; background: var(--surface);
-      }
-      [data-testid="stAlert"] { border-radius: 3px; }
-      [data-testid="stTextInput"] input, [data-testid="stTextArea"] textarea {
-        background: var(--surface); border-radius: 3px; border-color: var(--rule);
-      }
-      .workbench-mark {
-        display: flex; justify-content: space-between; gap: 1rem; margin: 0 0 1.1rem;
-        padding: .55rem 0; border-top: 2px solid var(--copper); border-bottom: 1px solid var(--rule);
-        color: var(--muted); font: 600 .68rem/1.4 "Trebuchet MS", sans-serif;
-        letter-spacing: .13em; text-transform: uppercase;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after { transition-duration: .01ms !important; scroll-behavior: auto !important; }
-      }
-    </style>
-    <div class="workbench-mark"><span>Requirements lab · PetClinic mini-case</span><span>Local / evidence-led / reviewable</span></div>
-    """,
-    unsafe_allow_html=True,
-)
-st.title("EQCR + QAME — Architecture Quantum Review")
-st.caption(
-    "Requirements-only PetClinic mini-case. Candidate groups and H1/H2/H3 are demonstrative proposals; "
-    "runtime deployability is not verified and the Owner Search target is not measured."
-)
-
-for key, value in {
-    "fixture": None,
-    "run_fixture": None,
-    "pending_model_fixture": None,
-    "artifacts": None,
-    "run_id": None,
-    "run_dir": None,
-    "snapshot_version": 0,
-    "ollama_models": [],
-    "ollama_proposals": None,
-    "notice": None,
-    "review_preview": None,
-    "responsibility_preview": None,
-}.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-input_tab, evidence_tab, quantum_tab, review_tab = st.tabs(
-    ["Input", "Evidence & Constraints", "Quantum & Contracts", "Human Review & Validation"]
+from eqcr.storage import save_quantum_review
+from eqcr.studio_canvas import read_layout, render_board
+from eqcr.studio_cases import new_case_requirements, ticket_requirement_cases
+from eqcr.studio_conflicts import apply_reviewed_repair, conflict_witnesses, enforce_protected_rules, minimal_repairs, simulate_repair
+from eqcr.studio_evidence import evidence_blockers
+from eqcr.studio_oracles import REPLAY_MODES, matches_oracle, oracle_ticket_cases, replay_architecture, replay_outcome
+from eqcr.studio_quality import ISO_EDITION, QualityCharacteristic, component_mentions, quality_suggestions
+from eqcr.studio_review_ui import commit_revision, show_duplicate_review, show_evidence_review, show_interaction_review, show_live_review, show_rule_policy_review, show_session_history
+from eqcr.studio_sessions import invalidate_changed_sources
+from eqcr.studio_scenario_ui import show_prediction_comparison, show_scenario_review
+from eqcr.studio_scenarios import predict_scenario
+from eqcr.studio_boundaries import boundary_profiles
+from eqcr.studio_boundary_ui import show_boundary_outputs, show_boundary_review
+from eqcr.studio_semantic_ui import show_confirmed_clauses
+from eqcr.studio_semantics import clause_reviews
+from eqcr.studio_uncertainty import cases_are_current, conservative_order, score_bounds
+from eqcr.studio_views import (
+    candidate_card, conflict_evidence, constraint_cards, constraint_subject, cost_matrix, diagram_header, interaction_cards,
+    iso_evidence, iso_route_preview, quantum_cards, requirement_cards, review_receipt,
 )
 
 
-def _save_current() -> None:
-    artifacts = st.session_state.artifacts
-    if not artifacts:
-        return
-    artifacts["metadata"]["run_id"] = st.session_state.run_id
-    run_dir = save_run(st.session_state.run_id, artifacts)
-    st.session_state.run_dir = str(run_dir)
+st.set_page_config(page_title="Quantum Studio", layout="wide")
+st.html(Path(__file__).with_name("eqcr") / "quantum_studio.css")
+
+AXES = ("SYNC qua ranh giới", "Tách dữ liệu", "ASYNC giữ chung", "Characteristic rải nhiều nhóm", "Quantum trộn đặc tính")
+AXIS_EFFECTS = (
+    "Phụ thuộc qua Quantum làm tăng nhu cầu quản lý timeout, độ trễ và lỗi lan truyền.",
+    "Cần quyết định quyền ghi, độ trễ đồng bộ và cách đối soát dữ liệu.",
+    "Chưa dùng cơ hội cô lập hai component tại ranh giới ASYNC này.",
+    "Một đặc tính cần phối hợp giữa nhiều Quantum.",
+    "Một Quantum chịu trách nhiệm cho nhiều đặc tính.",
+)
+REVIEW_PRESETS = {
+    "Chia theo SYNC": (Preferences(), "SYNC_FIRST"),
+    "Chia theo characteristics": (Preferences(), "CHARACTERISTIC_FIRST"),
+    "Ưu tiên giữ dữ liệu": (Preferences(), "WEIGHTED"),
+    "Ưu tiên tập trung đặc tính": (Preferences(characteristics=4), "WEIGHTED"),
+}
+WEIGHT_FIELDS = (
+    ("sync", "SYNC qua ranh giới"),
+    ("data", "Tách dữ liệu"),
+    ("async_seam", "Cơ hội tách ASYNC"),
+    ("characteristics", "Tập trung đặc tính"),
+)
 
 
-def _show_json(title: str, payload: object) -> None:
-    st.subheader(title)
-    st.json(payload, expanded=False)
+def set_review_priority(preferences: Preferences, ranking: Ranking) -> None:
+    st.session_state.studio_weights = preferences
+    st.session_state.studio_ranking = ranking
+    for name, value in preferences.model_dump().items():
+        st.session_state[f"studio_weight_{name}"] = value
 
 
-def _refresh_artifact_metadata_assertion(artifacts: dict) -> None:
-    artifacts["validation_report"]["assertions"]["all_artifacts_have_provenance_and_verification_status"] = all(
-        isinstance(payload.get("artifact_metadata"), dict)
-        and bool(payload["artifact_metadata"].get("provenance", {}).get("kind"))
-        and bool(payload["artifact_metadata"].get("verification_status"))
-        and bool(payload["artifact_metadata"].get("verification_scope"))
-        for payload in artifacts.values()
-        if isinstance(payload, dict)
+def save_slider_weights() -> None:
+    st.session_state.studio_weights = Preferences(
+        **{name: st.session_state[f"studio_weight_{name}"] for name, _ in WEIGHT_FIELDS}
     )
 
 
-def _attach_review_request(artifacts: dict, request: dict, source_artifact: str) -> None:
-    artifacts["review_request"] = deepcopy(request)
-    artifacts["review_request"]["artifact_metadata"] = {
-        "provenance": {
-            "kind": "HUMAN_REVIEW_REQUEST",
-            "execution_mode": artifacts["metadata"]["execution_mode"],
-            "source_artifacts": [source_artifact],
-        },
-        "verification_status": "PASS",
-        "verification_scope": "Request fields and audit source are recorded; semantic correctness is not established by the request.",
-    }
-    _refresh_artifact_metadata_assertion(artifacts)
-
-
-def _attach_ollama_proposals(artifacts: dict, proposal_data: dict) -> None:
-    proposal_artifact = deepcopy(proposal_data)
-    proposal_artifact["artifact_metadata"] = {
-        "provenance": {
-            "kind": proposal_data.get("provenance", "LOCAL_OLLAMA_UNVERIFIED"),
-            "execution_mode": "OLLAMA_ASSISTED",
-            "source_artifacts": ["raw_requirements"],
-            "model": proposal_data.get("model"),
-            "prompt_version": proposal_data.get("prompt_version"),
-            "input_sha256": proposal_data.get("input_sha256"),
-        },
-        "verification_status": proposal_data.get("status", "REVIEW_REQUIRED"),
-        "verification_scope": "Structured output, IDs, citation resolution, and exact source spans only; model semantics remain unverified.",
-    }
-    artifacts["ollama_proposals"] = proposal_artifact
-    _refresh_artifact_metadata_assertion(artifacts)
-
-
-def _start_run(fixture: dict, execution_mode: str) -> None:
-    artifacts = run_pipeline(fixture, execution_mode=execution_mode)
-    if st.session_state.ollama_proposals:
-        _attach_ollama_proposals(artifacts, st.session_state.ollama_proposals)
-    run_id = new_run_id()
-    artifacts["metadata"]["run_id"] = run_id
-    st.session_state.artifacts = artifacts
-    st.session_state.run_fixture = fixture
-    st.session_state.run_id = run_id
-    st.session_state.snapshot_version = 1
-    run_dir = save_run(run_id, artifacts)
-    save_snapshot(run_id, "v1", artifacts)
-    st.session_state.run_dir = str(run_dir)
-    if (
-        execution_mode == "OFFLINE_FIXTURE"
-        and fixture.get("fixture_label") == "PRECOMPUTED"
-        and fixture.get("responsibility_provenance", "PRECOMPUTED") == "PRECOMPUTED"
-    ):
-        st.session_state.notice = "Offline fixture completed. Its inputs are PRECOMPUTED; all derived outputs remain reviewable."
-    elif execution_mode == "OFFLINE_FIXTURE":
-        st.session_state.notice = "Deterministic run completed from the frozen source input and reviewed revisions."
-    elif execution_mode == "STRUCTURED_INPUT":
-        st.session_state.notice = "Structured project input completed the deterministic pipeline; derived outputs remain reviewable."
-    else:
-        st.session_state.notice = "Model-assisted fixture completed. Citations passed structural checks; semantics remain REVIEW_REQUIRED."
-
-
-def _prepare_responsibility_revision(artifacts: dict, fixture: dict, **edit: str):
-    updated_fixture, decision, revision = apply_responsibility_edit(fixture, artifacts, **edit)
-    updated_fixture["constraints"] = deepcopy(artifacts["constraints"]["items"])
-    updated = run_pipeline(
-        updated_fixture,
-        constraints_override=artifacts["constraints"]["items"],
-        decisions=artifacts["decisions"]["items"] + [decision],
-        revisions=artifacts["revisions"]["items"] + [revision],
-        execution_mode=artifacts["metadata"]["execution_mode"],
-    )
-    updated = replay_artifact_review_decisions(updated)
-    updated["metadata"].update(artifacts["metadata"])
-    updated["metadata"]["responsibility_provenance"] = updated_fixture["responsibility_provenance"]
-    if artifacts.get("ollama_proposals"):
-        _attach_ollama_proposals(updated, artifacts["ollama_proposals"])
-    return updated_fixture, updated, decision, revision
-
-
-with input_tab:
-    st.subheader("Start from the frozen demo input")
-    st.write(
-        "Load the source fixture first, then run its deterministic local pipeline. "
-        "The offline fixture is tagged PRECOMPUTED so the walkthrough does not depend on model availability."
-    )
-    structured_template = get_fixture()
-    structured_template["fixture_label"] = "USER_SUPPLIED"
-    structured_template["fixture_note"] = "Editable structured project package template; review all supplied semantics."
-    structured_template["responsibility_provenance"] = "USER_SUPPLIED_REVIEW_REQUIRED"
-    st.download_button(
-        "Download structured project JSON template",
-        data=json.dumps(structured_template, ensure_ascii=False, indent=2),
-        file_name="eqcr_project_package_template.json",
-        mime="application/json",
-    )
-    structured_upload = st.file_uploader("Optional: load a structured project package (JSON)", type=["json"])
-    if st.button("Load structured project JSON", disabled=structured_upload is None):
-        try:
-            candidate_fixture = json.loads(structured_upload.getvalue().decode("utf-8"))
-            if not isinstance(candidate_fixture, dict):
-                raise ValueError("The JSON document must contain a project object.")
-            candidate_fixture.setdefault("fixture_label", "USER_SUPPLIED")
-            candidate_fixture.setdefault("fixture_note", "User-supplied structured project package; semantics remain reviewable.")
-            candidate_fixture.setdefault("responsibility_provenance", "USER_SUPPLIED_REVIEW_REQUIRED")
-            validate_project_package(candidate_fixture)
-            st.session_state.fixture = candidate_fixture
-            st.session_state.run_fixture = None
-            st.session_state.pending_model_fixture = None
-            st.session_state.artifacts = None
-            st.session_state.run_id = None
-            st.session_state.run_dir = None
-            st.session_state.snapshot_version = 0
-            st.session_state.ollama_proposals = None
-            st.session_state.review_preview = None
-            st.session_state.responsibility_preview = None
-            st.session_state.notice = "Structured project JSON passed schema and reference checks; semantic decisions remain review-required."
-        except (UnicodeDecodeError, json.JSONDecodeError, KeyError, ValueError) as exc:
-            st.error(f"Could not load structured project JSON: {exc}")
-    load_col, run_col, ollama_col = st.columns(3)
-    if load_col.button("Load PetClinic demo data", width="stretch"):
-        st.session_state.fixture = get_fixture()
-        st.session_state.run_fixture = None
-        st.session_state.pending_model_fixture = None
-        st.session_state.artifacts = None
-        st.session_state.run_id = None
-        st.session_state.run_dir = None
-        st.session_state.snapshot_version = 0
-        st.session_state.ollama_proposals = None
-        st.session_state.review_preview = None
-        st.session_state.responsibility_preview = None
-        st.session_state.notice = "Loaded the PRECOMPUTED PetClinic mini-case input."
-    if run_col.button("Run offline fixture", type="primary", width="stretch"):
-        if st.session_state.fixture is None:
-            st.session_state.fixture = get_fixture()
-        execution_mode = "OFFLINE_FIXTURE" if st.session_state.fixture.get("fixture_label") == "PRECOMPUTED" else "STRUCTURED_INPUT"
-        _start_run(st.session_state.fixture, execution_mode)
-    if ollama_col.button("Check local Ollama models", width="stretch"):
-        try:
-            st.session_state.ollama_models = list_models()
-            st.session_state.notice = (
-                f"Found {len(st.session_state.ollama_models)} local model(s)."
-                if st.session_state.ollama_models
-                else "Ollama is reachable, but no local models are installed."
-            )
-        except OllamaError as exc:
-            st.session_state.notice = str(exc)
-
-    if st.session_state.notice:
-        st.info(st.session_state.notice)
-    if st.session_state.fixture is not None:
-        st.markdown("**Fixture status:** `PRECOMPUTED` · requirements-only · no source code supplied")
-        _show_json("Raw requirements, workflow, and scenarios", st.session_state.fixture["raw_requirements"])
-    else:
-        st.info("Choose **Load PetClinic demo data** to inspect the source input.")
-
-    if st.session_state.ollama_models:
-        preferred = next(
-            (m for m in ("qwen3.5:4b", "qwen3.5:9b") if m in st.session_state.ollama_models),
-            st.session_state.ollama_models[0],
-        )
-        model = st.selectbox(
-            "Local proposal model (proposals always need human review)",
-            st.session_state.ollama_models,
-            index=st.session_state.ollama_models.index(preferred),
-        )
-        if st.button("Run local Ollama proposals"):
-            if st.session_state.fixture is None:
-                st.session_state.fixture = get_fixture()
-            with st.spinner("Waiting for the local model..."):
-                try:
-                    proposal_data = propose_responsibilities(
-                        st.session_state.fixture["raw_requirements"], model
-                    )
-                    st.session_state.ollama_proposals = proposal_data
-                    st.session_state.notice = "LLM proposals received; source IDs were resolved to exact input spans. Semantic review is still required."
-                    if st.session_state.artifacts:
-                        _attach_ollama_proposals(st.session_state.artifacts, proposal_data)
-                        _save_current()
-                except OllamaError as exc:
-                    st.session_state.notice = str(exc)
-        if st.session_state.ollama_proposals:
-            proposal_data = st.session_state.ollama_proposals
-            st.caption(
-                f"Model `{proposal_data['model']}` · prompt `{proposal_data['prompt_version']}` · "
-                f"input SHA-256 `{proposal_data['input_sha256']}` · all semantics remain review-required."
-            )
-            _show_json(
-                "Context normalization proposals",
-                {
-                    "context_summary": proposal_data["context_summary"],
-                    "status": proposal_data["context_status"],
-                    "normalized_requirements": proposal_data["normalized_requirements"],
-                },
-            )
-            _show_json("Responsibility proposals", proposal_data["proposals"])
-            _show_json(
-                "Typed evidence proposals — not applied to evidence",
-                {
-                    "references_valid": proposal_data["evidence_proposals_valid"],
-                    "items": proposal_data["evidence_proposals"],
-                },
-            )
-            _show_json(
-                "Boundary hypotheses — not applied to optimizer candidates",
-                {
-                    "references_valid": proposal_data["boundary_hypotheses_valid"],
-                    "items": proposal_data["boundary_hypotheses"],
-                },
-            )
-            st.caption(
-                "The app resolves cited IDs to exact input spans. Structural reference checks do not establish "
-                "that a relation or boundary hypothesis is semantically correct."
-            )
-            with st.expander("Prompt and schema audit record"):
-                st.json(
-                    {
-                        "model": proposal_data["model"],
-                        "response_model": proposal_data["response_model"],
-                        "prompt_version": proposal_data["prompt_version"],
-                        "input_sha256": proposal_data["input_sha256"],
-                        "generation_parameters": proposal_data["generation_parameters"],
-                        "output_schema": proposal_data["output_schema"],
-                    },
-                    expanded=False,
-                )
-            if st.session_state.ollama_proposals.get("can_apply_to_fixture"):
-                if st.button("Use these proposals for a candidate run"):
-                    try:
-                        st.session_state.pending_model_fixture = apply_proposals_to_fixture(
-                            st.session_state.fixture or get_fixture(), st.session_state.ollama_proposals
-                        )
-                        st.session_state.notice = "Proposals are ready as review-required inputs; run the model-assisted pipeline when ready."
-                        st.rerun()
-                    except OllamaError as exc:
-                        st.error(str(exc))
-            else:
-                st.warning("The model output did not provide complete, source-checked coverage of all six FRs, so it cannot be sent to optimization.")
-    if st.session_state.pending_model_fixture is not None:
-        st.success(
-            "Source-checked responsibility set ready for a candidate run. Evidence and boundary proposals remain "
-            "separate; every model-derived semantic decision stays REVIEW_REQUIRED."
-        )
-        if st.button("Run with these LLM proposals"):
-            _start_run(st.session_state.pending_model_fixture, "OLLAMA_ASSISTED")
-            st.rerun()
-    if not st.session_state.ollama_models and st.session_state.fixture is not None:
-        st.caption("Optional: install and start Ollama, then check for models. Offline fixture does not require it.")
-
-    artifacts = st.session_state.artifacts
-    if artifacts:
-        snapshot_exports = {
-            f"snapshots/{version}.json": load_snapshot(st.session_state.run_id, version)
-            for version in list_snapshots(st.session_state.run_id)
+def candidate_costs(architecture: Architecture, candidate: Candidate, preferences: Preferences) -> list[dict]:
+    return [
+        {
+            "axis": AXES[item.axis],
+            "subject": item.subject,
+            "components": list(item.components),
+            "quanta": [f"Q{group}" for group in item.quanta],
+            "units": item.units,
+            "weight": preferences.vector[item.axis],
+            "weighted_cost": item.units * preferences.vector[item.axis],
+            "reason": AXIS_EFFECTS[item.axis],
         }
-        st.success(
-            f"Run `{st.session_state.run_id}` · status `{artifacts['validation_report']['status']}` · "
-            f"saved under `{st.session_state.run_dir}`"
-        )
-        st.download_button(
-            "Download all run artifacts (ZIP)",
-            data=make_export_zip(artifacts, extra=snapshot_exports),
-            file_name=f"{st.session_state.run_id}-artifacts.zip",
-            mime="application/zip",
-        )
-        st.download_button(
-            "Download validation report (JSON)",
-            data=json.dumps(artifacts["validation_report"], ensure_ascii=False, indent=2),
-            file_name="validation_report.json",
-            mime="application/json",
-        )
+        for item in explain_candidate(architecture, candidate)
+    ]
 
-with evidence_tab:
-    artifacts = st.session_state.artifacts
-    if artifacts:
-        left, right = st.columns(2)
-        with left:
-            _show_json("Evidence records", artifacts["evidence"])
-        with right:
-            _show_json("Constraints and detected conflicts", artifacts["constraints"])
-        st.caption("Policy origin is shown per constraint. UNKNOWN and SCOPED_ABSENT are separate evidence states.")
-    else:
-        st.info("Run the offline fixture to see evidence and constraint records.")
 
-with quantum_tab:
-    artifacts = st.session_state.artifacts
-    if artifacts:
-        st.subheader("Candidate optimization")
-        partitions = artifacts["partitions"]
-        st.write(
-            f"Enumerated **{partitions['enumerated_partition_count']}** set partitions; "
-            f"**{partitions['feasible_candidate_count']}** satisfy active hard constraints; "
-            f"**{partitions['optimal_candidate_count']}** tie at J = {partitions['objective_minimum']}."
-        )
-        st.caption(partitions["interpretation"])
-        st.dataframe(partitions["optimal_candidates"], width="stretch", hide_index=True)
-        st.subheader("Selected display candidate — proposed, not verified")
-        st.json(artifacts["quanta"], expanded=False)
-
-        architecture_graph = artifacts["quanta"]["architecture_graph"]
-        graph_lines = ["digraph architecture {", "  rankdir=TB;", '  graph [fontname="Arial"];', '  node [shape=box, fontname="Arial"];']
-        for node in architecture_graph["nodes"]:
-            node_id = node["id"].replace('"', '\\"')
-            node_label = node["label"].replace("Presentation / application tier not specified", "Presentation / app tier not specified")
-            label = f'{node_label}\\n{node["status"]}'.replace('"', '\\"')
-            style = "dashed" if node["status"] == "UNKNOWN" else "solid"
-            shape = "ellipse" if node["layer"] == "ACTOR" else "box"
-            graph_lines.append(f'  "{node_id}" [label="{label}", style={style}, shape={shape}];')
-        for edge in architecture_graph["edges"]:
-            source = edge["from"].replace('"', '\\"')
-            target = edge["to"].replace('"', '\\"')
-            label = edge["label"].replace('"', '\\"')
-            style = "dashed" if edge["status"] in {"UNKNOWN", "UNRESOLVED", "INSUFFICIENT_EVIDENCE"} else "solid"
-            graph_lines.append(f'  "{source}" -> "{target}" [label="{label}", style={style}];')
-        graph_lines.append("}")
-        st.subheader("Quantum and interaction graph")
-        st.graphviz_chart("\n".join(graph_lines), width="stretch")
-        graph_left, graph_right = st.columns(2)
-        with graph_left:
-            node_ids = [item["id"] for item in architecture_graph["nodes"]]
-            node_id = st.selectbox("Inspect graph node", node_ids)
-            st.json(next(item for item in architecture_graph["nodes"] if item["id"] == node_id), expanded=False)
-        with graph_right:
-            if architecture_graph["edges"]:
-                edge_ids = [item["id"] for item in architecture_graph["edges"]]
-                edge_id = st.selectbox("Inspect graph connection", edge_ids)
-                st.json(next(item for item in architecture_graph["edges"] if item["id"] == edge_id), expanded=False)
-            else:
-                st.info("No graph connections are available for this candidate.")
-        lower_left, lower_right = st.columns(2)
-        with lower_left:
-            _show_json("Interaction contract skeleton", artifacts["interactions"])
-            interaction_edges = artifacts["interactions"]["edges"]
-            interaction_options = [option for edge in interaction_edges for option in edge.get("options", [])]
-            if interaction_options:
-                st.subheader("Sync / Async options — hypotheses, no protocol selected")
-                st.dataframe(
-                    [
-                        {
-                            "mode": option["mode"],
-                            "pattern": option["pattern"],
-                            "status": option["status"],
-                            "condition": option["condition"],
-                            "rationale": option["rationale"],
-                        }
-                        for option in interaction_options
-                    ],
-                    width="stretch",
-                    hide_index=True,
-                )
-                st.caption(
-                    "Both alternatives cite the supplied Pet–Visit scenario and scheduling requirement. "
-                    "Their source does not establish the missing timing, consistency, failure, or retry decisions."
-                )
-        with lower_right:
-            _show_json("QAME quality profiles", artifacts["quality_profiles"])
-    else:
-        st.info("Run the offline fixture to see candidate partitions, quantum groups, and quality traces.")
-
-with review_tab:
-    artifacts = st.session_state.artifacts
-    if artifacts:
-        st.subheader("Revise a responsibility proposal")
-        responsibility_by_id = {item["id"]: item for item in artifacts["responsibilities"]["items"]}
-        with st.expander("Edit name, activity, or operation and preview downstream impact"):
-            responsibility_id = st.selectbox(
-                "Responsibility to revise",
-                list(responsibility_by_id),
-                key="responsibility_edit_target",
-            )
-            current_responsibility = responsibility_by_id[responsibility_id]
-            with st.form("responsibility_revision_form"):
-                edited_name = st.text_input(
-                    "Responsibility name",
-                    value=current_responsibility["name"],
-                    key=f"responsibility_name_{responsibility_id}",
-                )
-                edited_activity = st.text_input(
-                    "Activity",
-                    value=current_responsibility["activity"],
-                    key=f"responsibility_activity_{responsibility_id}",
-                )
-                edited_operation = st.text_input(
-                    "Operation",
-                    value=current_responsibility["operation"],
-                    key=f"responsibility_operation_{responsibility_id}",
-                )
-                responsibility_reason = st.text_area(
-                    "Revision reason",
-                    value="Human revision after reviewing the requirement and workflow.",
-                    key=f"responsibility_reason_{responsibility_id}",
-                )
-                responsibility_source = st.text_input(
-                    "Revision source",
-                    value="HUMAN-DEMO-REVIEW",
-                    key=f"responsibility_source_{responsibility_id}",
-                )
-                responsibility_actor = st.text_input(
-                    "Reviewer identifier",
-                    value="demo-reviewer",
-                    key=f"responsibility_actor_{responsibility_id}",
-                )
-                responsibility_preview_button = st.form_submit_button("Preview responsibility impact")
-                responsibility_apply_button = st.form_submit_button(
-                    "Apply responsibility revision & Revalidate", type="primary"
-                )
-            responsibility_request = {
-                "object_id": responsibility_id,
-                "name": edited_name,
-                "activity": edited_activity,
-                "operation": edited_operation,
-                "reason": responsibility_reason,
-                "source": responsibility_source,
-                "actor": responsibility_actor,
+def plan_graph(architecture: Architecture, candidate: Candidate) -> dict:
+    indexes = group_index(candidate.groups)
+    assignment = {item: f"Q{group}" for item, group in indexes.items()}
+    profiles = component_profiles(architecture)
+    _, labels = characteristic_index(profiles, indexes)
+    groups = []
+    for index, group in enumerate(candidate.groups, 1):
+        characteristic_sources = {
+            label: [component for component in group if label in profiles[component]]
+            for label in sorted(labels.get(index, set()))
+        }
+        groups.append({
+            "id": f"Q{index}", "components": list(group), "characteristics": list(characteristic_sources),
+            "characteristic_sources": characteristic_sources,
+            "characteristic_requirements": {
+                label: {owner: profiles[owner][label] for owner in owners}
+                for label, owners in characteristic_sources.items()
+            },
+        })
+    return {
+        "id": candidate.id,
+        "label": f"{candidate.id} · {len(candidate.groups)} Quantum",
+        "assignment": assignment,
+        "groups": groups,
+        "quality_profiles": [predict_scenario(architecture, candidate, scenario) for scenario in architecture.quality_scenarios],
+        "boundary_profiles": boundary_profiles(architecture, candidate),
+        "interactions": [
+            {
+                **edge.model_dump(mode="json"),
+                "case_review_status": "CURRENT" if cases_are_current(architecture, edge) else "STALE" if edge.cases else "NONE",
+                "from_quantum": assignment[edge.source], "to_quantum": assignment[edge.target],
+                "placement": "INTERNAL" if assignment[edge.source] == assignment[edge.target] else "CROSS_QUANTUM",
             }
-            if responsibility_preview_button:
-                try:
-                    base_fixture = st.session_state.run_fixture or st.session_state.fixture or get_fixture()
-                    revised_fixture, projected, _, revision_preview = _prepare_responsibility_revision(
-                        artifacts, base_fixture, **responsibility_request
-                    )
-                    stale = revision_preview["invalidated_artifacts"]
-                    st.session_state.responsibility_preview = {
-                        "request": responsibility_request,
-                        "invalidated_artifacts": stale,
-                        "preview_status": {name: "STALE" for name in stale},
-                        "before": {
-                            key: current_responsibility[key]
-                            for key in ("name", "activity", "operation")
-                        },
-                        "after": {key: responsibility_request[key] for key in ("name", "activity", "operation")},
-                        "predicted_status": projected["validation_report"]["status"],
-                        "predicted_feasible_candidates": projected["partitions"]["feasible_candidate_count"],
-                        "note": "Preview only: no decision, fixture input, or snapshot has been saved.",
-                    }
-                except (ValueError, KeyError) as exc:
-                    st.session_state.responsibility_preview = None
-                    st.error(str(exc))
-            saved_responsibility_preview = st.session_state.responsibility_preview
-            if saved_responsibility_preview and saved_responsibility_preview["request"] == responsibility_request:
-                st.markdown("**Responsibility impact preview — downstream outputs are stale until revalidation**")
-                st.json(saved_responsibility_preview, expanded=False)
-            if responsibility_apply_button:
-                try:
-                    previous = artifacts
-                    base_fixture = st.session_state.run_fixture or st.session_state.fixture or get_fixture()
-                    revised_fixture, updated, decision, revision = _prepare_responsibility_revision(
-                        previous, base_fixture, **responsibility_request
-                    )
-                    _attach_review_request(updated, responsibility_request, "responsibilities")
-                    decision_record = updated["decisions"]["items"][-1]
-                    revision_record = updated["revisions"]["items"][-1]
-                    unchanged = all(
-                        previous.get(key) == updated.get(key)
-                        for key in revision_record["unaffected_artifacts"]
-                    )
-                    updated["validation_report"]["assertions"]["unaffected_artifacts_unchanged"] = unchanged
-                    updated["validation_report"]["regression_check"] = {
-                        "status": "PASS" if unchanged else "FAIL",
-                        "checked_artifacts": revision_record["unaffected_artifacts"],
-                        "note": "Responsibility-only feedback must not silently rewrite source context or raw requirements.",
-                    }
-                    diff = artifact_diff(previous, updated, exclude={"decisions", "revisions"})
-                    revision_record["changed_artifacts"] = sorted(
-                        set(diff["changed_artifacts"]) | {"decisions", "revisions"}
-                    )
-                    revision_record["artifact_diff"] = diff["changes"]
-                    revision_record["recomputed_artifacts"] = revision_record["invalidated_artifacts"]
-                    revision_record["stale_artifacts_after_revalidation"] = []
-                    revision_record["revalidation_status"] = updated["validation_report"]["status"]
-                    timestamp = datetime.now(timezone.utc).isoformat()
-                    decision_record["created_at_utc"] = timestamp
-                    decision_record["result"] = "APPLIED_AND_REVALIDATED"
-                    revision_record["created_at_utc"] = timestamp
-                    st.session_state.artifacts = updated
-                    st.session_state.fixture = revised_fixture
-                    st.session_state.run_fixture = revised_fixture
-                    st.session_state.responsibility_preview = None
-                    st.session_state.snapshot_version += 1
-                    version = st.session_state.snapshot_version
-                    run_dir = save_run(st.session_state.run_id, updated)
-                    save_snapshot(st.session_state.run_id, f"v{version}", updated)
-                    st.session_state.run_dir = str(run_dir)
-                    st.session_state.notice = (
-                        f"Saved responsibility revision v{version}; recomputed downstream outputs. "
-                        f"Unchanged input check: {'PASS' if unchanged else 'FAIL'}."
-                    )
+            for edge in architecture.interactions
+        ],
+    }
+
+
+@st.cache_data(show_spinner=False)
+def calculate(architecture: Architecture, preferences: Preferences, ranking: Ranking, conservative=False, time_limit_seconds=8.0):
+    return analyze(architecture, preferences, ranking=ranking, conservative=conservative, time_limit_seconds=time_limit_seconds)
+
+
+@st.cache_data(show_spinner=False)
+def diagnose_conflicts(architecture: Architecture):
+    rules = hard_constraints(architecture)
+    return conflict_witnesses(rules), minimal_repairs(architecture, rules)
+
+
+def show_conflict_repairs(architecture: Architecture, weights: Preferences, ranking: Ranking, *, can_apply: bool = True) -> None:
+    st.header("Vì sao không có nghiệm?", anchor="studio-conflicts")
+    names = {item.id: item.name for item in architecture.components}
+    conflicts, repairs = diagnose_conflicts(architecture)
+    if not conflicts:
+        st.warning("Chưa tìm được chuỗi ràng buộc để giải thích. Hãy kiểm tra các quy tắc cứng của sơ đồ.")
+        return
+    for index, conflict in enumerate(conflicts, 1):
+        subject = constraint_subject(conflict.separation, architecture, names)
+        with st.expander(f"Xung đột {index} · {subject}", expanded=index == 1):
+            st.html(conflict_evidence(conflict, architecture, names))
+
+    st.subheader("Mô phỏng các cách gỡ xung đột")
+    st.caption("Mỗi hàng nêu các quy tắc cần sửa cùng nhau để có nghiệm trở lại. Kết quả dùng bản sao mô phỏng, "
+               "mô hình gốc vẫn ở trạng thái INFEASIBLE.")
+    if len(architecture.components) > 8:
+        st.caption("CP-SAT tìm tối đa ba tập sửa trong thời hạn. Mỗi tập đã kiểm tối thiểu theo bao hàm bằng closure; "
+                   "chưa liệt kê mọi MCS hoặc đếm toàn bộ phân hoạch sau sửa. OPTIMAL nói về chi phí sửa của lần tìm tương ứng.")
+    actions = {"KEEP_APART": "Bỏ yêu cầu tách", "LOCAL_TRANSACTION": "Bỏ yêu cầu giao dịch cục bộ, giữ SYNC",
+               "KEEP_SHARED": "Cho phép tách kho"}
+    labels = [" + ".join(f"{actions[rule.kind]} · {constraint_subject(rule, architecture, names)}"
+                         for rule in repair.rules) for repair in repairs]
+    st.dataframe([{"Phương án": f"M{index}", "Thay đổi giả định": label,
+                   "Chi phí sửa": repair.review_cost, "Số quy tắc": len(repair.rules), "Nghiệm khả thi": repair.feasible,
+                   "Bộ giải": repair.solver_status, "Chi phí sửa đã chứng minh": repair.cost_optimality_proven}
+                  for index, (repair, label) in enumerate(zip(repairs, labels, strict=True), 1)],
+                 hide_index=True, width="stretch", column_config={"Thay đổi giả định": st.column_config.TextColumn(width="large")})
+    if not repairs:
+        st.warning("Không có cách gỡ tuân thủ chính sách bảo vệ hiện hành. Review chính sách hoặc bổ sung yêu cầu làm rõ.")
+        return
+    selected = st.selectbox("Xem chi tiết mô phỏng", range(len(repairs)), format_func=lambda index: f"M{index + 1} · {labels[index]}")
+    repair = repairs[selected]
+    alternative = simulate_repair(architecture, repair)
+    result = calculate(alternative, weights, ranking)
+    best = result.ranked[0]
+    qualifier = "ít nhất " if result.search else ""
+    st.markdown(f"**M{selected + 1} · {qualifier}{len(result.feasible)} nghiệm khả thi · {best.id} xếp đầu · {best.score(weights)} điểm**")
+    plan = plan_graph(alternative, best)
+    st.html(quantum_cards(plan, names))
+    if can_apply:
+        st.caption("Các quy tắc thay đổi đã liệt kê phía trên. Áp dụng sẽ tạo revision mới từ bản sao đã xem.")
+        actor = st.text_input("Người duyệt cách sửa", value="LOCAL_INTERACTIVE_REVIEWER", max_chars=100)
+        rationale = st.text_area("Lý do áp dụng cách sửa", max_chars=1000)
+        if st.button("Áp dụng cách sửa đã review"):
+            try:
+                changed, event = apply_reviewed_repair(architecture, repair, actor=actor, rationale=rationale)
+                if commit_revision(changed, event):
+                    st.session_state.architecture = changed
+                    st.session_state.editor_version += 1
+                    st.session_state.studio_analyzed = True
+                    st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
                     st.rerun()
-                except (ValueError, KeyError) as exc:
-                    st.error(str(exc))
+            except ValueError as exc:
+                st.error(str(exc))
 
-        st.subheader("Record an artifact review outcome")
-        st.caption(
-            "Approve, Reject, or Defer records a human status without changing structural verification. "
-            "Use the constraint form below to revise supported step 04 policies."
-        )
-        review_choices = {
-            "responsibilities": [item["id"] for item in artifacts["responsibilities"]["items"]],
-            "evidence": [item["id"] for item in artifacts["evidence"]["items"]],
-            "quanta": [item["id"] for item in artifacts["quanta"]["quanta"]],
-            "interactions": [item["id"] for item in artifacts["interactions"]["edges"]],
-            "quality_profiles": [item["scenario_id"] for item in artifacts["quality_profiles"]["profiles"]],
+
+def open_oracle_case(case: dict, mode: str) -> None:
+    session = st.session_state
+    if session.studio_pending:
+        return
+    fixture = replay_architecture(case, mode)
+    if "studio_case_return" not in session:
+        session.studio_case_return = {
+            name: session.get(name) for name in ("architecture", "studio_layout", "studio_analyzed",
+                                                  "studio_weights", "studio_ranking", "studio_output_slot", "studio_conservative")
         }
-        available_review_targets = [name for name, ids in review_choices.items() if ids]
-        with st.form("artifact_review_form"):
-            if available_review_targets:
-                review_target = st.selectbox("Artifact to review", available_review_targets)
-                review_object_id = st.selectbox("Artifact item", review_choices[review_target])
-                review_action = st.selectbox("Review outcome", ["APPROVE", "REJECT", "DEFER"])
-                review_reason = st.text_area("Review justification", value="Reviewed during the demo.")
-                review_source = st.text_input("Review source", value="HUMAN-DEMO-REVIEW")
-                review_actor = st.text_input("Reviewer identifier", value="demo-reviewer")
-                record_review = st.form_submit_button("Record artifact review")
+    session.studio_replay = (case["id"], mode)
+    session.architecture = fixture
+    session.studio_layout = {}
+    session.studio_analyzed = True
+    session.studio_conservative = False
+    session.studio_canvas_error = ""
+    session.editor_version += 1
+    session.studio_canvas_commit = session.get("studio_canvas_commit", 0) + 1
+    session.pop("studio_output_slot", None)
+    set_review_priority(Preferences(), "WEIGHTED")
+
+
+def close_oracle_case() -> None:
+    session = st.session_state
+    if session.studio_pending:
+        return
+    original = session.pop("studio_case_return")
+    session.pop("studio_replay")
+    set_review_priority(original.pop("studio_weights"), original.pop("studio_ranking"))
+    slot = original.pop("studio_output_slot")
+    session.pop("studio_output_slot", None)
+    if slot is not None:
+        session.studio_output_slot = slot
+    session.update(original)
+    session.editor_version += 1
+    session.studio_canvas_commit = session.get("studio_canvas_commit", 0) + 1
+
+
+def show_oracle_cases(architecture: Architecture, active: tuple[str, str] | None) -> None:
+    st.html('<span id="studio-oracles" class="qs-anchor"></span>')
+    with st.expander("Ca khó và oracle", expanded=active is not None):
+        cases = oracle_ticket_cases()
+        case = cases[st.selectbox("Ca kiểm thử", list(cases), key="studio_oracle_picker",
+                                  format_func=lambda key: f"{key} · {cases[key]['title']}")]
+        st.write(case["text"])
+        for reference in case["context"]:
+            st.caption(f"{reference['id']} · {reference['text']}")
+        st.caption(f"Oracle · {case['status']}" + (f" · Trùng {case['duplicate_of']}" if case.get("duplicate_of") else ""))
+        options = ["draft", "oracle"]
+        if "saved_model" in case:
+            options.append("saved_model")
+            st.caption(f"Phát lại {case['saved_model']['model']} từ phản hồi đã lưu. "
+                       "Phản hồi có giao dịch cục bộ và thiếu chính sách bắt buộc tách.")
+        mode = st.radio("Chế độ nạp", options, format_func=REPLAY_MODES.__getitem__, horizontal=True,
+                        key=f"studio_oracle_mode_{case['id']}")
+        baseline = calculate(ticket_example(), Preferences(), "WEIGHTED")
+        rows = []
+        for method in options:
+            result = calculate(replay_architecture(case, method), Preferences(), "WEIGHTED")
+            outcome = replay_outcome(result)
+            if method == "draft":
+                verdict = "Giữ nguyên mẫu" if result == baseline else "Lệch mẫu"
+            elif method == "oracle":
+                verdict = "Khớp oracle" if matches_oracle(result, case["expected"]) else "Lệch oracle"
             else:
-                st.info("No reviewable artifact items are available in this run.")
-                record_review = st.form_submit_button("Record artifact review", disabled=True)
-        if record_review:
-            try:
-                updated = apply_artifact_review(
-                    artifacts,
-                    target_artifact=review_target,
-                    object_id=review_object_id,
-                    action=review_action,
-                    reason=review_reason,
-                    source=review_source,
-                    actor=review_actor,
-                )
-                timestamp = datetime.now(timezone.utc).isoformat()
-                updated["decisions"]["items"][-1]["created_at_utc"] = timestamp
-                updated["revisions"]["items"][-1]["created_at_utc"] = timestamp
-                updated["metadata"].update(artifacts["metadata"])
-                st.session_state.snapshot_version += 1
-                version = st.session_state.snapshot_version
-                run_dir = save_run(st.session_state.run_id, updated)
-                save_snapshot(st.session_state.run_id, f"v{version}", updated)
-                st.session_state.artifacts = updated
-                st.session_state.run_dir = str(run_dir)
-                st.session_state.review_preview = None
-                st.session_state.notice = (
-                    f"Recorded {review_action} for {review_target}/{review_object_id} in v{version}. "
-                    "Quality measurement and deployment verification remain unchanged."
-                )
-                st.rerun()
-            except (ValueError, KeyError) as exc:
-                st.error(str(exc))
+                verdict = "Tái hiện sai lệch so với oracle" if matches_oracle(result, case["saved_model"]["expected"]) else "Lệch kết quả đã lưu"
+            rows.append({"Chế độ": REPLAY_MODES[method], "Khả thi": outcome["feasible"],
+                         "Xếp đầu": outcome["leader"] or "INFEASIBLE",
+                         "Điểm": str(outcome["score"]) if outcome["score"] is not None else "—", "Đối chiếu": verdict})
+        st.dataframe(rows, hide_index=True, width="stretch")
+        st.caption("Bảng dùng trọng số mặc định. Nạp ca để xem sơ đồ, trade-off và truy vết trong phiên mô phỏng riêng.")
+        if active:
+            loaded_case, loaded_mode = active
+            note = f"Đang mở {loaded_case} · {REPLAY_MODES[loaded_mode]}"
+            if architecture != replay_architecture(cases[loaded_case], loaded_mode):
+                note += " · Có chỉnh sửa trong phiên thử"
+            st.info(note)
+        pending = st.session_state.studio_pending
+        if pending:
+            st.caption("Bấm Phân tích sơ đồ để lưu chỉnh sửa đang làm trước khi đổi phiên.")
+        load, leave, suite = st.columns(3)
+        load.button("Nạp ca vào sơ đồ", on_click=open_oracle_case, args=(case, mode), disabled=pending,
+                    width="stretch", type="primary")
+        if active:
+            leave.button("Quay lại sơ đồ của tôi", on_click=close_oracle_case, disabled=pending, width="stretch")
+        if suite.button("Chạy cả 12 ca", width="stretch"):
+            st.session_state.studio_oracle_suite = True
+        if st.session_state.get("studio_oracle_suite"):
+            suite_rows = []
+            passed = 0
+            for item in cases.values():
+                draft = calculate(replay_architecture(item, "draft"), Preferences(), "WEIGHTED")
+                outcome = calculate(replay_architecture(item, "oracle"), Preferences(), "WEIGHTED")
+                agrees = draft == baseline and matches_oracle(outcome, item["expected"])
+                passed += agrees
+                suite_rows.append({"Ca": item["id"], "Nháp khả thi": len(draft.feasible),
+                                   "Theo oracle khả thi": len(outcome.feasible),
+                                   "Xếp đầu theo oracle": replay_outcome(outcome)["leader"] or "INFEASIBLE",
+                                   "Đối chiếu": "Khớp" if agrees else "Lệch"})
+            st.write(f"{passed}/{len(cases)} ca khớp oracle của bộ giải.")
+            st.dataframe(suite_rows, hide_index=True, width="stretch")
 
-        st.subheader("Preview, apply, and revalidate a review decision")
-        st.write(
-            "Use the sample edit `ADD MUST_LINK(R4,R6)` with object ID `H4` to create a contradiction with H3. "
-            "Then use `DISABLE H3` with object ID `H3` as a human correction and revalidate."
-        )
-        with st.form("review_form"):
-            target_step = st.selectbox("Target step", ["04"])
-            object_id = st.text_input("Object ID", value="H4")
-            old_value = st.text_input("Old value (audit label)", value="ABSENT")
-            new_value = st.text_input("New value", value="ADD MUST_LINK(R4,R6)")
-            reason = st.text_area("Reason", value="Demo review: test the stated policy and inspect the resulting conflict.")
-            source = st.text_input("Source", value="HUMAN-DEMO-REVIEW")
-            actor = st.text_input("Reviewer", value="demo-reviewer")
-            preview = st.form_submit_button("Preview impact")
-            apply = st.form_submit_button("Apply & Revalidate", type="primary")
 
-        request_fields = {
-            "target_step": target_step,
-            "object_id": object_id,
-            "old_value": old_value,
-            "new_value": new_value,
-            "reason": reason,
-            "source": source,
-            "actor": actor,
+def show_traceability(architecture: Architecture, plan: dict, names: dict[str, str]) -> None:
+    st.header("Hồ sơ và truy vết", anchor="studio-trace")
+    st.caption(f"Theo sơ đồ đang hiển thị · {plan['label']}")
+    groups, edges, stores, requirements = st.tabs(["Quantum", "Tương tác", "Kho và ràng buộc", "Requirements"])
+    with groups:
+        st.html(quantum_cards(plan, names))
+    with edges:
+        st.html(interaction_cards(plan, names))
+    with stores:
+        st.html(constraint_cards(architecture, plan, names))
+    with requirements:
+        st.html(requirement_cards(architecture, plan, names))
+
+
+def show_nfr_review(architecture: Architecture, plans: list[dict], replay: tuple[str, str] | None = None) -> None:
+    nfrs = {item.id: item for item in architecture.requirements if item.kind == "NFR"}
+    if not nfrs:
+        return
+    st.html('<span id="studio-iso" class="qs-anchor"></span>')
+    with st.expander(f"Ánh xạ NFR vào {ISO_EDITION}", expanded=True):
+        ids = list(nfrs)
+        initial = ids.index(replay[0]) if replay and replay[0] in nfrs else 0
+        key = f"studio_replay_nfr_{st.session_state.editor_version}" if replay else None
+        requirement = nfrs[st.selectbox("NFR nguồn", ids, index=initial, key=key)]
+        if requirement.duplicate_of:
+            st.info(f"{requirement.id} dùng mục tiêu và ánh xạ của {requirement.duplicate_of}. "
+                    "Chọn bản gốc để sửa ánh xạ, hoặc tách tại Review yêu cầu cùng mục tiêu.")
+            st.write(requirement.text)
+            return
+        suggested = quality_suggestions(requirement.text)
+        model_suggestion = requirement.model_suggestion
+        names = {item.id: item.name for item in architecture.components}
+        mentions = component_mentions(requirement.text, names)
+        confirmed = {item.characteristic: item for item in requirement.quality_allocations}
+        st.html(iso_evidence(requirement, suggested, mentions, confirmed, names, simulation=replay is not None))
+        linked = [
+            item.id for item in architecture.components
+            if any(requirement.id in references for references in item.characteristic_requirements.values())
+        ]
+        if requirement.component_ids:
+            components, origin = requirement.component_ids, "Theo phạm vi khai báo trong requirement"
+        elif linked:
+            components, origin = linked, "Theo các liên kết characteristic đã gắn requirement"
+        elif mentions:
+            components, origin = list(mentions), "Theo tên hoặc mã component xuất hiện trong nguồn"
+        else:
+            components, origin = [], "Chưa xác định được component từ dữ liệu nguồn"
+        default = next(iter(confirmed), model_suggestion[0] if model_suggestion else next(iter(suggested), None))
+        labels = list(QualityCharacteristic)
+        generation = st.session_state.editor_version
+        label = st.selectbox("Characteristic ISO", labels, index=labels.index(default) if default else None,
+                             key=f"quality_label_{requirement.id}_{generation}")
+        if label is None:
+            st.html(iso_route_preview(components, names, plans, origin=origin, applied=False))
+            return
+        saved = confirmed.get(label)
+        if saved:
+            show_confirmed_clauses(saved, names, plans)
+        selected = st.multiselect("Component ứng viên", list(names),
+                                  default=saved.component_ids if saved else components,
+                                  format_func=names.__getitem__, key=f"quality_components_{requirement.id}_{labels.index(label)}_{generation}")
+        applied = saved is not None and set(selected) == set(saved.component_ids)
+        if applied:
+            origin = "Theo component trong phiên mô phỏng" if replay else "Theo danh sách component đã xác nhận"
+        elif set(selected) != set(components):
+            origin = "Theo danh sách component bạn đang chọn"
+        st.html(iso_route_preview(selected, names, plans, origin=origin, applied=applied, simulation=replay is not None))
+        initial_quote = (saved.source_quote if saved else model_suggestion[1]
+                         if model_suggestion and model_suggestion[0] == label else suggested.get(label, ""))
+        quote = st.text_area("Căn cứ cho ánh xạ ISO", value=initial_quote, max_chars=600,
+                             key=f"quality_quote_{requirement.id}_{labels.index(label)}_{generation}")
+        rationale = st.text_input("Lý do bổ sung của reviewer", max_chars=1000,
+                                  key=f"quality_rationale_{requirement.id}_{labels.index(label)}_{generation}")
+        apply, remove = st.columns(2)
+        confirmed_now = apply.button("Xác nhận gán ISO", disabled=not selected)
+        removed_now = remove.button("Gỡ ánh xạ ISO", disabled=label not in confirmed)
+        if confirmed_now or removed_now:
+            if confirmed_now and ((quote and quote not in requirement.text) or (not quote.strip() and not rationale.strip())):
+                st.error("Chọn đoạn nguyên văn trong requirement, hoặc ghi căn cứ bổ sung khi nguồn chưa diễn đạt đủ.")
+                return
+            model = architecture.model_dump(mode="json")
+            target = next(item for item in model["requirements"] if item["id"] == requirement.id)
+            target["quality_allocations"] = [item for item in target["quality_allocations"] if item["characteristic"] != label]
+            if confirmed_now:
+                target["quality_allocations"].append({
+                    "characteristic": label, "component_ids": selected, "source_quote": quote,
+                })
+            changed = Architecture.model_validate(model)
+            if replay is None and not commit_revision(changed, {
+                "action": "MANUAL_ISO_CONFIRM" if confirmed_now else "MANUAL_ISO_REMOVE",
+                "actor": "LOCAL_INTERACTIVE_REVIEWER", "source_id": requirement.id,
+                "source_digest": requirement.input_digest(), "characteristic": label,
+                "source_quote": quote, "rationale": rationale,
+                "before": architecture.model_dump(mode="json"), "after": changed.model_dump(mode="json"),
+            }):
+                return
+            st.session_state.architecture = changed
+            st.session_state.editor_version += 1
+            st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+            st.rerun()
+
+
+def show_requirement_cases(architecture: Architecture) -> None:
+    with st.expander("Thêm requirement từ Ollama"):
+        if st.session_state.studio_pending:
+            st.info("Bấm Phân tích sơ đồ để lưu chỉnh sửa đang làm rồi nạp requirement LLM.")
+            return
+        cases = ticket_requirement_cases()
+        case = cases[st.selectbox("Kịch bản Ticket Support", list(cases), format_func=lambda key: cases[key]["title"])]
+        available = {item.id: item for item in new_case_requirements(architecture, case)}
+        st.caption(f"Ollama {case['ollama_version']} · {case['model']} · {case['created_at'][:10]} UTC · "
+                   f"{case['generated_tokens']} token đầu ra · SHA-256 {case['response_sha256'][:16]}…")
+        st.write(case["brief"])
+        if not available:
+            st.info("Các requirement của gói đã được nạp hoặc sơ đồ thiếu component tương ứng trong mẫu Ticket Support.")
+            return
+        remaining = 40 - len(architecture.requirements)
+        if remaining == 0:
+            st.info("Sơ đồ đã đủ 40 requirement. Gỡ bớt requirement trước khi nạp thêm.")
+            return
+        st.dataframe([
+            {"Mã": item.id, "Loại": item.kind, "Yêu cầu giả lập": item.text,
+             "Component": ", ".join(item.component_ids),
+             "Nhãn LLM có đoạn trích": item.model_suggestion[0].value if item.model_suggestion else "—"}
+            for item in available.values()
+        ], hide_index=True, width="stretch")
+        selected = st.multiselect("Requirement để nạp vào sơ đồ", list(available),
+                                  default=list(available)[:remaining], max_selections=remaining,
+                                  key=f"studio_pack_{case['id']}_{st.session_state.editor_version}")
+        st.caption("Bản nháp tổng hợp. NFR chỉ góp vào điểm phân nhóm sau khi bạn xác nhận ánh xạ ISO.")
+        if st.button("Nạp requirement đã chọn", disabled=not selected):
+            data = architecture.model_dump(mode="json")
+            data["requirements"].extend(available[item].model_dump(mode="json") for item in selected)
+            st.session_state.architecture = Architecture.model_validate(data)
+            st.session_state.studio_analyzed = True
+            st.session_state.editor_version += 1
+            st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+            st.rerun()
+
+
+def show_review(comparison: dict, candidates: list[Candidate]) -> None:
+    st.header("Human Review", anchor="studio-review")
+    st.caption("Lưu phương án bạn ưu tiên cùng mô hình, trọng số và ghi chú tại thời điểm review.")
+    with st.form("quick_review"):
+        note = st.text_input("Ghi chú review", placeholder="Ví dụ: chấp nhận đồng bộ Ticket DB để giữ một đặc tính cho mỗi nhóm",
+                             max_chars=400)
+        *columns, revise = st.columns(len(candidates) + 1)
+        approvals = [
+            item.id for label, item, column in zip("ABC"[:len(candidates)], candidates, columns, strict=True)
+            if column.form_submit_button(f"Chọn {label} · {item.id}", width="stretch")
+        ]
+        request_changes = revise.form_submit_button("Yêu cầu chỉnh", width="stretch")
+    if approvals or request_changes:
+        if request_changes and not note.strip():
+            st.error("Ghi điều cần chỉnh để lưu yêu cầu.")
+            return
+        review = {
+            "id": f"review-{uuid4().hex}",
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "actor": "LOCAL_INTERACTIVE_REVIEWER",
+            "decision": "REQUEST_CHANGES" if request_changes else "PREFERRED_CANDIDATE",
+            "selected_candidate": next(iter(approvals), None),
+            "note": note.strip(),
+            **comparison,
         }
-        if preview:
-            try:
-                constraints, decision, revision = apply_constraint_edit(
-                    artifacts,
-                    target_step=target_step,
-                    object_id=object_id,
-                    old_value=old_value,
-                    new_value=new_value,
-                    reason=reason,
-                    source=source,
-                    actor=actor,
-                )
-                projected = run_pipeline(
-                    st.session_state.run_fixture or st.session_state.fixture or get_fixture(),
-                    constraints_override=constraints,
-                    decisions=artifacts["decisions"]["items"] + [decision],
-                    revisions=artifacts["revisions"]["items"] + [revision],
-                    execution_mode=artifacts["metadata"]["execution_mode"],
-                )
-                stale = revision["invalidated_artifacts"]
-                st.session_state.review_preview = {
-                    "request": request_fields,
-                    "invalidated_artifacts": stale,
-                    "preview_status": {name: "STALE" for name in stale},
-                    "before_status": artifacts["validation_report"]["status"],
-                    "predicted_status": projected["validation_report"]["status"],
-                    "predicted_feasible_candidates": projected["partitions"]["feasible_candidate_count"],
-                    "predicted_optimal_candidates": projected["partitions"]["optimal_candidate_count"],
-                    "unaffected_artifacts": revision["unaffected_artifacts"],
-                    "note": "Preview only: no decision, snapshot, or artifact has been saved.",
-                }
-            except (ValueError, KeyError) as exc:
-                st.session_state.review_preview = None
-                st.error(str(exc))
+        try:
+            save_quantum_review(review)
+        except OSError as exc:
+            st.error(f"Không lưu được review. {exc}")
+        else:
+            st.session_state.studio_last_review = review
+    recorded = st.session_state.get("studio_last_review")
+    if recorded and recorded["architecture"] == comparison["architecture"]:
+        st.html(review_receipt(recorded))
+        st.download_button(
+            "Tải quyết định review", json.dumps(recorded, ensure_ascii=False, indent=2),
+            file_name=f"{recorded['id']}.json", mime="application/json",
+        )
 
-        saved_preview = st.session_state.review_preview
-        if saved_preview and saved_preview["request"] == request_fields:
-            st.markdown("**Impact preview — affected outputs are stale until revalidation**")
-            st.json(saved_preview, expanded=False)
 
-        if apply:
-            try:
-                previous = artifacts
-                constraints, decision, revision = apply_constraint_edit(
-                    previous,
-                    target_step=target_step,
-                    object_id=object_id,
-                    old_value=old_value,
-                    new_value=new_value,
-                    reason=reason,
-                    source=source,
-                    actor=actor,
-                )
-                decisions = previous["decisions"]["items"] + [decision]
-                revisions = previous["revisions"]["items"] + [revision]
-                updated = run_pipeline(
-                    st.session_state.run_fixture or st.session_state.fixture or get_fixture(),
-                    constraints_override=constraints,
-                    decisions=decisions,
-                    revisions=revisions,
-                    execution_mode=previous["metadata"]["execution_mode"],
-                )
-                updated = replay_artifact_review_decisions(updated)
-                updated["metadata"].update(previous["metadata"])
-                if previous.get("ollama_proposals"):
-                    _attach_ollama_proposals(updated, previous["ollama_proposals"])
-                _attach_review_request(
-                    updated,
-                    {
-                        "target_step": target_step,
-                        "object_id": object_id,
-                        "old_value": old_value,
-                        "new_value": new_value,
-                        "reason": reason,
-                        "source": source,
-                        "actor": actor,
-                    },
-                    "constraints",
-                )
-                diff = artifact_diff(previous, updated, exclude={"decisions", "revisions"})
-                changed_artifacts = sorted(set(diff["changed_artifacts"]) | {"decisions", "revisions"})
-                updated["revisions"]["items"][-1]["changed_artifacts"] = changed_artifacts
-                updated["revisions"]["items"][-1]["artifact_diff"] = diff["changes"]
-                updated["revisions"]["items"][-1]["recomputed_artifacts"] = updated["revisions"]["items"][-1]["invalidated_artifacts"]
-                updated["revisions"]["items"][-1]["stale_artifacts_after_revalidation"] = []
-                updated["revisions"]["items"][-1]["revalidation_status"] = updated["validation_report"]["status"]
-                updated["decisions"]["items"][-1]["created_at_utc"] = datetime.now(timezone.utc).isoformat()
-                updated["decisions"]["items"][-1]["result"] = "APPLIED_AND_REVALIDATED"
-                unchanged = all(previous.get(key) == updated.get(key) for key in ["raw_requirements", "context", "responsibilities", "evidence"])
-                updated["validation_report"]["assertions"]["unaffected_artifacts_unchanged"] = unchanged
-                updated["validation_report"]["regression_check"] = {
-                    "status": "PASS" if unchanged else "FAIL",
-                    "checked_artifacts": ["raw_requirements", "context", "responsibilities", "evidence"],
-                    "note": "Constraint-only feedback must not silently rewrite input or requirement artifacts.",
-                }
-                st.session_state.artifacts = updated
-                st.session_state.review_preview = None
-                version = st.session_state.snapshot_version + 1
-                st.session_state.snapshot_version = version
-                run_dir = save_run(st.session_state.run_id, updated)
-                save_snapshot(st.session_state.run_id, f"v{version}", updated)
-                st.session_state.run_dir = str(run_dir)
-                st.session_state.notice = f"Saved v{version}; reran the affected steps. Status: {updated['validation_report']['status']}."
-                st.rerun()
-            except (ValueError, KeyError) as exc:
-                st.error(str(exc))
-
-        artifacts = st.session_state.artifacts
-        if st.session_state.notice:
-            st.info(st.session_state.notice)
-        st.subheader("Validation report")
-        st.dataframe(artifacts["validation_report"]["steps"], width="stretch", hide_index=True)
-        _show_json("Validation details and limits", artifacts["validation_report"])
-        st.subheader("Decision and revision audit")
-        st.json({"decisions": artifacts["decisions"], "revisions": artifacts["revisions"]}, expanded=False)
-        versions = list_snapshots(st.session_state.run_id)
-        if len(versions) > 1:
-            earlier_versions = versions[:-1]
-            compare_version = st.selectbox("Compare current run with snapshot", earlier_versions)
-            earlier = load_snapshot(st.session_state.run_id, compare_version)
-            st.subheader(f"Diff: {compare_version} → current")
-            st.json(artifact_diff(earlier, artifacts), expanded=False)
-        st.caption(f"Snapshots saved in `{st.session_state.run_dir}\\snapshots` (v1 is the initial run).")
+def show_comparison(architecture: Architecture, details_panel, evidence_panel,
+                    replay: tuple[str, str] | None = None) -> tuple[list[dict], bool, str | None]:
+    st.header("So sánh phương án", anchor="studio-tradeoffs")
+    if blockers := evidence_blockers(architecture):
+        st.warning("Cần review lại căn cứ nguồn trước khi phân nhóm. Các ràng buộc cứng hiện hành vẫn được giữ.")
+        for blocker in blockers:
+            details_panel.write(f"{blocker['source_id']} · {' '.join(blocker['issues'])}")
+        st.markdown("[Review căn cứ nguồn](#studio-source-review)")
+        st.markdown("[Review hợp đồng tương tác](#studio-boundaries)")
+        return [], False, None
+    preferences = st.session_state.studio_weights
+    ranking = st.session_state.studio_ranking
+    with st.expander("Ưu tiên phân nhóm và trọng số"):
+        for column, (label, preset) in zip(st.columns(len(REVIEW_PRESETS)), REVIEW_PRESETS.items(), strict=True):
+            active = preset == (preferences, ranking)
+            column.button(label, on_click=set_review_priority, args=preset, type="primary" if active else "secondary", width="stretch")
+        for column, (name, label) in zip(st.columns(4), WEIGHT_FIELDS, strict=True):
+            key = f"studio_weight_{name}"
+            st.session_state.setdefault(key, getattr(st.session_state.studio_weights, name))
+            column.slider(label, 0, 10, key=key, on_change=save_slider_weights)
+    uncertain = any(edge.mode == "UNKNOWN" for edge in architecture.interactions)
+    conservative = uncertain and st.checkbox("Ưu tiên chi phí biên trên khi còn bất định", key="studio_conservative")
+    large = len(architecture.components) > 8
+    if large:
+        st.session_state.setdefault("studio_search_seconds", 8)
+        limit = st.slider("Thời hạn tìm phương án (giây)", 1, 30, key="studio_search_seconds")
     else:
-        st.info("Run the offline fixture before submitting a human review decision.")
+        limit = 8
+    with st.spinner("Đang tìm phương án theo ràng buộc và năm trục chi phí…", show_time=large):
+        result = calculate(architecture, preferences, ranking, conservative, limit)
+    if not result.ranked:
+        if large:
+            st.error("INFEASIBLE · Closure của các quy tắc cùng Quantum xung đột với một yêu cầu khác Quantum.")
+        else:
+            st.error(f"INFEASIBLE · Đã xét {result.enumerated} cách chia. Không có phương án thỏa mọi ràng buộc cứng.")
+        st.markdown("[Xem xung đột và các cách gỡ](#studio-conflicts)")
+        with details_panel:
+            show_conflict_repairs(architecture, preferences, ranking, can_apply=replay is None)
+        return [], True, None
+    if large:
+        details_panel.caption(f"CP-SAT {result.search['solver_version']} · mục tiêu chính {result.search['primary_status']} · "
+                              f"{result.search['elapsed_seconds']:.2f} giây. Chi phí được tính lại bằng Python và hard constraints được kiểm cho từng phương án.")
+        details_panel.caption("Tập ứng viên gồm nghiệm từ các mục tiêu tìm kiếm và seed hợp lệ. Chưa liệt kê mọi nghiệm hoặc Pareto toàn cục. "
+                              "Chứng minh tối ưu chỉ áp dụng chi phí chính khi OPTIMAL; tie theo số nhóm/ID và so Pareto được giới hạn trong tập đã tìm.")
+    robust = conservative_order(architecture, result.feasible, preferences) if conservative else ()
+    best = robust[0] if conservative else result.ranked[0]
+    if conservative:
+        details_panel.caption(("Đang chọn biên trên thấp nhất trong tập đã tìm; trạng thái chứng minh của mục tiêu chính ghi phía trên. " if large else
+                               "Đang giảm chi phí biên trên theo trọng số trên toàn bộ phương án thỏa ràng buộc cứng. ") +
+                              "Nhãn Pareto và ma trận năm trục bên dưới dựa trên các cạnh đã xác định mode.")
+    elif ranking == "SYNC_FIRST":
+        details_panel.caption("Đang chia theo SYNC. Bộ giải giảm tổng mức ảnh hưởng của các cạnh SYNC bị cắt trước, "
+                              "sau đó giảm ASYNC giữ chung, rồi mới so điểm trọng số.")
+        if best.sync:
+            details_panel.info(f"Chi phí SYNC {'của phương án đang xếp đầu' if large else 'thấp nhất qua ranh giới'} là {best.sync} với các ràng buộc đang bật.")
+    elif ranking == "CHARACTERISTIC_FIRST":
+        details_panel.caption("Đang chia theo characteristics. Bộ giải giảm đặc tính rải nhiều Quantum trước, "
+                              "sau đó giảm trộn đặc tính trong một Quantum, rồi mới so điểm trọng số.")
+        if best.sync:
+            details_panel.info(f"Phương án này có chi phí SYNC qua ranh giới là {best.sync}. Xem các luồng trong phần truy vết.")
+    else:
+        details_panel.caption("Đang xếp theo điểm trọng số. Cạnh SYNC qua ranh giới góp vào tổng điểm.")
+    summaries = details_panel.columns(4)
+    best_bounds = score_bounds(architecture, best, preferences)
+    best_cost = f"{best_bounds.lower}–{best_bounds.upper}" if uncertain else str(best.score(preferences))
+    for column, (label, value) in zip(summaries, (
+        ("Bộ giải" if large else "Đã xét", "CP-SAT" if large else result.enumerated),
+        ("Khả thi đã tìm" if large else "Khả thi", len(result.feasible)),
+        ("Không trội trong tập đã tìm" if large else "Trên biên Pareto", len(result.frontier)), ("Xếp đầu", f"{best.id} · {best_cost} điểm"),
+    ), strict=True):
+        column.metric(label, value)
+    if uncertain:
+        bounds = score_bounds(architecture, best, preferences)
+        details_panel.warning(f"Cạnh chưa xác định mode góp vào khoảng chi phí, không được coi là miễn phí. "
+                              f"{bounds.unresolved_edges} cạnh chưa rõ · {bounds.conditional_edges} cạnh có điều kiện được review. "
+                              f"{best.id} có khoảng {bounds.lower}–{bounds.upper} điểm theo tập giả thuyết hiện tại.")
+        total = len(architecture.interactions)
+        covered = total - bounds.unresolved_edges
+        details_panel.caption(f"Độ phủ khai báo mode/điều kiện còn hiệu lực · {covered}/{total} cạnh. "
+                              "Con số này không đo độ đúng ngữ nghĩa của quyết định.")
+    names = {item.id: item.name for item in architecture.components}
+    best_plan = plan_graph(architecture, best)
+
+    frontier_ids = {item.id for item in result.frontier}
+
+    def option(candidate: Candidate) -> str:
+        status = ("Không trội trong tập tìm" if candidate.id in frontier_ids else "Đã có phương án trội") if large else "Pareto" if candidate.id in frontier_ids else "Ngoài Pareto"
+        return f"{candidate.id} · {len(candidate.groups)} Quantum · {status}"
+
+    show_all = st.checkbox("Cho chọn từ toàn bộ tập khả thi đã tìm" if large else "Cho chọn từ toàn bộ phương án khả thi")
+    default_order = sorted(result.frontier, key=lambda item: ranking_key(item, Preferences(), "WEIGHTED"))
+    initial_left = default_order[0]
+    defaults = list(dict.fromkeys([initial_left, best, *default_order]))[:3]
+    other_feasible = list(robust) if conservative else sorted(result.feasible, key=lambda item: ranking_key(item, preferences, ranking))
+    if len(defaults) < 3:
+        defaults = list(dict.fromkeys([*defaults, *other_feasible]))[:3]
+    options = other_feasible if show_all else list(dict.fromkeys([*result.ranked, *defaults]))
+    choices = {item.id: item for item in options}
+    if len(defaults) < 3:
+        details_panel.info(f"{'Đang có' if large else 'Chỉ có'} {len(defaults)} phương án khả thi {'trong tập đã tìm' if large else 'theo ràng buộc hiện tại'}.")
+    elif any(item.id not in frontier_ids for item in defaults):
+        details_panel.caption(("Biên không trội trong tập đã tìm" if large else "Biên Pareto") + " có ít hơn ba phương án. Studio bổ sung phương án khả thi ngoài biên để so sánh.")
+    if not conservative and ranking == "WEIGHTED" and best.id != initial_left.id:
+        details_panel.info(f"Ưu tiên hiện tại đổi phương án xếp đầu từ {initial_left.id} sang {best.id} · {initial_left.score(preferences)} → {best.score(preferences)} điểm với cùng bộ trọng số.")
+    generation = st.session_state.editor_version
+    columns = st.columns(len(defaults))
+    slots = "ABC"[:len(defaults)]
+    candidates = []
+    selected_ids = []
+    for slot, column, default in zip(slots, columns, defaults, strict=True):
+        available = sorted(set(choices) - set(selected_ids))
+        selected = column.selectbox(
+            f"Phương án {slot}", available, index=available.index(default.id) if default.id in available else 0,
+            format_func=lambda key: option(choices[key]), key=f"compare_{slot}_{generation}_{show_all}_{conservative}_{'_'.join(selected_ids)}",
+        )
+        selected_ids.append(selected)
+        candidates.append(choices[selected])
+    plans = {best.id: best_plan, **{item.id: plan_graph(architecture, item) for item in candidates if item.id != best.id}}
+    for slot, item in zip(slots, candidates, strict=True):
+        plans[item.id]["label"] = f"{slot} · {option(item)}"
+    initial_slot = slots[candidates.index(best)] if best in candidates else slots[0]
+    active_slot = st.radio("Phương án hiển thị trên sơ đồ", list(slots), index=slots.index(initial_slot),
+                           horizontal=True, key="studio_output_slot")
+    active_id = candidates[slots.index(active_slot)].id
+
+    axis_weights = preferences.vector
+    baseline = candidates[0]
+    details_panel.html(cost_matrix(AXES, axis_weights, candidates, slots))
+    intervals = {item.id: score_bounds(architecture, item, preferences) for item in candidates}
+    if uncertain:
+        details_panel.dataframe([
+            {"Phương án": f"{slot} · {item.id}", "Điểm cạnh đã xác định": item.score(preferences),
+             "Biên dưới": intervals[item.id].lower, "Biên trên": intervals[item.id].upper}
+            for slot, item in zip(slots, candidates, strict=True)
+        ], hide_index=True, width="stretch")
+        details_panel.caption("Khoảng điểm xét độc lập SYNC/ASYNC cho cạnh UNKNOWN, hoặc các mode trong điều kiện đã review. "
+                              "Chưa có xác suất hay tương quan giữa các cạnh. Ràng buộc cứng được giữ trong mọi giả thuyết.")
+    deltas = {
+        item.id: {label: b - a for label, a, b in zip(AXES, baseline.vector, item.vector, strict=True)}
+        for item in candidates
+    }
+    details = {item.id: candidate_costs(architecture, item, preferences) for item in candidates}
+    dominated_by = {
+        item.id: next((other.id for other in result.ranked if other.vector != item.vector and
+                       all(a <= b for a, b in zip(other.vector, item.vector, strict=True))), None)
+        for item in candidates if item.id not in frontier_ids
+    }
+    scale = max(1, *(item.score(preferences) for item in candidates))
+    cards = "".join(
+        candidate_card(slot, item, baseline=baseline, axes=AXES, weights=axis_weights, points=details[item.id],
+                       plan=plans[item.id], names=names, ranked=item.id == best.id, frontier=item.id in frontier_ids,
+                       displayed=item.id == active_id, dominator=dominated_by.get(item.id), scale=scale,
+                       interval=intervals[item.id] if uncertain else None, frontier_scope="FOUND_POOL" if large else "GLOBAL")
+        for slot, item in zip(slots, candidates, strict=True)
+    )
+    details_panel.html(f'<div class="qs-candidate-grid">{cards}</div>')
+    details_panel.caption("Điểm so sánh là chi phí thiết kế. Độ trễ và độ tin cậy cần được đo riêng.")
+    with details_panel:
+        show_prediction_comparison(candidates, plans)
+        show_boundary_outputs(architecture, next(item for item in candidates if item.id == active_id), replay=bool(replay))
+
+    comparison = {
+        "status": "PROPOSED_NOT_VERIFIED",
+        "quality_standard": ISO_EDITION,
+        "quality_measurement_status": "NOT_MEASURED",
+        "input_provenance": ("SYNTHETIC_REPLAY" if replay else
+                             "MIXED_WITH_PREPARED_SCENARIO_DATA" if any(item.decision_provenance == "PREPARED_FIXTURE" or
+                                                                         item.assumptions.provenance == "PREPARED_FIXTURE"
+                                                                         for item in architecture.quality_scenarios) else
+                             "MIXED_WITH_PREPARED_BOUNDARY_DATA" if any(item.provenance == "PREPARED_FIXTURE" or item.reference_protocol
+                                                                       for item in architecture.interaction_contracts) or
+                                                                       any(item.provenance == "PREPARED_FIXTURE" for item in architecture.ownership_decisions) else
+                             "MIXED_WITH_PREPARED_CLAUSE_REVIEW" if any(item.provenance == "PREPARED_FIXTURE" or item.claim_provenance == "PREPARED_FIXTURE"
+                                                                       for item in clause_reviews(architecture)) else
+                             "MIXED_WITH_SYNTHETIC_OLLAMA_REQUIREMENTS" if any(item.generation for item in architecture.requirements)
+                             else "PREPARED_DEMO_ASSUMPTIONS" if architecture == ticket_example()
+                             else "CONTAINS_PREPARED_FIXTURE_INPUT" if architecture.input_origin == "PREPARED_FIXTURE" else architecture.input_origin),
+        "architecture": architecture.model_dump(mode="json"),
+        "preferences": preferences.model_dump(mode="json"),
+        "ranking": ranking,
+        "uncertainty_policy": "MINIMIZE_WEIGHTED_UPPER_BOUND" if conservative else "KNOWN_MODE_COSTS",
+        "enumerated": result.enumerated,
+        "feasible": None if large else len(result.feasible),
+        "feasible_found": len(result.feasible),
+        "pareto": None if large else len(result.frontier),
+        "pareto_in_found_pool": len(result.frontier) if large else None,
+        "search": result.search or {"backend": "EXHAUSTIVE", "complete_feasible_set": True, "frontier_scope": "GLOBAL",
+                                    "status": "OPTIMAL", "optimality_proven": True},
+        "baseline_under_default_weights": initial_left.id,
+        "recommended_under_weights": min(result.frontier, key=lambda item: ranking_key(item, preferences, "WEIGHTED")).id,
+        "recommended_candidate": best.id,
+        "recommended_plan": best_plan,
+        "displayed_candidate": active_id,
+        "comparison": [{"id": item.id, "slot": slot, "groups": item.groups, "score": item.score(preferences),
+                        "score_interval": {"lower": intervals[item.id].lower, "upper": intervals[item.id].upper,
+                                           "unresolved_edges": intervals[item.id].unresolved_edges,
+                                           "conditional_edges": intervals[item.id].conditional_edges},
+                        "pareto": None if large else item.id in frontier_ids,
+                        "pareto_in_found_pool": item.id in frontier_ids if large else None,
+                        "pareto_scope": "FOUND_POOL" if large else "GLOBAL", "dominated_by": dominated_by.get(item.id),
+                        "cost_delta_vs_a": deltas[item.id],
+                        "costs": dict(zip(AXES, item.vector, strict=True)), "cost_drivers": details[item.id],
+                        "assignment": plans[item.id]["assignment"], "quantum_profiles": plans[item.id]["groups"],
+                        "interaction_routing": plans[item.id]["interactions"],
+                        "quality_profiles": plans[item.id]["quality_profiles"],
+                        "boundary_profiles": plans[item.id]["boundary_profiles"]}
+                       for slot, item in zip(slots, candidates, strict=True)],
+    }
+    if replay:
+        case_id, mode = replay
+        case = oracle_ticket_cases()[case_id]
+        comparison["replay"] = {"case_id": case_id, "mode": mode,
+                                "input_edited": architecture != replay_architecture(case, mode)}
+        if mode == "saved_model":
+            comparison["replay"]["response_sha256"] = case["saved_model"]["response_sha256"]
+    with details_panel.expander("Các phương án không trội trong tập đã tìm" if large else "Danh sách phương án Pareto"):
+        st.dataframe(
+            [{"Phương án": option(item), "Điểm": item.score(preferences),
+              "Nhóm": " | ".join(", ".join(group) for group in item.groups),
+              **dict(zip(AXES, item.vector, strict=True))}
+             for item in result.ranked],
+            hide_index=True, width="stretch",
+        )
+    with evidence_panel:
+        show_traceability(architecture, plans[active_id], names)
+        if replay:
+            st.caption("Kết quả mô phỏng. Phiên này không ghi vào lịch sử Human Review.")
+        else:
+            show_review(comparison, candidates)
+        st.download_button(
+            "Tải bản so sánh JSON", json.dumps(comparison, ensure_ascii=False, indent=2),
+            file_name="quantum-comparison.json", mime="application/json",
+        )
+    return list(plans.values()), False, active_id
+
+
+example = ticket_example()
+st.session_state.setdefault("architecture", example)
+st.session_state.setdefault("editor_version", 0)
+st.session_state.setdefault("studio_layout", {})
+st.session_state.setdefault("studio_analyzed", False)
+st.session_state.setdefault("studio_pending", False)
+st.session_state.setdefault("studio_weights", Preferences())
+st.session_state.setdefault("studio_ranking", "SYNC_FIRST")
+st.session_state.setdefault("studio_conservative", False)
+if type(st.session_state.architecture) is not Architecture:
+    st.session_state.architecture = Architecture.model_validate(st.session_state.architecture.model_dump(mode="json"))
+architecture = st.session_state.architecture
+replay = st.session_state.get("studio_replay")
+
+header = st.empty()
+show_oracle_cases(architecture, replay)
+workspace = st.container(key="studio_workspace", border=st.session_state.studio_analyzed and not st.session_state.studio_pending)
+comparison_panel = workspace.container()
+board = workspace.container()
+details_panel = workspace.container()
+samples_panel = st.container()
+nfr_panel = st.container()
+evidence_panel = st.container()
+plans, no_solution, active_plan = [], False, None
+if st.session_state.studio_analyzed and not st.session_state.studio_pending:
+    with comparison_panel:
+        plans, no_solution, active_plan = show_comparison(architecture, details_panel, evidence_panel, replay)
+    with nfr_panel:
+        show_nfr_review(architecture, sorted(plans, key=lambda plan: plan['id'] != active_plan), replay)
+elif st.session_state.studio_pending:
+    comparison_panel.info("Bấm Phân tích sơ đồ để cập nhật trade-off và truy vết.")
+
+if replay is None:
+    with samples_panel:
+        show_live_review(architecture)
+        show_session_history()
+        show_duplicate_review(architecture)
+        show_interaction_review(architecture)
+        show_rule_policy_review(architecture)
+        show_evidence_review(architecture)
+        show_scenario_review(architecture)
+        show_boundary_review(architecture)
+        st.html('<span id="studio-ollama" class="qs-anchor"></span>')
+        show_requirement_cases(architecture)
+
+header.html(diagram_header(
+    architecture, example=architecture == example, analyzed=st.session_state.studio_analyzed,
+    pending=st.session_state.studio_pending, feasible=bool(plans), replay=replay[0] if replay else None,
+    review_required=bool(evidence_blockers(architecture)),
+))
+
+with board:
+    st.html('<span id="studio-diagrams" class="qs-anchor"></span>')
+    if architecture == example:
+        st.caption("Mẫu Ticket Support · Nhãn Sync/Async, đặc tính và chính sách dữ liệu là giả định minh họa có thể chỉnh.")
+    reset_model = replay_architecture(oracle_ticket_cases()[replay[0]], replay[1]) if replay else example
+    event = render_board(
+        model=architecture.model_dump(mode="json"), example=reset_model.model_dump(mode="json"),
+        layout=st.session_state.studio_layout, revision=st.session_state.get("studio_canvas_commit", 0),
+        plans=plans, no_solution=no_solution, active_plan=active_plan,
+        error=st.session_state.get("studio_canvas_error", ""), pending=st.session_state.studio_pending,
+        review_required=bool(evidence_blockers(architecture)),
+    )
+if isinstance(event, dict) and event.get("token") != st.session_state.get("studio_submission"):
+    st.session_state.studio_submission = event.get("token")
+    if event.get("action") == "layout":
+        st.session_state.studio_layout = read_layout(architecture, event.get("layout"))
+    if event.get("action") == "dirty" and not st.session_state.studio_pending:
+        st.session_state.studio_pending = True
+        st.session_state.studio_canvas_error = ""
+        st.rerun()
+    if event.get("action") == "analyze":
+        try:
+            submitted = invalidate_changed_sources(architecture, Architecture.model_validate(event.get("model")))
+            enforce_protected_rules(architecture, submitted)
+        except (ValidationError, ValueError) as exc:
+            if not isinstance(exc, ValidationError):
+                st.session_state.studio_canvas_error = str(exc)
+                st.session_state.studio_blocked_edit = event.get("model")
+                st.session_state.studio_pending = True
+                st.rerun()
+            issue = exc.errors(include_url=False)[0]
+            field = " / ".join(str(part + 1) if isinstance(part, int) else part for part in issue["loc"])
+            st.session_state.studio_canvas_error = f"{field} · {issue['msg']}" if field else issue["msg"]
+            st.session_state.studio_pending = True
+        else:
+            submitted_layout = read_layout(submitted, event.get("layout"))
+            if submitted != architecture and replay is None and not commit_revision(submitted, {
+                "action": "INPUT_CHANGED", "actor": "LOCAL_INTERACTIVE_REVIEWER",
+                "before": architecture.model_dump(mode="json"), "after": submitted.model_dump(mode="json"),
+            }, layout=submitted_layout):
+                st.stop()
+            if submitted != architecture:
+                st.session_state.editor_version += 1
+            st.session_state.architecture = submitted
+            st.session_state.studio_layout = submitted_layout
+            st.session_state.studio_analyzed = True
+            st.session_state.studio_pending = False
+            st.session_state.studio_canvas_error = ""
+            st.session_state.studio_canvas_commit = st.session_state.get("studio_canvas_commit", 0) + 1
+        st.rerun()

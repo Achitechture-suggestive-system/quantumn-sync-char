@@ -13,22 +13,30 @@
 
 P0 hoàn tất nghĩa là luồng phần mềm cục bộ có thể chạy lại trong scope đã nêu, không phải kiến trúc được duyệt.
 
-## P1 — semantic validation và truy vết (đang thực hiện)
+## P1 — semantic validation và truy vết (đã hoàn tất trên feature branch)
 
 Làm ở feat/p1-semantic-validation để giữ main ổn định:
 
-1. Thêm oracle phân hoạch độc lập cho n=6, kiểm 203/10/0/5 mà không import private algorithm của pipeline.
-2. Thêm negative tests cho source citation thiếu/sai, evidence không có support, constraint conflict, JSON lỗi, Ollama không chạy và human revision đổi downstream.
-3. Truy vết nguồn chuyển đổi fixture/LLM/rule/human/optimizer từ FR/workflow đến proposal/evidence/constraint/partition.
-4. Tạo fixture requirements/workflow nhỏ, nhãn SYNTHETIC_TEST_FIXTURE; không trình bày như nghiên cứu thực tế độc lập.
-5. Tạo worksheet cho nhãn người đánh giá tương lai; proposal vẫn REVIEW_REQUIRED. Không bịa precision/recall.
-6. Kiểm tra vùng phụ thuộc và snapshots khi có correction; ghi rõ pipeline vẫn tính lại toàn bộ nếu chưa implement incremental.
+1. Oracle phân hoạch độc lập cho n=6 xác nhận 203/10/0/5, không import generator private của pipeline.
+2. Negative tests bắt citation thiếu/sai, evidence PRESENT không support, source không có trong package, unknown responsibility constraint và JSON lỗi/UTF-8/type; regression cover conflict và human correction.
+3. Graph trace các nguồn fixture/LLM, evidence, constraints, partitions, quanta, interactions, QAME, quyết định và revision; structural checks không được gắn nhãn semantic verification.
+4. Fixture requirements/workflow nhỏ mang nhãn SYNTHETIC_TEST_FIXTURE; hiện dùng kiểm schema/source-span/proposal-interface, không phải một demo pipeline end-to-end.
+5. Worksheet hướng dẫn annotation cho nghiên cứu tương lai; chưa có nhãn chuyên gia hay precision/recall.
+6. Human correction làm mới traceability và impact preview; pipeline vẫn tính lại toàn bộ, chưa có incremental execution.
 
-Exit gate: tests pass; docs/verification/P1_SEMANTIC_EVALUATION.md ghi lệnh, ví dụ, kết quả và giới hạn. Push branch, xác minh SHA/CI; không tự merge.
+Exit gate: 44 tests pass; compileall và AppTest pass; Ollama run có exact-span validation nhưng proposals vẫn review-required. Chi tiết trong docs/verification/P1_SEMANTIC_EVALUATION.md. Push và CI đã xác minh; nhánh chưa merge.
+
+## P2 — unseen end-to-end semantic validation (đang thực hiện)
+
+- Thêm ca Tutor Support mới, mappings generic từ scenario tới interaction/quality và policy-gated evidence constraint.
+- Chạy local `qwen3:4b`; citation spans resolve nhưng semantics chưa được reviewer duyệt. Hai lần gọi cùng input/prompt cho output khác nhau.
+- Code/test path cho review, evidence-to-policy optimizer và revision đã chạy trong unit tests; review case thật và revision sau review còn chờ worksheet.
+- P2 validation chưa đạt gate cuối cho tới khi có human decisions trên evidence/responsibilities và run/correct/rerun thực tế.
+- Báo cáo: [P2 validation](p2/P2_VALIDATION_REPORT.md); giới hạn: [research limitations](p2/P2_RESEARCH_LIMITATIONS.md).
 
 ## CI và sau demo
 
-- Thêm workflow Python 3.13 chạy pytest/compileall, không cần Ollama/secret. Không giả lập model call.
+- Workflow `.github/workflows/python-ci.yml` trên feature branch dùng Ubuntu 24.04 và Python 3.13; pytest và compileall chạy không cần Ollama/model/secret. Run `43609850489` thành công trên runner cố định với 44 tests pass và compileall pass.
 - Trước demo 19/11: chạy lại offline, tests và AppTest; nếu Ollama sẵn sàng thì ghi model/prompt/span checks; diễn tập export.
 - Sau demo: thêm nhiều case và labels độc lập, thỏa thuận giữa reviewers và metric semantic; chỉ đo quality ở môi trường đại diện.
 - Style Selection/Evaluation, OCR/PDF/BPMN tổng quát, RAG lớn và deployment nằm ngoài phạm vi.

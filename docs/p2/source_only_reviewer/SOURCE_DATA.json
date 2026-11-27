@@ -1,0 +1,95 @@
+{
+  "case_id": "TUTOR-SUPPORT-P2-01",
+  "context_id": "C0",
+  "context_description": "An original, small Tutor Support requirements case. The package contains requirements and workflows only; it supplies no source code, runtime topology, deployment evidence, or confirmed architecture policy.",
+  "requirements": [
+    {
+      "id": "FR-01",
+      "source_id": "TUTOR-REQ-FR-01",
+      "text": "A learner can search the tutor directory by subject and available time.",
+      "start": 0,
+      "end": 71
+    },
+    {
+      "id": "FR-02",
+      "source_id": "TUTOR-REQ-FR-02",
+      "text": "A learner can view a tutor profile, subjects, and listed availability.",
+      "start": 0,
+      "end": 70
+    },
+    {
+      "id": "FR-03",
+      "source_id": "TUTOR-REQ-FR-03",
+      "text": "A tutor can publish and update weekly availability slots.",
+      "start": 0,
+      "end": 57
+    },
+    {
+      "id": "FR-04",
+      "source_id": "TUTOR-REQ-FR-04",
+      "text": "A learner can request a tutoring session in an available slot.",
+      "start": 0,
+      "end": 62
+    },
+    {
+      "id": "FR-05",
+      "source_id": "TUTOR-REQ-FR-05",
+      "text": "A tutor can accept or decline a pending tutoring session request.",
+      "start": 0,
+      "end": 65
+    },
+    {
+      "id": "FR-06",
+      "source_id": "TUTOR-REQ-FR-06",
+      "text": "The learner receives a notice when the tutor accepts or declines the request.",
+      "start": 0,
+      "end": 77
+    }
+  ],
+  "workflows": [
+    {
+      "id": "WF-01",
+      "source_id": "TUTOR-WF-01",
+      "text": "A learner searches the tutor directory by subject and a time window.",
+      "start": 0,
+      "end": 68
+    },
+    {
+      "id": "WF-02",
+      "source_id": "TUTOR-WF-02",
+      "text": "The learner reviews a tutor profile and selects an open availability slot.",
+      "start": 0,
+      "end": 74
+    },
+    {
+      "id": "WF-03",
+      "source_id": "TUTOR-WF-03",
+      "text": "The learner requests the slot; the tutor accepts or declines the pending request.",
+      "start": 0,
+      "end": 81
+    },
+    {
+      "id": "WF-04",
+      "source_id": "TUTOR-WF-04",
+      "text": "The learner receives a notice of the tutor's decision.",
+      "start": 0,
+      "end": 54
+    }
+  ],
+  "quality_scenarios": [
+    {
+      "id": "SC-REQUEST-ACK",
+      "source_id": "SC-REQUEST-ACK",
+      "text": "Session request acknowledgement. Stimulus: During a peak period of 50 request submissions per minute, a learner requests an available tutoring slot. Measure: p95 request acknowledgement time at 50 submissions per minute. Target: p95 <= 2 seconds at 50 submissions/minute.",
+      "start": 0,
+      "end": 271
+    },
+    {
+      "id": "SC-DECISION-NOTICE",
+      "source_id": "SC-DECISION-NOTICE",
+      "text": "Tutor decision notification. Stimulus: A tutor accepts or declines a pending session request. Measure: percentage of decision notices delivered within 30 seconds. Target: at least 99% of notices delivered within 30 seconds over a rolling 24-hour window.",
+      "start": 0,
+      "end": 253
+    }
+  ]
+}

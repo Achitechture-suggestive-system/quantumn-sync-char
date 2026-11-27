@@ -7,6 +7,9 @@ from copy import deepcopy
 from typing import Any
 
 from .impact import STEP_BY_ARTIFACT, impact_preview
+from .models import InteractionContract
+from .p2_protocol import RELATION_PREDICATES
+from .traceability import refresh_traceability_artifact
 
 
 CONSTRAINT_IMPACT = impact_preview("constraints")
@@ -107,6 +110,7 @@ def apply_artifact_review(
     diff = artifact_diff(artifacts, updated, exclude={"decisions", "revisions"})
     revision["changed_artifacts"] = sorted(set(diff["changed_artifacts"]) | {"decisions", "revisions"})
     revision["artifact_diff"] = diff["changes"]
+    refresh_traceability_artifact(updated)
     return updated
 
 
@@ -140,6 +144,7 @@ def replay_artifact_review_decisions(artifacts: dict[str, Any]) -> dict[str, Any
         if value in counts:
             counts[value] += 1
     updated["validation_report"]["review_decision_counts"] = counts
+    refresh_traceability_artifact(updated)
     return updated
 
 
@@ -171,7 +176,7 @@ def apply_constraint_edit(
     before_list = deepcopy(constraints)
     normalized = new_value.strip().upper()
     if normalized.startswith("ADD "):
-        match = re.fullmatch(r"ADD\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-6])\s*,\s*(R[1-6])\s*\)", normalized)
+        match = re.fullmatch(r"ADD\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-9]\d*)\s*,\s*(R[1-9]\d*)\s*\)", normalized)
         if not match:
             raise ValueError("Use ADD MUST_LINK(R4,R6) or ADD CANNOT_LINK(R4,R6).")
         relation, left, right = match.groups()
@@ -218,7 +223,7 @@ def apply_constraint_edit(
             raise ValueError(f"Constraint {constraint_id} was not found.")
         constraints = [c for c in constraints if c["id"] != constraint_id]
     else:
-        match = re.fullmatch(r"SET\s+(H[1-9]\d*)\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-6])\s*,\s*(R[1-6])\s*\)", normalized)
+        match = re.fullmatch(r"SET\s+(H[1-9]\d*)\s+(MUST_LINK|CANNOT_LINK)\(\s*(R[1-9]\d*)\s*,\s*(R[1-9]\d*)\s*\)", normalized)
         if not match:
             raise ValueError("Supported edits: ADD MUST_LINK(...), ADD CANNOT_LINK(...), SET H3 CANNOT_LINK(...), DISABLE H3, ENABLE H3, REMOVE H4.")
         constraint_id, relation, left, right = match.groups()
@@ -351,6 +356,245 @@ def apply_responsibility_edit(
         "stale_artifacts_before_revalidation": stale,
         "recomputed_artifacts": [],
         "stale_artifacts_after_revalidation": stale,
+    }
+    return updated_fixture, decision, revision
+
+
+def apply_evidence_relation_edit(
+    fixture: dict[str, Any],
+    artifacts: dict[str, Any],
+    *,
+    object_id: str,
+    subject_requirement_id: str,
+    predicate: str,
+    object_requirement_id: str,
+    source_requirement_ids: list[str],
+    subject_responsibility_id: str,
+    object_responsibility_id: str,
+    architecture_implication: str,
+    architecture_rationale: str,
+    reason: str,
+    source: str,
+    actor: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Revise an approved architecture candidate using registered relations and explicit role pairs."""
+    required_values = {
+        "evidence ID": object_id,
+        "subject requirement": subject_requirement_id,
+        "registered predicate": predicate,
+        "object requirement": object_requirement_id,
+        "subject responsibility": subject_responsibility_id,
+        "object responsibility": object_responsibility_id,
+        "architecture implication": architecture_implication,
+        "architecture rationale": architecture_rationale,
+        "reason": reason,
+        "source": source,
+        "reviewer": actor,
+    }
+    missing = [name for name, value in required_values.items() if not isinstance(value, str) or not value.strip()]
+    if missing:
+        raise ValueError(f"Evidence revision is missing required fields: {', '.join(missing)}.")
+    if subject_requirement_id == object_requirement_id:
+        raise ValueError("An evidence relation must connect two different requirements.")
+    predicate = predicate.strip().upper()
+    if predicate not in RELATION_PREDICATES:
+        raise ValueError(f"Relation predicate must use the P2 registry: {', '.join(sorted(RELATION_PREDICATES))}.")
+    if predicate == "BUSINESS_PRECEDES":
+        raise ValueError("Business ordering can be revised in the relation registry, but cannot be used as an optimizer evidence relation.")
+    if architecture_implication not in {"COLOCATE_CANDIDATE", "SEPARATE_CANDIDATE"}:
+        raise ValueError("Choose an explicit architectural candidate implication for an optimizer relation.")
+    if predicate == "SHARES_STATE_OR_INVARIANT" and architecture_implication != "COLOCATE_CANDIDATE":
+        raise ValueError("SHARES_STATE_OR_INVARIANT only supports a COLOCATE_CANDIDATE implication.")
+    if predicate == "REQUIRES_INDEPENDENT_CHANGE" and architecture_implication != "SEPARATE_CANDIDATE":
+        raise ValueError("REQUIRES_INDEPENDENT_CHANGE only supports a SEPARATE_CANDIDATE implication.")
+    if subject_requirement_id > object_requirement_id:
+        subject_requirement_id, object_requirement_id = object_requirement_id, subject_requirement_id
+        subject_responsibility_id, object_responsibility_id = object_responsibility_id, subject_responsibility_id
+    current = next(
+        (item for item in artifacts["evidence"]["items"] if item.get("id") == object_id),
+        None,
+    )
+    if current is None:
+        raise ValueError(f"Evidence item {object_id} was not found.")
+    if current.get("review_status") != "APPROVED":
+        raise ValueError("Only reviewer-approved evidence can be revised as an accepted relation.")
+    if not current.get("relation_annotation_id"):
+        raise ValueError("Only evidence linked to a reviewed relation annotation can be revised through P2.")
+    updated_fixture = deepcopy(fixture)
+    raw = updated_fixture["raw_requirements"]
+    requirements = {item["id"]: item for item in raw["requirements"]}
+    if subject_requirement_id not in requirements or object_requirement_id not in requirements:
+        raise ValueError("Evidence correction references an unknown requirement.")
+    if not source_requirement_ids or not set(source_requirement_ids) <= set(requirements):
+        raise ValueError("Evidence correction needs valid source requirement IDs.")
+    if not {subject_requirement_id, object_requirement_id} <= set(source_requirement_ids):
+        raise ValueError("Evidence correction must cite both relationship endpoints.")
+    responsibilities = {item["id"]: item for item in updated_fixture["responsibilities"]}
+    if subject_responsibility_id not in responsibilities or object_responsibility_id not in responsibilities:
+        raise ValueError("Evidence correction names an unknown reviewed responsibility.")
+    if subject_requirement_id not in responsibilities[subject_responsibility_id]["requirement_ids"]:
+        raise ValueError("Subject responsibility must explicitly cover the selected subject FR.")
+    if object_requirement_id not in responsibilities[object_responsibility_id]["requirement_ids"]:
+        raise ValueError("Object responsibility must explicitly cover the selected object FR.")
+    before = deepcopy(next(item for item in updated_fixture["evidence"] if item["id"] == object_id))
+    after = deepcopy(before)
+    after.update(
+        {
+            "subject_id": subject_responsibility_id,
+            "predicate": predicate,
+            "object_id": object_responsibility_id,
+            "status": "PRESENT",
+            "provenance": "HUMAN_OVERRIDE",
+            "review_status": "APPROVED",
+            "source_refs": [requirements[item]["source_ref"] for item in source_requirement_ids],
+            "rationale": f"{reason.strip()} Architectural candidate: {architecture_rationale.strip()}",
+            "is_assumption": False,
+            "relation_annotation_id": current["relation_annotation_id"],
+            "subject_requirement_id": subject_requirement_id,
+            "object_requirement_id": object_requirement_id,
+            "architecture_implication": architecture_implication,
+        }
+    )
+    relation = next(
+        (item for item in updated_fixture.get("relation_annotations", []) if item.get("id") == current["relation_annotation_id"]),
+        None,
+    )
+    if relation is None:
+        raise ValueError("The reviewed relation annotation referenced by the evidence was not found.")
+    relation_before = deepcopy(relation)
+    relation.update(
+        {
+            "subject_requirement_id": subject_requirement_id,
+            "predicate": predicate,
+            "object_requirement_id": object_requirement_id,
+            "direction": "UNDIRECTED",
+            "status": "PRESENT",
+            "review_status": "APPROVED",
+            "provenance": "HUMAN_OVERRIDE",
+            "source_requirement_ids": source_requirement_ids,
+            "source_workflow_ids": [],
+            "source_refs": [requirements[item]["source_ref"] for item in source_requirement_ids],
+            "rationale": reason.strip(),
+            "architecture_implication": architecture_implication,
+            "architecture_rationale": architecture_rationale.strip(),
+            "responsibility_pairs": [(subject_responsibility_id, object_responsibility_id)],
+        }
+    )
+    from .models import RelationAnnotation
+    RelationAnnotation.model_validate(relation)
+    if before == after:
+        raise ValueError(f"The requested evidence edit leaves {object_id} unchanged.")
+    target_index = next(index for index, item in enumerate(updated_fixture["evidence"]) if item["id"] == object_id)
+    updated_fixture["evidence"][target_index] = after
+
+    impact = impact_preview("relation_registry")
+    decision_number = len(artifacts.get("decisions", {}).get("items", [])) + 1
+    revision_number = len(artifacts.get("revisions", {}).get("items", [])) + 1
+    decision = {
+        "decision_id": f"D{decision_number:02d}",
+        "decision_type": "STRUCTURAL_REVISION",
+        "target_step": "03",
+        "target_artifact": "relation_registry",
+        "object_id": object_id,
+        "action": "CORRECT",
+        "old_value": {"relation": relation_before, "evidence": before},
+        "new_value": {"relation": relation, "evidence": after},
+        "reason": reason.strip(),
+        "source": source.strip(),
+        "actor": actor.strip(),
+        "created_at_utc": None,
+        "result": "APPLIED_PENDING_REVALIDATION",
+    }
+    revision = {
+        "revision_id": f"v{revision_number + 1}",
+        "from_revision": f"v{revision_number}",
+        "decision_id": decision["decision_id"],
+        "target_step": "03",
+        "target_artifact": "relation_registry",
+        "object_id": object_id,
+        "before": {"relation": relation_before, "evidence": before},
+        "after": {"relation": relation, "evidence": after},
+        "reason": reason.strip(),
+        "source": source.strip(),
+        "actor": actor.strip(),
+        "affected_steps": impact["affected_steps"],
+        "affected_artifacts": ["relation_registry", *impact["stale_artifacts"], "decisions", "revisions"],
+        "unaffected_artifacts": impact["unaffected_artifacts"],
+        "invalidated_artifacts": impact["stale_artifacts"],
+        "stale_artifacts_before_revalidation": impact["stale_artifacts"],
+        "recomputed_artifacts": [],
+        "stale_artifacts_after_revalidation": impact["stale_artifacts"],
+        "revalidation_status": "PENDING",
+    }
+    return updated_fixture, decision, revision
+
+
+def apply_interaction_contract_edit(
+    fixture: dict[str, Any],
+    artifacts: dict[str, Any],
+    contract_payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Record an explicit human Sync/Async contract decision and its recomputation impact."""
+    contract = InteractionContract.model_validate(contract_payload)
+    if contract.selected_mode not in {"SYNC", "ASYNC"}:
+        raise ValueError("An interaction review must select SYNC or ASYNC; unresolved contracts remain unchanged.")
+    edge = next(
+        (item for item in artifacts.get("interactions", {}).get("edges", []) if item.get("id") == contract.contract_id),
+        None,
+    )
+    if edge is None:
+        raise ValueError(f"Interaction candidate {contract.contract_id} was not found in the current run.")
+    updated_fixture = deepcopy(fixture)
+    overrides = list(updated_fixture.get("interaction_contracts_override", []))
+    contract_data = contract.model_dump(mode="json")
+    if edge.get("contract", {}) == contract_data:
+        raise ValueError(f"Interaction candidate {contract.contract_id} already has this reviewed contract.")
+    overrides = [item for item in overrides if item.get("contract_id") != contract.contract_id]
+    overrides.append(contract_data)
+    updated_fixture["interaction_contracts_override"] = overrides
+
+    decision_number = len(artifacts.get("decisions", {}).get("items", [])) + 1
+    revision_number = len(artifacts.get("revisions", {}).get("items", [])) + 1
+    impact = impact_preview("interactions")
+    source_ids = sorted({item.source_id for item in contract.source_refs})
+    before = deepcopy(edge.get("contract", {}))
+    decision = {
+        "decision_id": f"D{decision_number:02d}",
+        "decision_type": "HUMAN_INTERACTION_CONTRACT_DECISION",
+        "target_step": "07",
+        "target_artifact": "interactions",
+        "object_id": contract.contract_id,
+        "action": "APPROVE",
+        "old_value": before.get("selected_mode", "UNDECIDED"),
+        "new_value": contract_data["selected_mode"],
+        "before": before,
+        "after": contract_data,
+        "reason": contract.decision_rationale,
+        "source": ", ".join(source_ids),
+        "actor": contract.reviewer_id,
+        "created_at_utc": contract.reviewed_at.isoformat(),
+        "result": "RECOMPUTE_REQUIRED",
+    }
+    revision = {
+        "revision_id": f"v{revision_number + 1}",
+        "from_revision": f"v{revision_number}",
+        "decision_id": decision["decision_id"],
+        "target_step": "07",
+        "target_artifact": "interactions",
+        "object_id": contract.contract_id,
+        "before": before,
+        "after": contract_data,
+        "reason": contract.decision_rationale,
+        "source": ", ".join(source_ids),
+        "actor": contract.reviewer_id,
+        "affected_steps": impact["affected_steps"],
+        "affected_artifacts": ["interactions", *impact["stale_artifacts"], "decisions", "revisions"],
+        "unaffected_artifacts": impact["unaffected_artifacts"],
+        "invalidated_artifacts": impact["stale_artifacts"],
+        "stale_artifacts_before_revalidation": impact["stale_artifacts"],
+        "recomputed_artifacts": [],
+        "stale_artifacts_after_revalidation": impact["stale_artifacts"],
+        "revalidation_status": "PENDING",
     }
     return updated_fixture, decision, revision
 

@@ -7,21 +7,26 @@ from collections import deque
 
 # Keys are persisted artifact names; values are the artifacts that consume them.
 DEPENDENTS: dict[str, tuple[str, ...]] = {
-    "raw_requirements": ("context", "responsibilities", "evidence", "interactions", "quality_profiles"),
-    "context": ("responsibilities",),
-    "responsibilities": ("evidence", "partitions", "quanta", "validation_report"),
-    "evidence": ("constraints", "quanta", "interactions", "validation_report"),
-    "constraints": ("partitions", "validation_report"),
-    "partitions": ("quanta", "validation_report"),
-    "quanta": ("interactions", "quality_profiles", "validation_report"),
-    "interactions": ("quality_profiles", "validation_report"),
-    "quality_profiles": ("validation_report",),
+    "raw_requirements": ("context", "responsibilities", "relation_registry", "interactions", "quality_profiles", "traceability"),
+    "context": ("responsibilities", "traceability"),
+    "responsibilities": ("evidence", "relation_registry", "partitions", "quanta", "validation_report", "traceability"),
+    "relation_registry": ("evidence",),
+    "evidence": ("constraints", "quanta", "interactions", "validation_report", "traceability"),
+    "constraints": ("partitions", "validation_report", "traceability"),
+    "partitions": ("quanta", "validation_report", "traceability"),
+    "quanta": ("interactions", "quality_profiles", "validation_report", "traceability"),
+    "interactions": ("quality_profiles", "validation_report", "traceability"),
+    "quality_profiles": ("validation_report", "traceability"),
+    "decisions": ("traceability",),
+    "revisions": ("traceability",),
+    "traceability": ("validation_report",),
 }
 
 STEP_BY_ARTIFACT = {
     "raw_requirements": "01",
     "context": "01",
     "responsibilities": "02",
+    "relation_registry": "03",
     "evidence": "03",
     "constraints": "04",
     "partitions": "05",
@@ -31,6 +36,7 @@ STEP_BY_ARTIFACT = {
     "decisions": "09",
     "revisions": "09",
     "validation_report": "10",
+    "traceability": "10",
 }
 
 

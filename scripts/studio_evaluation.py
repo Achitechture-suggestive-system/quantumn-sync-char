@@ -24,6 +24,7 @@ def main(argv=None):
     prepare.add_argument("--folder", type=Path, required=True)
     prepare.add_argument("--model-digest", required=True)
     prepare.add_argument("--repetitions", type=int, default=3)
+    prepare.add_argument("--method", choices=["DIRECT", "SENTENCE"], default="DIRECT")
     for action in ("status", "lock", "adjudication-template", "adjudicate", "run", "score"):
         command = commands.add_parser(action)
         command.add_argument("--folder", type=Path, required=True)
@@ -43,7 +44,8 @@ def main(argv=None):
             state = git_state()
             if state["dirty"]:
                 raise EvaluationBlocked("Commit/thống nhất checkout trước khi freeze; không tự loại công việc đang sửa.")
-            result = prepare_study(read(args.source), args.folder, model_digest=args.model_digest, code_sha=state["sha"], repetitions=args.repetitions)
+            result = prepare_study(read(args.source), args.folder, model_digest=args.model_digest, code_sha=state["sha"],
+                                   repetitions=args.repetitions, method=args.method)
         elif args.command == "status":
             result = readiness(args.folder, read(args.reference) if args.reference else None)
         elif args.command == "run":

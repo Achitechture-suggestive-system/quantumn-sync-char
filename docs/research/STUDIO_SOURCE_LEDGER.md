@@ -46,7 +46,7 @@
 
 | ID | Nguồn gốc | Áp dụng và giới hạn |
 |---|---|---|
-| S21 | Sebastian Baltes và cộng sự. **Guidelines for Empirical Studies in Software Engineering involving Large Language Models**. arXiv `2508.15503v8`, 18/09/2026; trang tác giả ghi accepted in Empirical Software Engineering. [Bản v8](https://arxiv.org/abs/2508.15503v8) · [Toàn văn](https://arxiv.org/html/2508.15503v8) | Tham khảo reporting và human validation cho G10. Freeze/matcher/lock là thiết kế repo; không suy ra độ đúng của model hoặc reference từ tuân thủ checklist. |
+| S21 | Sebastian Baltes và cộng sự. **Guidelines for Empirical Studies in Software Engineering involving Large Language Models**. arXiv `2508.15503v8`, 18/09/2026; trang tác giả ghi accepted in Empirical Software Engineering. [Bản v8](https://arxiv.org/abs/2508.15503v8) · [Toàn văn](https://arxiv.org/html/2508.15503v8) | Tham khảo reporting model/prompt/session traces, metrics và human validation cho G10; metadata đối chiếu lại khi làm X2. Freeze/matcher/lock, recipe nhiều stage và exposure gate là thiết kế repo, không phải thuật toán được bài chứng minh. Không suy ra độ đúng model/reference từ checklist. |
 
 ## Nguồn cho trích xuất theo câu — kiểm tra 28/11/2026
 

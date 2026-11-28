@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 from typing import Literal
 
 from pydantic import Field
@@ -17,12 +18,15 @@ from .studio_oracles import oracle_ticket_cases
 from .quantum_example import ticket_example
 
 
-PROTOCOL = "STUDIO-EVALUATION@1"
+PROTOCOL = "STUDIO-EVALUATION@2"
 MATCHING = "SOURCE-TASK-CONDITION-ATOMIC-LINK@1"
 ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ("studio_extraction.py", "studio_semantics.py", "studio_quality.py", "quantum_tradeoff.py",
-              "studio_evidence.py", "studio_evaluation_protocol.py", "studio_evaluation.py", "studio_sentence_extraction.py")
+              "studio_evidence.py", "studio_evaluation_protocol.py", "studio_evaluation.py", "studio_sentence_extraction.py",
+              "studio_evaluation_trace.py")
 PACKAGE_FILES = {"SOURCE.json", "ANNOTATION_TEMPLATE.json", "README.md", "MANIFEST.json"}
+EXPOSURE_PATHS = ("extractions/*/request.json", "extractions/*/frame-*-request.json", "development-probes/*/request.json")
+EXPOSURE_POLICY = "NORMALIZED_FULL_OR_SENTENCE_EXACT@1"
 
 
 class EvaluationBlocked(ValueError):
@@ -49,6 +53,44 @@ def now() -> str:
 
 def code_hashes() -> dict:
     return {name: sha256(Path(__file__).with_name(name).read_bytes()).hexdigest() for name in CODE_FILES}
+
+
+def exposure_signatures(text: str) -> set:
+    # Conservative exact overlap only; paraphrase and unseen external calls still require curation/attestation.
+    parts = [text, *re.split(r"(?<=[.!?])\s+|\n+", text)]
+    return {digest(" ".join(part.split()).casefold()) for part in parts if part.strip()}
+
+
+def exposure_ledger() -> tuple[set, dict]:
+    root = storage.ARTIFACT_ROOT / "quantum-studio"
+    exposed, history = set(), {}
+    for path in sorted({p for pattern in EXPOSURE_PATHS for p in root.glob(pattern)}):
+        if path.is_symlink() or not path.is_file():
+            raise EvaluationBlocked("Exposure registry chứa symlink/file không hợp lệ.")
+        try:
+            request = json.loads(path.read_text(encoding="utf-8"))
+            entries = json.loads(request["messages"][-1]["content"])
+            if isinstance(entries, dict):
+                entries = ([{"text": entries["sentence"]}] if "sentence" in entries else
+                           entries["sources"] if "sources" in entries else entries["units"])
+            if not isinstance(entries, list):
+                raise ValueError("Source rows required")
+            for item in entries:
+                if not isinstance(item, dict) or not isinstance(item.get("text"), str) or not item["text"].strip():
+                    raise ValueError("Literal source text required")
+                exposed.update(exposure_signatures(item["text"]))
+        except (KeyError, TypeError, ValueError, AttributeError) as exc:
+            raise EvaluationBlocked(f"Không đọc được exposure request {path.relative_to(root)}; cần audit trước inference.") from exc
+        history[path.relative_to(root).as_posix()] = sha256(path.read_bytes()).hexdigest()
+    return exposed, history
+
+
+def check_unplanned_exposure(source, frozen):
+    exposed, history = exposure_ledger()
+    if any(history.get(path) != value for path, value in frozen["prior_request_file_hashes"].items()):
+        raise EvaluationBlocked("Request lịch sử đã đổi/mất sau freeze; giữ trace và audit trước inference.")
+    if any(exposure_signatures(r.text) & exposed for case in source.cases if case.split == "HELD_OUT" for r in case.requirements):
+        raise EvaluationBlocked("Held-out source có full/sentence exposure trước lượt nghiên cứu này; không chạy lại chọn lọc.")
 
 
 class SourceComponent(InputModel):
@@ -86,7 +128,8 @@ class Query(InputModel):
 
 
 class StudySource(InputModel):
-    schema_id: Literal["STUDIO-EVALUATION@1"] = PROTOCOL
+    # Source-only input format @1 remains readable; execution/reference locks have their own @2 protocol.
+    schema_id: Literal["STUDIO-EVALUATION@1", "STUDIO-EVALUATION@2"] = PROTOCOL
     id: Key
     curation_rationale: str = Field(min_length=1, max_length=2000)
     no_known_paraphrase_leakage_attested: bool = False
@@ -188,7 +231,30 @@ def _write_new(path: Path, value):
         handle.write(json.dumps(value, ensure_ascii=False, indent=2) + "\n" if not isinstance(value, str) else value)
 
 
-def prepare_study(raw: dict, folder: Path, *, model_digest: str, code_sha: str, repetitions=3, prepared_at=None) -> dict:
+def execution_plan(source: StudySource, method: str):
+    if method not in {"DIRECT", "SENTENCE"}:
+        raise EvaluationBlocked("Execution method phải là DIRECT hoặc SENTENCE.")
+    from .studio_sentence_extraction import (MAX_CLAIMS, PROMPT_VERSION as SENTENCE_PROMPT,
+                                             build_claim_request, build_frame_request)
+    cases = {case.id: case for case in source.cases}
+    requests, recipes = {}, {}
+    for query in source.queries:
+        architecture = cases[query.case_id].architecture()
+        if method == "DIRECT":
+            requests[query.id] = build_request(architecture, query.source_ids, query.task)
+        else:
+            requests[query.id], units = build_claim_request(architecture, query.source_ids, query.task)
+            recipes[query.id] = {"units": units, "frame_templates": {
+                unit["unit_id"]: build_frame_request(architecture, unit, query.task, {}) for unit in units}}
+    plan = {"method": method, "prompt_version": PROMPT_VERSION if method == "DIRECT" else SENTENCE_PROMPT,
+            "secondary_requests": recipes, "secondary_request_rule": "NONE" if method == "DIRECT" else
+            "FROZEN_BUILD_FRAME_REQUEST_FROM_RAW_CLAIM_AND_EXACT_UNIT@1",
+            "maximum_provider_calls_per_query": 1 if method == "DIRECT" else 1 + MAX_CLAIMS}
+    return requests, plan
+
+
+def prepare_study(raw: dict, folder: Path, *, model_digest: str, code_sha: str, repetitions=3, prepared_at=None,
+                  method="DIRECT") -> dict:
     source = validate_source(raw)
     if not isinstance(repetitions, int) or isinstance(repetitions, bool) or not 1 <= repetitions <= 10:
         raise EvaluationBlocked("Repetition phải là số nguyên 1..10.")
@@ -200,26 +266,17 @@ def prepare_study(raw: dict, folder: Path, *, model_digest: str, code_sha: str, 
     timestamp(created)
     canonical = source.model_dump(mode="json")
     source_digest = digest(canonical)
-    exposed, history = set(), {}
-    for path in (storage.ARTIFACT_ROOT / "quantum-studio" / "extractions").glob("*/request.json"):
-        request = json.loads(path.read_text(encoding="utf-8"))
-        try:
-            entries = json.loads(request["messages"][-1]["content"])
-            if isinstance(entries, dict):
-                entries = entries["sources"]
-            exposed.update(digest(" ".join(item["text"].split()).casefold()) for item in entries)
-        except (KeyError, TypeError, ValueError, AttributeError) as exc:
-            raise EvaluationBlocked("Không đọc được source ledger từ extraction request đã có; cần audit trước freeze.") from exc
-        history[path.parent.name] = sha256(path.read_bytes()).hexdigest()
+    exposed, history = exposure_ledger()
     for case in source.cases:
-        if case.split == "HELD_OUT" and any(digest(" ".join(r.text.split()).casefold()) in exposed for r in case.requirements):
+        if case.split == "HELD_OUT" and any(exposure_signatures(r.text) & exposed for r in case.requirements):
             raise EvaluationBlocked("Nguồn held-out đã xuất hiện trong một extraction local trước freeze.")
-    payloads = {q.id: build_request(next(c for c in source.cases if c.id == q.case_id).architecture(), q.source_ids, q.task)
-                for q in source.queries}
+    payloads, plan = execution_plan(source, method)
     frozen = {"protocol": PROTOCOL, "matching": MATCHING, "recorded_at": created, "source_digest": source_digest,
               "code_sha": code_sha, "code_hashes": code_hashes(), "model": "qwen3:4b", "model_digest": model_digest,
-              "prompt_version": PROMPT_VERSION, "repetitions": repetitions, "request_digests": {key: digest(v) for key, v in payloads.items()},
-              "prior_extraction_request_hashes": history, "prior_exposed_source_digests": sorted(exposed)}
+              "method": method, "prompt_version": plan["prompt_version"], "execution_plan_digest": digest(plan),
+              "repetitions": repetitions, "request_digests": {key: digest(v) for key, v in payloads.items()},
+              "prior_request_file_hashes": history, "exposure_paths": list(EXPOSURE_PATHS), "exposure_policy": EXPOSURE_POLICY,
+              "prior_exposed_source_digests": sorted(exposed)}
     frozen["study_digest"] = digest(frozen)
     folder.mkdir(parents=True, exist_ok=False)
     package = folder / "source_only"
@@ -231,6 +288,7 @@ def prepare_study(raw: dict, folder: Path, *, model_digest: str, code_sha: str, 
                "files": {p.name: sha256(p.read_bytes()).hexdigest() for p in package.iterdir()}})
     _write_new(folder / "frozen.json", frozen)
     _write_new(folder / "requests.json", payloads)
+    _write_new(folder / "execution.json", plan)
     return frozen
 
 
@@ -249,13 +307,17 @@ def load_study(folder: Path) -> tuple[StudySource, dict]:
         raise EvaluationBlocked("Frozen protocol/digest không khớp.")
     if frozen.get("source_digest") != digest(source.model_dump(mode="json")) or manifest.get("source_digest") != frozen["source_digest"]:
         raise EvaluationBlocked("Source/frozen hash không khớp.")
-    if any(digest(" ".join(r.text.split()).casefold()) in frozen.get("prior_exposed_source_digests", []) for c in source.cases if c.split == "HELD_OUT" for r in c.requirements):
+    if frozen.get("exposure_paths") != list(EXPOSURE_PATHS) or frozen.get("exposure_policy") != EXPOSURE_POLICY:
+        raise EvaluationBlocked("Exposure policy khác protocol đã chốt.")
+    if any(exposure_signatures(r.text) & set(frozen.get("prior_exposed_source_digests", [])) for c in source.cases if c.split == "HELD_OUT" for r in c.requirements):
         raise EvaluationBlocked("Held-out source đã có trong ledger exposure lúc freeze.")
-    if frozen.get("code_hashes") != code_hashes() or frozen.get("prompt_version") != PROMPT_VERSION:
+    if frozen.get("code_hashes") != code_hashes():
         raise EvaluationBlocked("Code/prompt thay đổi sau freeze; không chấm như cùng protocol.")
     payloads = json.loads((folder / "requests.json").read_text(encoding="utf-8"))
-    expected = {q.id: build_request(next(c for c in source.cases if c.id == q.case_id).architecture(), q.source_ids, q.task)
-                for q in source.queries}
+    expected, plan = execution_plan(source, frozen.get("method"))
+    if (json.loads((folder / "execution.json").read_text(encoding="utf-8")) != plan
+            or frozen.get("execution_plan_digest") != digest(plan) or frozen.get("prompt_version") != plan["prompt_version"]):
+        raise EvaluationBlocked("Execution recipe/prompt khác bản freeze.")
     if payloads != expected or frozen.get("request_digests") != {key: digest(v) for key, v in expected.items()}:
         raise EvaluationBlocked("Request khác bản freeze.")
     if manifest.get("protocol") != PROTOCOL or json.loads((package / "ANNOTATION_TEMPLATE.json").read_text(encoding="utf-8")) != annotation_template(source, frozen["source_digest"]) or (package / "README.md").read_text(encoding="utf-8") != REVIEWER_GUIDE:

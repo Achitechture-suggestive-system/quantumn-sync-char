@@ -2,15 +2,17 @@
 
 ## Bài toán và trạng thái
 
-Phạm vi @1 là **DIRECT / STUDIO-EXTRACT@2**. SENTENCE @3 có nhiều call và quote tra nguồn, chưa được runner/scorer protocol này hỗ trợ hoặc đánh giá. [Báo cáo @3](STUDIO_SENTENCE_EXTRACTION.md) là development smoke, không phải kết quả G10. Gói `studio-source-only-v1-20261128` lưu freeze lịch sử của code cũ; code hash hiện tại khác nên gate sẽ chặn nếu dùng lại. Giữ gói cũ và tạo version freeze mới trên code đã commit trước study tương lai; không sửa manifest cũ để bỏ qua drift.
+Phiên bản hiện tại **STUDIO-EVALUATION@2** hỗ trợ một trong hai execution profile: DIRECT / STUDIO-EXTRACT@2 hoặc SENTENCE / STUDIO-EXTRACT@3. Profile được chọn khi prepare, không đổi sau khi thấy output. Matcher atomic link vẫn @1; đây là cập nhật integrity của thí nghiệm, chưa phải kết quả đo nghĩa. [Báo cáo @3](STUDIO_SENTENCE_EXTRACTION.md) vẫn là development smoke, chưa có reference độc lập.
 
-Protocol `STUDIO-EVALUATION@1` khóa source, document split, prompt/schema/request, code, exact model digest, số lượt lặp và quy tắc matching trước khi gọi model. Đích là đánh giá các trường link mà Studio đang trích xuất: QUALITY (ISO/component), INTERACTION (hướng/mode/giao dịch) và SEPARATION (cặp tách). Đây không phải phép đo đầy đủ entailment, trách nhiệm nghiệp vụ, chất lượng kiến trúc hoặc phân loại FR/NFR. Kind FR/NFR đã khai báo là một phần input.
+Protocol khóa source, document split, prompt/schema/request hoặc recipe nhiều stage, code, exact model digest, số lượt lặp và quy tắc matching trước khi gọi model. Đích là đánh giá các trường link mà Studio đang trích xuất: QUALITY (ISO/component), INTERACTION (hướng/mode/giao dịch) và SEPARATION (cặp tách). Đây không phải phép đo đầy đủ entailment, trách nhiệm nghiệp vụ, chất lượng kiến trúc hoặc phân loại FR/NFR. Kind FR/NFR đã khai báo là một phần input.
+
+Gói `studio-source-only-v1-20261128` là freeze @1 lịch sử và được giữ nguyên; runner @2 không migrate lock hoặc sửa manifest cũ. Input source format @1 vẫn đọc được, còn annotation/reference phải khóa cho study @2 mới. Cần tạo thư mục freeze mới trên mã đã commit.
 
 Chưa có reference độc lập được nộp. Tất cả semantic metrics hiện vẫn `null`; chưa có inference trên bộ nguồn mới. Mã và tests chuẩn bị đường chạy; tests dùng response/attestation **mô phỏng** trong thư mục tạm, không tạo nhãn chuyên gia cho dữ liệu nghiên cứu.
 
 P2 Tutor có protocol responsibility/relation riêng và vẫn giữ source-only gate của nó. Không dùng lock Studio để mở inference Tutor hoặc đổi fixture P0. Đánh giá từ [bảy run phát triển đã có](STUDIO_LLM_OUTPUT_EVALUATION.md) vẫn là error analysis, không được đổi thành held-out.
 
-## Lượt chuẩn bị đã quan sát
+## Lượt chuẩn bị @1 đã quan sát — snapshot lịch sử
 
 Sau khi commit/push mã `6c7fabd121d272e56b9bf565cd8b146690242681`, CLI prepare đã tạo `runs/quantum-studio/studies/studio-source-only-v1-20261128/` trên checkout sạch. [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công trên mã này với 290 tests.
 
@@ -31,8 +33,8 @@ HELD_OUT là phân công dự kiến đối với model được thử, không p
 
 1. Kiểm schema chỉ nhận component catalog và source requirements, không nhận model output/quality allocations trong source case.
 2. Chặn document_group hoặc văn bản trùng giữa DEVELOPMENT/HELD_OUT; chặn văn bản đã biết trong Ticket/OC của repo.
-3. Đọc các `request.json` extraction đang có tại máy, lưu snapshot hash/source exposure và chặn held-out trùng văn bản đã từng gửi.
-4. Cần curator khai báo kiểm paraphrase. So khớp chuỗi chuẩn hóa không phát hiện mọi paraphrase, lịch sử ở máy khác hoặc dữ liệu pretraining.
+3. Đọc primary request, frame request và request development-probes trong registry local; lưu hash từng file và signature của toàn nguồn/câu đã chuẩn hóa. Chặn held-out trùng cả nguồn hoặc câu trong nguồn. Request đã ghi nhưng chưa nhận response vẫn được xem là potential exposure một cách bảo thủ.
+4. Trước mỗi run mới, kiểm lại lịch sử không mất/đổi và chưa có held-out exposure ngoài kế hoạch sau freeze. Không rerun chọn response tốt từ cùng freeze. Cần curator khai báo kiểm paraphrase; chuỗi chuẩn hóa không phát hiện mọi paraphrase, request ngoài registry/máy khác hoặc dữ liệu pretraining. Câu boilerplate trùng cũng có thể bị chặn; không tự bypass bằng cách bỏ file lịch sử.
 
 Ba query mỗi case được chốt theo source IDs. Một unit không được lặp lại ở hai query; repetition là trường riêng. Có thể khai báo DEVELOPMENT trong study để giữ trace, nhưng scorer loại khỏi held-out denominator. Không chia các câu của cùng document sang hai split.
 
@@ -43,14 +45,16 @@ Lệnh prepare tạo thư mục mới, không ghi đè study cũ:
 ```powershell
 .\.venv\Scripts\python.exe scripts/studio_evaluation.py prepare `
   --source studies/studio_source_only_v1.json `
-  --folder runs/quantum-studio/studies/studio-source-only-v1 `
+  --folder runs/quantum-studio/studies/studio-source-only-v2-sentence `
   --model-digest 359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7 `
-  --repetitions 3
+  --repetitions 3 --method SENTENCE
 ```
 
 Đường dẫn trên là ví dụ; chọn tên mới nếu đã tồn tại. Checkout phải sạch. Digest trên là model đã quan sát trong các run phát triển, không phải kết quả inference mới; trước lần gọi thật, runner kiểm lại exact digest tại Ollama hiện hành.
 
-Chỉ gửi **thư mục `source_only/`** cho mỗi annotator. Thư mục có bốn file: `SOURCE.json`, `README.md`, `ANNOTATION_TEMPLATE.json`, `MANIFEST.json`. Không gửi `requests.json`, `frozen.json`, repository reports hoặc output model. Validator từ chối file thiếu/thừa, symlink, hash lệch, template có nhãn sẵn hoặc hướng dẫn bị đổi. Hai annotator điền bản riêng **ở ngoài** thư mục đó.
+Chọn `--method DIRECT` nếu muốn study một lượt @2; mặc định CLI/API vẫn DIRECT. Mỗi study chỉ có một method; chưa đăng ký phép so sánh hai method cùng nguồn trong một run. Không coi hai study chạy nối tiếp sau exposure là một paired experiment hợp lệ.
+
+Chỉ gửi **thư mục `source_only/`** cho mỗi annotator. Thư mục có bốn file: `SOURCE.json`, `README.md`, `ANNOTATION_TEMPLATE.json`, `MANIFEST.json`. Không gửi `requests.json`, `execution.json`, `frozen.json`, repository reports hoặc output model. Validator từ chối file thiếu/thừa, symlink, hash lệch, template có nhãn sẵn hoặc hướng dẫn bị đổi. Hai annotator điền bản riêng **ở ngoài** thư mục đó.
 
 Mỗi row là một unit, phải ghi rationale và chọn:
 
@@ -65,18 +69,18 @@ Annotator tự khai ID, thời điểm hoàn tất, provenance HUMAN_SOURCE_ONLY
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/studio_evaluation.py lock `
-  --folder runs/quantum-studio/studies/studio-source-only-v1 `
+  --folder runs/quantum-studio/studies/studio-source-only-v2-sentence `
   --submission annotator-a.json --output annotator-a.lock.json
 
 # Annotator B làm và khóa riêng theo cùng cách.
 .\.venv\Scripts\python.exe scripts/studio_evaluation.py adjudication-template `
-  --folder runs/quantum-studio/studies/studio-source-only-v1 `
+  --folder runs/quantum-studio/studies/studio-source-only-v2-sentence `
   --annotation-locks annotator-a.lock.json annotator-b.lock.json `
   --output adjudication.blank.json
 
 # Người adjudicate hoàn tất bản riêng; không dùng template trắng thay quyết định.
 .\.venv\Scripts\python.exe scripts/studio_evaluation.py adjudicate `
-  --folder runs/quantum-studio/studies/studio-source-only-v1 `
+  --folder runs/quantum-studio/studies/studio-source-only-v2-sentence `
   --annotation-locks annotator-a.lock.json annotator-b.lock.json `
   --submission adjudication.completed.json --output reference.lock.json
 ```
@@ -87,21 +91,25 @@ Các submission/lock là dữ liệu cục bộ của reviewer; không commit cr
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/studio_evaluation.py status `
-  --folder runs/quantum-studio/studies/studio-source-only-v1
+  --folder runs/quantum-studio/studies/studio-source-only-v2-sentence
 
 # Chỉ chạy sau khi reference độc lập hợp lệ đã có.
 .\.venv\Scripts\python.exe scripts/studio_evaluation.py run `
-  --folder runs/quantum-studio/studies/studio-source-only-v1 `
+  --folder runs/quantum-studio/studies/studio-source-only-v2-sentence `
   --reference reference.lock.json
 ```
 
 Thiếu reference trả `BLOCKED_INDEPENDENT_REFERENCE`, `link_metrics=null`, `semantic_accuracy=null`; không liên hệ provider. Không có lượt bỏ gate cho fixture trong CLI. Reference cần ít nhất một held-out unit COMPLETE. Trước inference, runner kiểm source/template/request hashes, code hashes, working tree sạch, executable code không đổi từ commit freeze, model digest và runtime. Commit chỉ sửa tài liệu được phép khi mã thực thi vẫn khớp; actual inference SHA vẫn được ghi.
 
-`build_request` dùng chung với adapter hiện tại để freeze đúng request sẽ gửi, không dựng một prompt khác dành riêng benchmark. Prompt @2, temperature 0, seed 611 và các giới hạn token/context giữ nguyên. Số repetition mặc định ba là một pilot có chi phí hữu hạn, chưa phải số mẫu có power analysis. Mỗi repetition gọi từng query mới, không tái sử dụng response cũ hoặc cache để giả nhiều mẫu độc lập.
+DIRECT freeze exact request từ `build_request`. SENTENCE freeze primary request từ `build_claim_request`, unit registry, frame template không có focus và code của `build_frame_request` trong `execution.json`. Focus thực tế phụ thuộc raw claim, nên **không giả đã biết trước exact secondary request**; verifier tái tạo nó từ raw claim/unit bằng đúng recipe đã khóa. Không dùng reference để tạo request. Hai profile giữ cấu hình adapter của chúng; số repetition ba là pilot, chưa có power analysis. Mỗi repetition/query cần response riêng.
 
-Run mới ở `runs/quantum-studio/evaluations/study-run-…/` ghi Python/platform/package, model/digest/Ollama, reference hash, actual code SHA, query/repetition, thời điểm và thời lượng mỗi call. Raw request/response/manifest tiếp tục ở `extractions/`; run giữ hash từng manifest. Trạng thái REQUESTED/RESPONSE_RECEIVED/FAILED được lưu; không xóa call thất bại. Runner chưa có chế độ resume giữa một study bị lỗi: chạy lại phải tạo run mới và không trình bày selective retry như cùng một lượt hoàn chỉnh.
+Run mới ở `runs/quantum-studio/evaluations/study-run-…/` ghi Python/platform/package, model/digest/Ollama, reference hash, actual code SHA, query/repetition và thời lượng. Mỗi query giữ hash từng file raw, số provider call và token; scorer kiểm lại từ stage manifest. Thiếu token ở bất kỳ stage nào giữ `tokens=null`, ghi riêng `tokens_observed` và PARTIAL/UNAVAILABLE, không gọi tổng một phần là chi phí đầy đủ hoặc đổi UNKNOWN thành 0. Raw files tiếp tục ở `extractions/`. FAILED giữ call/extraction ID, raw primary và request frame đã gửi; không tạo metric từ trace thiếu hoặc tự resume/retry. Nếu source đã có potential exposure, run mới bị chặn để tránh chọn lọc; thiết kế study tiếp theo phải xử lý exposure công khai.
 
 Scorer yêu cầu đầy đủ mọi query/repetition đã chốt, extraction IDs khác nhau, đúng request/raw payload/hash/model/prompt và thứ tự thời gian. Không chấm run FAILED/thiếu call. Output runtime không tự thành evidence được duyệt trong Studio; runner không sửa model đang mở, không auto-approve hoặc tự sửa hard rules.
+
+Với SENTENCE, kiểm cả primary và từng frame: request theo frozen recipe, response model/done_reason/hash, thứ tự stage, lineage raw claim/raw frame, normalize, duplicate, source/catalog/code và provenance. Missing/unknown unit rows được đếm riêng; không coi chúng là negative đã xử lý. Draft không có model frame hợp lệ không được bịa frame để chấm. Missing claim còn thể hiện qua FN nếu có reference hợp lệ.
+
+Quote SENTENCE được tra từ nguồn qua offset, không phải model-generated citation. `exact_quote_rows` chỉ là kiểm cấu trúc và không dùng để so citation accuracy với DIRECT. Đơn vị annotation/matching vẫn case/task/source; các câu xử lý bên trong không tự thành mẫu độc lập. Hai call cùng model không phải hai annotator hoặc semantic judges.
 
 ## Matching và ý nghĩa metric
 
@@ -133,11 +141,17 @@ Hàng không project được, source lạ hoặc frame/quote lỗi được đ�
 
 Report có từng repetition, task và document/case; số unit eligible/excluded và agreement về exact link sets giữa hai annotator trước adjudication. Đây là agreement mô tả, không phải chứng minh reference đúng hoặc Cohen kappa trên một universe negative chưa định nghĩa.
 
-Baseline regex dùng `quality_suggestions × component_mentions` nguyên bản cho QUALITY, condition=null. Quy tắc này có thể nhặt cả component bối cảnh; không gọi là oracle. Regex INTERACTION/SEPARATION chưa được hỗ trợ, không giả chúng trả dự đoán âm hoàn hảo. Chưa có cohort human-reviewed, measurement thời gian thao tác reviewer hoặc partition-distance theo reference trong protocol @1; các phần này còn ở G10.
+Baseline regex dùng `quality_suggestions × component_mentions` nguyên bản cho QUALITY, condition=null. Quy tắc này có thể nhặt cả component bối cảnh; không gọi là oracle. Regex INTERACTION/SEPARATION chưa được hỗ trợ, không giả chúng trả dự đoán âm hoàn hảo. Chưa có cohort human-reviewed, measurement thời gian thao tác reviewer hoặc partition-distance theo reference trong protocol @2; các phần này còn ở G10.
 
 `semantic_accuracy=null` và `architecture_quality=NOT_MEASURED` giữ riêng ngay cả khi có exact-link metrics. Không chuyển F1 của link fields thành độ đúng toàn bộ yêu cầu, architecture quality PASS hoặc independent deployability.
 
 ## Kiểm chứng và nguồn phương pháp
+
+Mốc X2 thêm **31 tests** dùng response/attestation mô phỏng: source-only vẫn trắng, thiếu reference không chạm provider, recipe drift dù rehash metadata, cả ba task qua nhiều stage, request/focus/frame/lineage/provenance/timestamp/model bị sửa, bỏ draft, lỗi giữa frame, empty/unknown/duplicate units, quote lặp đúng offset, source format cũ, thiếu token metadata và exposure trước/sau freeze. Nhóm evaluation đạt **57 tests**; đây là validation phần mềm, không phải independent labels hoặc kết quả model mới.
+
+Full regression X2 đạt **343 tests**, compileall và JavaScript syntax qua. Trong vòng kiểm trước đó, 336 tests qua và một probe ASYNC lỗi PermissionError đọc ready; đã sửa riêng ở `19d4e6c` với cleanup constructor và kiểm lại hai mode thật, không tăng timeout giao thức hoặc bỏ assertion. [Bằng chứng và giới hạn artifact tạm](STUDIO_BOUNDARY_EVIDENCE.md#sửa-lỗi-đọc-readiness-trên-windows--28112026).
+
+Audit read-only trên registry local quan sát **64 request files**, **21 signature toàn nguồn/câu** sau chuẩn hóa và không có exact overlap với Equipment Loan/Room Scheduling. Sáu query SENTENCE có lần lượt 8/15/15 và 8/16/16 đoạn xử lý, tổng 78; annotation vẫn có 40 unit case/task/source. Audit không liên hệ provider và không chứng minh không có paraphrase/leakage ngoài registry. Full-source requests, frame requests và 37 development-probe requests được giữ nguyên.
 
 Regression tại mốc X1 có **290 tests** qua, gồm 26 tests mới dùng source/response/attestation giả lập riêng, không phải hai document nghiên cứu mới. Chúng kiểm gate, blinding package, leakage, null denominator, source/model/code/request/response drift, bỏ call, dùng lại response, UNKNOWN, exact direction/transaction/condition, giữ failed trace và luồng đủ các tác vụ. Compileall và diff check qua; tests không cần daemon hoặc credential.
 

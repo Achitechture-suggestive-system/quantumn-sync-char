@@ -84,7 +84,7 @@ Mỗi lượt tạo ID mới, lưu architecture, primary/frame request/response,
 
 307 tests qua, gồm 17 tests mới dùng response/decision mô phỏng cho offset, hai stage, lineage, correction, provenance, duplication, exemption, separation, failure và UI; compileall/JavaScript syntax/diff check qua. AppTest kiểm render và draft không áp dụng; chưa có kiểm browser thật mới cho @3 trong mốc này.
 
-`STUDIO-EVALUATION@1` chỉ freeze/score DIRECT @2, **chưa đánh giá SENTENCE @3**. Gói freeze cũ `studio-source-only-v1-20261128` giữ nguyên lịch sử; mã thực thi mới làm code hash không còn khớp. Cần tạo version freeze mới trên code đã commit trước một study tương lai, không sửa gói cũ hoặc bypass gate. Chưa có annotator/reference cho hai source mới. G2/G10 vẫn chưa hoàn tất.
+Ở mốc A4, `STUDIO-EVALUATION@1` chỉ freeze/score DIRECT @2. Mốc X2 tiếp theo thêm **STUDIO-EVALUATION@2** với profile SENTENCE @3, khóa primary request và secondary recipe rồi kiểm toàn bộ raw stages/lineage trước scorer. Chưa có đánh giá ngữ nghĩa thật cho @3: các tests protocol dùng response/attestation giả lập. Gói freeze cũ `studio-source-only-v1-20261128` giữ nguyên lịch sử; cần freeze @2 mới, không sửa gói cũ hoặc bypass gate. Chưa có annotator/reference cho hai source mới; G2/G10 vẫn chưa hoàn tất. [Profile, exposure gate và lệnh](STUDIO_EVALUATION_PROTOCOL.md).
 
 ## Căn cứ phương pháp
 

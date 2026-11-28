@@ -19,8 +19,9 @@ from uuid import uuid4
 from . import ollama, storage
 from .studio_extraction import extract_proposals, proposal_issues
 from .studio_quality import component_mentions, quality_suggestions
+from .studio_evaluation_trace import VerifiedProposal, artifact_hashes, token_metadata, verify_sentence_trace
 from .studio_evaluation_protocol import (ROOT, MATCHING, PROTOCOL, EvaluationBlocked, _write_new, claim_links,
-    digest, load_study, now, source_units, timestamp, unit_key, validate_claim, verify_reference)
+    check_unplanned_exposure, digest, load_study, now, source_units, timestamp, unit_key, validate_claim, verify_reference)
 
 
 def git_state() -> dict:
@@ -47,6 +48,7 @@ def _read(path):
 def readiness(folder: Path, reference: dict | None = None) -> dict:
     source, frozen = load_study(folder)
     result = {"study_digest": frozen["study_digest"], "protocol": PROTOCOL, "units": len(source_units(source)),
+              "method": frozen["method"], "prompt_version": frozen["prompt_version"],
               "queries": len(source.queries), "model_inference": False, "semantic_accuracy": None,
               "link_metrics": None, "review_identity": "SELF_REPORTED_NOT_AUTHENTICATED"}
     try:
@@ -65,6 +67,7 @@ def run_study(folder: Path, reference: dict | None, *, progress=None) -> Path:
     source, frozen = load_study(folder)
     started = now()
     verify_reference(source, frozen, reference, before=started)  # Before any provider or model call.
+    check_unplanned_exposure(source, frozen)
     state = check_revision(frozen)
     details = next((item for item in ollama.list_model_details() if item["name"] == frozen["model"]), None)
     if details is None or details.get("digest") != frozen["model_digest"]:
@@ -74,6 +77,7 @@ def run_study(folder: Path, reference: dict | None, *, progress=None) -> Path:
     path = storage.ARTIFACT_ROOT / "quantum-studio" / "evaluations" / identifier
     path.mkdir(parents=True, exist_ok=False)
     manifest = {"protocol": PROTOCOL, "id": identifier, "study_digest": frozen["study_digest"],
+        "method": frozen["method"], "prompt_version": frozen["prompt_version"],
         "reference_digest": reference["reference_digest"], "inference_started_at": started,
         "git": state, "python": sys.version, "platform": platform.platform(), "pydantic": version("pydantic"),
         "ollama_version": ollama_version, "model": frozen["model"], "model_digest": frozen["model_digest"],
@@ -95,10 +99,13 @@ def run_study(folder: Path, reference: dict | None, *, progress=None) -> Path:
                     record["extraction_id"] = extraction_id
                     _save_progress(path, manifest)
 
-                run = extract_proposals(cases[query.case_id].architecture(), query.source_ids, query.task, frozen["model"], on_run_allocated=allocated)
+                run = extract_proposals(cases[query.case_id].architecture(), query.source_ids, query.task, frozen["model"],
+                                        method=frozen["method"], on_run_allocated=allocated)
                 run_folder = storage.ARTIFACT_ROOT / "quantum-studio" / "extractions" / run["id"]
                 record.update(extraction_id=run["id"], completed_at=now(), elapsed_seconds=time.monotonic() - clock_started,
-                              status="RESPONSE_RECEIVED", manifest_sha256=sha256((run_folder / "manifest.json").read_bytes()).hexdigest())
+                              status="RESPONSE_RECEIVED", manifest_sha256=sha256((run_folder / "manifest.json").read_bytes()).hexdigest(),
+                              artifact_hashes=artifact_hashes(run_folder), provider_calls=len(run.get("stages", [])) or 1,
+                              **token_metadata(run))
                 if run.get("model_digest") != frozen["model_digest"] or run.get("ollama_version") != ollama_version:
                     raise EvaluationBlocked("Model/runtime thay đổi giữa study; giữ run lỗi, không chấm như cùng cấu hình.")
                 _save_progress(path, manifest)
@@ -140,6 +147,16 @@ def _verify_response(source, frozen, query, call, manifest):
         raise EvaluationBlocked("Extraction chưa hoàn tất hoặc provenance/model/prompt/task không khớp.")
     if not timestamp(manifest["inference_started_at"]) <= timestamp(call["started_at"]) <= timestamp(extraction["recorded_at"]) <= timestamp(call["completed_at"]) <= timestamp(manifest["inference_completed_at"]):
         raise EvaluationBlocked("Khoảng inference/response không nhất quán.")
+    if call.get("artifact_hashes") != artifact_hashes(root):
+        raise EvaluationBlocked("Raw stage artifact đã đổi so với query trace.")
+    if extraction.get("ollama_version") != manifest.get("ollama_version"):
+        raise EvaluationBlocked("Runtime extraction khác study.")
+    if frozen["method"] == "SENTENCE":
+        architecture = next(case for case in source.cases if case.id == query.case_id).architecture()
+        verified, counts = verify_sentence_trace(root, architecture, query, extraction, call, frozen)
+        if call.get("provider_calls") != counts["provider_calls"] or any(call.get(k) != v for k, v in token_metadata(extraction).items()):
+            raise EvaluationBlocked("Query cost metadata khác raw stages.")
+        return verified, counts
     payloads = json.loads(content).get("proposals")
     if not isinstance(payloads, list):
         raise EvaluationBlocked("Raw output thiếu proposals array.")
@@ -150,7 +167,9 @@ def _verify_response(source, frozen, query, call, manifest):
         stored.append({**payload, "source_id": proposal["source_id"]})
     if stored != payloads:
         raise EvaluationBlocked("Proposal payload đã được sửa so với raw output.")
-    return payloads
+    if call.get("provider_calls") != 1 or any(call.get(k) != v for k, v in token_metadata(extraction).items()):
+        raise EvaluationBlocked("Query cost metadata khác raw response.")
+    return [VerifiedProposal(raw) for raw in payloads], Counter(provider_calls=1)
 
 
 def _metrics(predicted, expected):
@@ -165,7 +184,7 @@ def score_study(folder: Path, run_folder: Path, reference: dict | None) -> dict:
     source, frozen = load_study(folder)
     manifest = _read(run_folder / "run.json")
     verify_reference(source, frozen, reference, before=manifest.get("inference_started_at"))
-    if manifest.get("protocol") != PROTOCOL or manifest.get("study_digest") != frozen["study_digest"] or manifest.get("reference_digest") != reference["reference_digest"] or manifest.get("status") != "COMPLETE" or manifest.get("model") != frozen["model"] or manifest.get("model_digest") != frozen["model_digest"]:
+    if manifest.get("protocol") != PROTOCOL or manifest.get("study_digest") != frozen["study_digest"] or manifest.get("reference_digest") != reference["reference_digest"] or manifest.get("status") != "COMPLETE" or manifest.get("model") != frozen["model"] or manifest.get("model_digest") != frozen["model_digest"] or manifest.get("method") != frozen["method"] or manifest.get("prompt_version") != frozen["prompt_version"]:
         raise EvaluationBlocked("Run không hoàn tất hoặc không gắn đúng source/reference/model.")
     if _read(run_folder / "reference.json") != reference:
         raise EvaluationBlocked("Reference của run đã bị thay thế.")
@@ -190,8 +209,10 @@ def score_study(folder: Path, run_folder: Path, reference: dict | None) -> dict:
             query = queries[call["query_id"]]
             case = cases[query.case_id]
             architecture = case.architecture()
-            payloads = _verify_response(source, frozen, query, call, manifest)
-            for raw in payloads:
+            payloads, trace_counts = _verify_response(source, frozen, query, call, manifest)
+            count.update(trace_counts)
+            for verified in payloads:
+                raw = verified.raw
                 count["returned_rows"] += 1
                 if not isinstance(raw, dict) or raw.get("source_id") not in query.source_ids:
                     count["invalid_source_or_row"] += 1
@@ -205,7 +226,9 @@ def score_study(folder: Path, run_folder: Path, reference: dict | None) -> dict:
                 quote = raw.get("quote")
                 count["exact_quote_rows"] += bool(isinstance(quote, str) and quote.strip() and quote in source_requirement.text)
                 count[f"disposition_{raw.get('disposition', 'MISSING')}"] += 1
-                issues = proposal_issues(architecture, raw["source_id"], payload, structured=True)
+                issues = proposal_issues(architecture, raw["source_id"], payload, structured=True, source_ref=verified.source_ref)
+                if verified.duplicate:
+                    issues.append("Duplicate raw claim in same sentence unit.")
                 count["rows_with_gate_issues"] += bool(issues)
                 active = (bool(raw.get("characteristic") is not None or raw.get("component_ids")) if query.task == "QUALITY" else
                           bool(raw.get("source") or raw.get("target") or raw.get("local_transaction") or raw.get("mode", "UNKNOWN") != "UNKNOWN") if query.task == "INTERACTION" else
@@ -263,6 +286,7 @@ def score_study(folder: Path, run_folder: Path, reference: dict | None) -> dict:
             two = set().union(*(claim_links(key, c) for c in second[key]["claims"]))
             equal += one == two
     return {"protocol": PROTOCOL, "matching": MATCHING, "study_digest": frozen["study_digest"],
+        "method": frozen["method"], "prompt_version": frozen["prompt_version"],
         "reference_digest": reference["reference_digest"], "run_id": manifest["id"], "status": "EXACT_LINK_FIELDS_EVALUATED",
         "semantic_accuracy": None, "architecture_quality": "NOT_MEASURED", "reference_provenance": "HUMAN_SOURCE_ONLY_SELF_ATTESTED",
         "reference_identity": "SELF_REPORTED_NOT_AUTHENTICATED", "matching_scope": "PROJECTABLE_FIELDS_WITH_EXACT_CONDITION; NOT_FULL_ENTAILMENT",
@@ -271,9 +295,15 @@ def score_study(folder: Path, run_folder: Path, reference: dict | None) -> dict:
         "repetitions": per_repeat, "structural_totals": dict(structural),
         "regex_quality_baseline": {"policy": "LEXICAL_LABELS_X_ALL_EXPLICIT_COMPONENT_MENTIONS; CONDITION_NULL", **_metrics(regex_links, regex_truth)},
         "unsupported_baselines": ["REGEX_INTERACTION", "REGEX_SEPARATION"],
-        "provenance": {"raw_proposals": "LLM_PROPOSAL", "reference": "HUMAN_DECISION_SELF_ATTESTED",
+        "query_costs": [{"repetition": c["repetition"], "query_id": c["query_id"], "provider_calls": c["provider_calls"],
+                         "tokens": c["tokens"], "tokens_observed": c["tokens_observed"], "token_reporting": c["token_reporting"],
+                         "elapsed_seconds": c["elapsed_seconds"]} for c in calls],
+        "provenance": {"claim_and_frame_fields": "LLM_PROPOSAL", "reference": "HUMAN_DECISION_SELF_ATTESTED",
+                       "quote": "LLM_PROPOSAL" if frozen["method"] == "DIRECT" else "SOURCE_REQUIREMENT_VIA_DETERMINISTIC_SPAN_LOOKUP",
                        "metrics_and_regex": "DETERMINISTIC_TRANSFORMATION", "matching_and_gate": "ARCHITECTURAL_POLICY"},
         "limitations": ["Quote/condition validity is structural, not entailment.", "Unprojectable/invalid rows are counted separately, never reported as true links.",
             "Raw projectable fields include populated claims even if disposition contradicts them; gate eligibility is separate.",
             "Empty denominators produce null, never a perfect score.", "Repetitions share reference cases; they are not independent new case samples.",
-            "No human-reviewed metric or downstream architectural agreement is inferred from raw extraction."]}
+            "No human-reviewed metric or downstream architectural agreement is inferred from raw extraction.",
+            "SENTENCE quote exactness is deterministic source lookup, not a model citation score.",
+            "Two calls to the same model are not independent judges; condition/frame can still be semantically wrong."]}

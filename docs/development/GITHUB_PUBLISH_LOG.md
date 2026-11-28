@@ -1,5 +1,12 @@
 # Nhật ký publish GitHub
 
+## Protocol @2 và preflight source-only nhiều stage — 2026-11-29
+
+- `33934ce4015a7a9f98c1dd23ec5ee06df6de1f00` (`feat(studio): freeze and verify multi-stage extraction studies`) đã push `feat/quantum-tradeoff-workbench`; remote khớp SHA. [CI 46168425373](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46168425373) completed success. Cục bộ 343 tests, compileall, JavaScript syntax, staged diff và secret scan qua.
+- Freeze thực trên commit sạch tạo `studio-source-only-v2-sentence-20261129`, study digest `e45ca9b40643b32330a02636a829e2d83645df2394670df44b0620fa0c7b7ebf`, 40 annotation trắng/78 đoạn xử lý. No-reference preflight ghi 0 provider contact, 64 request trước/sau, BLOCKED_INDEPENDENT_REFERENCE và metric null. Không tạo human labels hoặc gọi LLM trên hai source mới. Gói @1 không sửa.
+- Fix readiness độc lập `19d4e6c5f97d77f01b1538791366c5831fbfaf23` đã push trước X2; [CI 46167876777](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46167876777) thành công với 312 tests. Trace PermissionError và cleanup omission được ghi rõ; temporary raw files không còn khi recheck, incident note không được gọi là original artifact.
+- Main kiểm lại là `3471eff9bbf33c407bd33ef451579499bc35be4b`, tag P0 `02531985dd915318fc7a30f800c6b17bf9e6f95f`; không push main hoặc force. Runs, freeze, incident, lock/annotation, environment và log không stage. Commit tài liệu kế tiếp này chỉ ghi các SHA/CI đã tồn tại.
+
 ## SENTENCE @3 và báo cáo LLM — 2026-11-28
 
 - Commit implementation/báo cáo `9ad6f30fdbca9c109c9027b5370dcb5a21122b79` (`feat(studio): add sentence extraction with reviewable model lineage`) đã push `feat/quantum-tradeoff-workbench`; `git ls-remote` trả cùng SHA. [CI 46166111497](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46166111497) completed success.

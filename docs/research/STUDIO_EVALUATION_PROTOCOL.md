@@ -12,7 +12,19 @@ Chưa có reference độc lập được nộp. Tất cả semantic metrics hi�
 
 P2 Tutor có protocol responsibility/relation riêng và vẫn giữ source-only gate của nó. Không dùng lock Studio để mở inference Tutor hoặc đổi fixture P0. Đánh giá từ [bảy run phát triển đã có](STUDIO_LLM_OUTPUT_EVALUATION.md) vẫn là error analysis, không được đổi thành held-out.
 
-## Lượt chuẩn bị @1 đã quan sát — snapshot lịch sử
+## Lượt chuẩn bị @2 đã quan sát — 29/11/2026
+
+Mã `33934ce4015a7a9f98c1dd23ec5ee06df6de1f00` đã push, [CI 46168425373](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46168425373) thành công. CLI prepare trên checkout sạch tạo `runs/quantum-studio/studies/studio-source-only-v2-sentence-20261129/`, method SENTENCE, ba repetition, không liên hệ provider:
+
+- Study digest: `e45ca9b40643b32330a02636a829e2d83645df2394670df44b0620fa0c7b7ebf`.
+- Source digest: `c6d408eb0e8890ccfc2e4cf90c7a428821f3980e457b1695e529f400f6611a8c` (source format @1 giữ nguyên nội dung).
+- Execution plan digest: `4a7dd89877992ac21b5a30580d570dee8f4c7e440e38d0346c52292acbc74841`.
+- Source-only có đúng bốn file, 40 row NOT_ANNOTATED/claims rỗng. Sáu query có 78 đoạn xử lý nội bộ; chưa có raw claim/frame từ hai source mới.
+- Freeze ghi 64 request files trong registry. Check trước run xác nhận lịch sử còn khớp và không exact overlap source/câu với bộ mới.
+- Spy ở client provider ghi **0 contact** khi gọi readiness và runner với reference=None. Status BLOCKED_INDEPENDENT_REFERENCE, request count 64→64, link_metrics/semantic_accuracy null. `preflight-check.json` giữ local, không phải model evaluation.
+- Gói @1 cũ vẫn có digest `84e3c3ee4326f3a00168769f16f89f7c44b0dce6c50bbb2474e5ef5c092d77ee`; không sửa file hoặc dùng lock cũ cho @2. Hash/digest không chứng minh identity hoặc semantic correctness.
+
+## Lượt chuẩn bị @1 — dữ liệu lịch sử
 
 Sau khi commit/push mã `6c7fabd121d272e56b9bf565cd8b146690242681`, CLI prepare đã tạo `runs/quantum-studio/studies/studio-source-only-v1-20261128/` trên checkout sạch. [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công trên mã này với 290 tests.
 

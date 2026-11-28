@@ -1,5 +1,16 @@
 # Changelog
 
+## Protocol nhiều stage và source-only preflight — 2026-11-29
+
+- Commit `33934ce4015a7a9f98c1dd23ec5ee06df6de1f00` thêm STUDIO-EVALUATION@2 cho DIRECT hoặc SENTENCE: freeze primary/secondary recipe, kiểm mọi raw stage/lineage/provenance, exact source offsets, duplicate/missing units và chi phí call/token. Thiếu token metadata giữ null/PARTIAL/UNAVAILABLE.
+- 31 tests mới (57 trong nhóm evaluation), full regression **343 qua**, compileall/JavaScript syntax/diff/secret scan qua; [CI 46168425373](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46168425373) thành công. Các reference/response trong tests là mô phỏng, không phải labels/inference mới.
+- Exposure registry bao phủ primary/frame/development-probes; exact full/câu overlap bị chặn trước freeze và run mới. Gói `studio-source-only-v2-sentence-20261129` tạo trên code sạch có 40 row trắng, 78 đoạn xử lý, 64 prior request files. Preflight không reference: 0 provider contact, 64→64 request, metric null. Giữ gói @1 và các output phát triển cũ. [Hash và lệnh](../research/STUDIO_EVALUATION_PROTOCOL.md).
+
+## Sửa readiness của probe Windows — 2026-11-28
+
+- Commit `19d4e6c5f97d77f01b1538791366c5831fbfaf23` chờ đọc ready trong deadline khi file chưa có/bị khóa/JSON chưa đủ; cleanup worker nếu constructor thất bại và kiểm port. Không nới timeout/retry/hard policy. 15 tests boundary/startup qua, gồm năm mới; [CI 46167876777](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46167876777) qua 312 tests.
+- Một regression trước sửa lỗi PermissionError có hai process bị bỏ ngoài danh sách cleanup; đã dừng đúng config và kiểm không còn worker. Raw pytest-380 không còn khi recheck; incident note ghi từ tool observations, không giả phục hồi raw report/SQLite. [Chi tiết và giới hạn](../research/STUDIO_BOUNDARY_EVIDENCE.md).
+
 ## Trích xuất theo câu và đánh giá LLM thực tế — 2026-11-28
 
 - Commit `9ad6f30fdbca9c109c9027b5370dcb5a21122b79` thêm SENTENCE @3: primary claim, frame riêng, quote/span tra nguồn, lineage và review/correction có provenance tách biệt. Giữ DIRECT @2; G10 @1 chưa hỗ trợ đánh giá @3 và freeze cũ giữ nguyên lịch sử khi code hash đổi.

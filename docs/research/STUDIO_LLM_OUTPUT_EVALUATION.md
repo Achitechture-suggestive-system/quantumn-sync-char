@@ -10,6 +10,8 @@ Mã đối chiếu snapshot R1–R7: `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3`.
 
 ## Mẫu dữ liệu và tính nguyên vẹn
 
+Ngày 29/11, mốc X2 bổ sung [protocol @2](STUDIO_EVALUATION_PROTOCOL.md) hỗ trợ kiểm/scorer cho SENTENCE @3 bằng frozen recipe, raw stages và reference độc lập. Gói mới vẫn 40 annotation trắng; preflight chặn trước provider, không có inference/metrics mới. **343 tests không phải 343 mẫu LLM**; inventory/phân tích ngữ nghĩa trong báo cáo này vẫn là các output phát triển đã mô tả.
+
 Cập nhật @3: [báo cáo trích xuất theo câu](STUDIO_SENTENCE_EXTRACTION.md) ghi ba run thật ngày 28/11, raw claim/frame, provenance, 37 probe thăm dò, lệnh tái chạy và checkpoint chờ review. QUALITY 8 draft (4 chưa có issue), INTERACTION 5 (2 chưa có issue), SEPARATION 2 (0 chưa có issue). Model lấy thêm nghĩa vụ bị bỏ sót nhưng còn false proposals, sai condition ngay ở draft không issue và frame tự phân loại nhầm non-waiting thành exemption. Không auto-approve; 37 nghiệm giữ nguyên. Không gọi 6/15 là accuracy; semantic metrics vẫn null. Counts quote ở bảng R1–R7 dưới đây chỉ thuộc snapshot cũ, không trộn quote tra nguồn của @3 với quote LLM tự sinh.
 
 Các lượt diễn ra 26–27/11/2026 UTC; báo cáo kiểm lại ngày 28/11 giờ Việt Nam. Ollama `0.40.18`, tag `qwen3:4b`, digest `359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7`. OC là văn bản PREPARED_FIXTURE đã dùng trong phát triển. Hai nguồn `REQ-04` được nhập để smoke UI, có nội dung và source digest khác nhau; không ghép hai nguồn chỉ vì cùng ID. Chúng không phải requirement do stakeholder độc lập cung cấp.

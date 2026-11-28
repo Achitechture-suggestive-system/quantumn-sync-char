@@ -61,15 +61,30 @@ class Worker:
             self.process = subprocess.Popen([sys.executable, "-m", "eqcr.studio_probe_worker", "--config", str(self.config_path)],
                                             cwd=Path(__file__).parents[1], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                             stderr=error, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        try:
+            self.port = self._wait_for_ready(role)
+        except BaseException:
+            # A constructor failure happens before registration in run_boundary_probe.workers.
+            self.stop()
+            raise
+
+    def _wait_for_ready(self, role):
         deadline = time.monotonic() + 10
-        while not self.ready.exists():
+        last_error = "FileNotFoundError"
+        while True:
             if self.process.poll() is not None:
                 raise RuntimeError(f"{role} không khởi động được: {self.error_path.read_text(encoding='utf-8')[-1000:]}")
+            try:
+                port = json.loads(self.ready.read_text(encoding="utf-8"))["port"]
+                if type(port) is not int or not 1 <= port <= 65535:
+                    raise RuntimeError(f"{role} có ready port không hợp lệ.")
+                return port
+            except (FileNotFoundError, PermissionError, json.JSONDecodeError) as exc:
+                # Atomic publish does not exclude a transient Windows sharing/AV lock on the reader.
+                last_error = type(exc).__name__
             if time.monotonic() >= deadline:
-                self.stop()
-                raise RuntimeError(f"{role} quá thời hạn khởi động.")
+                raise RuntimeError(f"{role} quá thời hạn khởi động ({last_error}).")
             time.sleep(0.02)
-        self.port = json.loads(self.ready.read_text(encoding="utf-8"))["port"]
 
     def stop(self):
         if self.process.poll() is None:

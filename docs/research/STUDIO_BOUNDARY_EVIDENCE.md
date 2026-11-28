@@ -73,6 +73,14 @@ File `reviewed-model.json` là object Architecture, ví dụ trường `architec
 
 ## Giới hạn còn giữ
 
+### Sửa lỗi đọc readiness trên Windows — 28/11/2026
+
+Một lần regression ASYNC thất bại ở `probe-f6eb25bbced445a7a85199c165290e7d` (pytest-380) vì PermissionError khi đọc file ready của producer vừa restart. File đọc được về sau; chưa đo được tác nhân gây khóa, không kết luận do antivirus hay giao thức nghiệp vụ. Report cũ chỉ có hai assertion và giữ FAILED. Trường `workers_stopped=true` của nó chỉ bao phủ worker đã đăng ký; kiểm hệ điều hành phát hiện launcher/child 30616/29860 của constructor bị lỗi còn sống. Hai tiến trình khớp đúng config lần chạy đã được dừng; không sửa report cũ.
+
+Worker hiện chờ đọc lại khi file chưa có, đang bị khóa hoặc JSON chưa đủ, vẫn trong thời hạn khởi động 10 giây. Constructor thất bại sẽ stop worker trước khi ném lỗi; ready port phải là integer 1–65535. Không tăng timeout giao thức 300 ms, không đổi retry/atomicity hoặc bỏ assertion. Hash harness thay đổi làm bằng chứng cũ STALE đúng thiết kế.
+
+Kiểm lại nhóm boundary/startup có **15 tests qua**, gồm hai mode thực thi bằng tiến trình thật và năm tests mới mô phỏng permission/partial JSON, hết hạn và port sai/dọn worker. Kiểm hệ điều hành sau đó không thấy tiến trình `eqcr.studio_probe_worker`. Trace lỗi giữ trong thư mục tạm của pytest, không stage. Đây là sửa độ tin cậy harness, không phải kết quả LLM hoặc quality PASS.
+
 `PROTOTYPE_CONTRACT_CHECK_PASSED` chỉ nói về các assertion của giao thức mẫu và run cụ thể. Đây chưa phải triển khai Ticket/Tutor, chứng minh invariant nghiệp vụ, khả năng triển khai độc lập hay quality PASS. Chưa kiểm TLS, authentication, broker, schema migration, multi-writer, tải lớn hoặc mọi interleaving lỗi. Bounded retries và dispatch thủ công không chứng minh eventual delivery. Các thời gian attempt là observation của lần gây lỗi, chưa là benchmark hay latency SLO; `quality_measurement_status=NOT_MEASURED`.
 
 Kiểm tra hồi quy, provenance, stale review, bảo toàn hard constraints, đường UI và hai mode thực thi nằm ở `tests/test_studio_boundaries.py`. Các label và quyết định trong tests là `PREPARED_FIXTURE`; không có semantic accuracy hoặc independent annotation mới trong mốc này.

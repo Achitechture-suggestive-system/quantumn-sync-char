@@ -1,0 +1,64 @@
+{
+  "schema_id": "STUDIO-EVALUATION@1",
+  "id": "STUDIO-SOURCE-ONLY-V1",
+  "curation_rationale": "Hai document requirements nguyên bản do agent chuẩn bị để gửi annotation source-only. Không có reference labels hoặc expected partitions trong nguồn này. HELD_OUT là phân công dự kiến đối với qwen3:4b; phải kiểm exposure ledger khi freeze và cần nhãn người review độc lập trước inference. Bộ này không đại diện một corpus stakeholder hay hệ thống production. Không lấy paraphrase của OC/Ticket/Tutor để làm source mới.",
+  "no_known_paraphrase_leakage_attested": true,
+  "cases": [
+    {
+      "id": "EQUIPMENT-LOAN",
+      "document_group": "EQUIPMENT-LOAN-DOC-01",
+      "split": "HELD_OUT",
+      "provenance": "PREPARED_FIXTURE",
+      "authorship": "AGENT_PREPARED_SOURCE_REQUIREMENTS; không phải output của Ollama qwen3:4b, nhãn độc lập hoặc yêu cầu từ tổ chức thật.",
+      "components": [
+        {"id": "INTAKE", "name": "Loan Intake"},
+        {"id": "LEDGER", "name": "Asset Ledger"},
+        {"id": "RETURN", "name": "Return Desk"},
+        {"id": "NOTICE", "name": "Borrower Notice"},
+        {"id": "AUDIT", "name": "Loan Audit"}
+      ],
+      "requirements": [
+        {"id": "EL-01", "kind": "FR", "text": "Loan Intake phải gọi Asset Ledger và chờ mã giữ thiết bị trước khi trả mã yêu cầu cho người mượn. Việc ghi yêu cầu của Loan Intake và giữ thiết bị của Asset Ledger phải thuộc cùng một giao dịch cục bộ nguyên tử."},
+        {"id": "EL-02", "kind": "FR", "text": "Sau khi lưu phiếu trả, Return Desk được phản hồi cho nhân viên ngay mà không đợi Borrower Notice gửi thông báo; Borrower Notice tiếp tục xử lý thông báo sau đó."},
+        {"id": "EL-03", "kind": "NFR", "text": "Ở tải 80 lượt mượn mỗi phút, Loan Intake phải trả mã tiếp nhận trong tối đa 700 ms tại p95. Mốc này đo đến lúc có mã tiếp nhận, không bao gồm thời gian gửi thông báo của Borrower Notice."},
+        {"id": "EL-04", "kind": "NFR", "text": "Loan Audit không bắt buộc đáp ứng thời gian phản hồi 250 ms. Khi tiến trình của chính Loan Audit bị dừng, Loan Audit phải phục hồi truy cập lịch sử mượn trong vòng 4 phút."},
+        {"id": "EL-05", "kind": "NFR", "text": "Asset Ledger phải tiếp nhận được cả thông điệp kiểm kê phiên bản v2 và v3 trong giai đoạn chuyển tiếp 10 ngày. Loan Intake chỉ cung cấp mã yêu cầu để đối chiếu, không chịu nghĩa vụ đọc hai phiên bản kiểm kê."},
+        {"id": "EL-06", "kind": "NFR", "text": "Nếu Borrower Notice ngừng hoạt động trong 20 phút, Return Desk vẫn phải hoàn tất ít nhất 99% phiếu trả hợp lệ trong khoảng đó. Borrower Notice có thể phát lại thông báo khi hoạt động trở lại."},
+        {"id": "EL-07", "kind": "UNSPECIFIED", "text": "Chính sách của document này bắt buộc Loan Intake và Asset Ledger nằm ở hai Quantum khác nhau để tách quyền quản trị. Yêu cầu này chưa được rút lại dù document đồng thời yêu cầu một giao dịch cục bộ giữa chúng."},
+        {"id": "EL-08", "kind": "FR", "text": "Loan Audit tổng hợp danh sách từ Asset Ledger rồi tạo báo cáo cuối ngày. Câu này chỉ mô tả thứ tự nghiệp vụ; document chưa xác định bên gọi có phải đợi tác vụ tổng hợp hoàn tất hay không."}
+      ]
+    },
+    {
+      "id": "ROOM-SCHEDULING",
+      "document_group": "ROOM-SCHEDULING-DOC-01",
+      "split": "HELD_OUT",
+      "provenance": "PREPARED_FIXTURE",
+      "authorship": "AGENT_PREPARED_SOURCE_REQUIREMENTS; không phải output của Ollama qwen3:4b, nhãn độc lập hoặc yêu cầu từ tổ chức thật.",
+      "components": [
+        {"id": "REQUEST", "name": "Room Request"},
+        {"id": "CAPACITY", "name": "Capacity Board"},
+        {"id": "ACCESS", "name": "Access List"},
+        {"id": "REMINDER", "name": "Meeting Reminder"},
+        {"id": "SUMMARY", "name": "Usage Summary"}
+      ],
+      "requirements": [
+        {"id": "RS-01", "kind": "FR", "text": "Room Request phải đợi Capacity Board xác nhận chỗ trống rồi mới gửi kết quả đặt phòng. Hai component không bắt buộc ghi dữ liệu trong cùng một giao dịch cục bộ."},
+        {"id": "RS-02", "kind": "FR", "text": "Trong chế độ đặt khẩn, Room Request phải đợi Access List xác nhận quyền vào phòng trước khi phản hồi. Trong chế độ thông thường, Room Request được phản hồi trước và Access List cập nhật quyền sau; hai chế độ không chạy đồng thời cho một yêu cầu."},
+        {"id": "RS-03", "kind": "NFR", "text": "Access List không được đưa số điện thoại cá nhân vào phản hồi công khai. Usage Summary được phép hiển thị tổng số người đăng ký theo ngày, nhưng sự cho phép đó không bao gồm số điện thoại."},
+        {"id": "RS-04", "kind": "NFR", "text": "Khi Meeting Reminder bị dừng, Capacity Board phải giữ tỷ lệ tra cứu thành công tối thiểu 99,7% trong 30 phút. Mục tiêu này áp dụng cho Capacity Board; Meeting Reminder là điều kiện lỗi của kịch bản."},
+        {"id": "RS-05", "kind": "NFR", "text": "Usage Summary phải đọc được định dạng lịch xuất từ hai phiên bản 2024 và 2026 trong bộ kiểm hợp đồng gồm 28 mẫu. Access List không đọc các định dạng lịch này."},
+        {"id": "RS-06", "kind": "NFR", "text": "Ở giờ thấp điểm, Room Request phải phản hồi xác nhận đặt phòng trong 1,2 giây tại p95 cho tải 40 yêu cầu mỗi phút. Chưa có mục tiêu phản hồi tương ứng cho giờ cao điểm; không được dùng mốc thấp điểm thay cho giờ cao điểm."},
+        {"id": "RS-07", "kind": "UNSPECIFIED", "text": "Room Request và Capacity Board không được tách sang hai Quantum trong đợt triển khai đầu tiên. Document chưa quy định chính sách ranh giới sau đợt đó."},
+        {"id": "RS-08", "kind": "FR", "text": "Sau khi đặt phòng được xác nhận, Meeting Reminder nhận yêu cầu gửi nhắc lịch. Việc tiếp nhận này không nói rằng Room Request phải chờ thông báo được gửi thành công, và chưa xác định cơ chế phản hồi giữa hai component."}
+      ]
+    }
+  ],
+  "queries": [
+    {"id": "EL-QUALITY", "case_id": "EQUIPMENT-LOAN", "task": "QUALITY", "source_ids": ["EL-03", "EL-04", "EL-05", "EL-06"]},
+    {"id": "EL-INTERACTION", "case_id": "EQUIPMENT-LOAN", "task": "INTERACTION", "source_ids": ["EL-01", "EL-02", "EL-03", "EL-04", "EL-05", "EL-06", "EL-07", "EL-08"]},
+    {"id": "EL-SEPARATION", "case_id": "EQUIPMENT-LOAN", "task": "SEPARATION", "source_ids": ["EL-01", "EL-02", "EL-03", "EL-04", "EL-05", "EL-06", "EL-07", "EL-08"]},
+    {"id": "RS-QUALITY", "case_id": "ROOM-SCHEDULING", "task": "QUALITY", "source_ids": ["RS-03", "RS-04", "RS-05", "RS-06"]},
+    {"id": "RS-INTERACTION", "case_id": "ROOM-SCHEDULING", "task": "INTERACTION", "source_ids": ["RS-01", "RS-02", "RS-03", "RS-04", "RS-05", "RS-06", "RS-07", "RS-08"]},
+    {"id": "RS-SEPARATION", "case_id": "ROOM-SCHEDULING", "task": "SEPARATION", "source_ids": ["RS-01", "RS-02", "RS-03", "RS-04", "RS-05", "RS-06", "RS-07", "RS-08"]}
+  ]
+}

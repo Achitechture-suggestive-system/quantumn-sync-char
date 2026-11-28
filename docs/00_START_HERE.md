@@ -14,6 +14,8 @@ Rà soát hiện tại của Studio, các phép đối chứng và hướng nghi
 
 [Báo cáo phản hồi LLM hiện có](research/STUDIO_LLM_OUTPUT_EVALUATION.md) đối chiếu bảy run thật, 12 proposal, citation, lỗi nghĩa và tác động sau correction; không có semantic accuracy khi thiếu nhãn độc lập.
 
+[Protocol đánh giá extraction Studio](research/STUDIO_EVALUATION_PROTOCOL.md) mô tả source-only package, hai annotation độc lập và adjudication trước inference, request/code freeze, repetition và matching theo atomic link. Bộ nguồn mới chưa có reference hoặc inference.
+
 ## Thứ tự đọc
 
 1. [Bài toán và phạm vi RQ1–RQ4](01_RESEARCH_PROBLEM_AND_SCOPE.md)

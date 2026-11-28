@@ -42,6 +42,12 @@
 | S19 | Laurent Perron, Frédéric Didier, Steven Gay. **The CP-SAT-LP Solver (Invited Talk)**. CP 2023, LIPIcs 280, 3:1–3:2, 22/09/2023. DOI `10.4230/LIPIcs.CP.2023.3`. [Dagstuhl](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CP.2023.3) | Dùng OR-Tools CP-SAT. Đây là bài invited talk hai trang mô tả solver, không hiệu chuẩn năm chi phí hoặc trọng số kiến trúc của Studio. Mã hóa partition/cost và seed là thiết kế repo. |
 | S20 | Google OR-Tools **v9.15**, `cp_model.proto`, model và channeling docs. [Status](https://github.com/google/or-tools/blob/v9.15/ortools/sat/cp_model.proto) · [Model](https://github.com/google/or-tools/blob/v9.15/ortools/sat/docs/model.md) · [Channeling](https://github.com/google/or-tools/blob/v9.15/ortools/sat/docs/channeling.md) | API boolean/integer, hints và nghĩa status theo solver. Studio đặt gap limits 0; phân biệt nghiệm, chứng minh objective và chưa liệt kê Pareto. Không dùng thành tích scheduling/MIP của solver làm kết quả dự án. |
 
+## Nguồn cho protocol đánh giá — kiểm tra 28/11/2026
+
+| ID | Nguồn gốc | Áp dụng và giới hạn |
+|---|---|---|
+| S21 | Sebastian Baltes và cộng sự. **Guidelines for Empirical Studies in Software Engineering involving Large Language Models**. arXiv `2508.15503v8`, 18/09/2026; trang tác giả ghi accepted in Empirical Software Engineering. [Bản v8](https://arxiv.org/abs/2508.15503v8) · [Toàn văn](https://arxiv.org/html/2508.15503v8) | Tham khảo reporting và human validation cho G10. Freeze/matcher/lock là thiết kế repo; không suy ra độ đúng của model hoặc reference từ tuân thủ checklist. |
+
 ## Công thức và thuật toán của dự án
 
 Mốc A3 đã thêm frame và review mệnh đề, tách role/modality/effect, giữ nhãn ngoài nguồn của reviewer và guard nguồn/catalog/claim. Đây là thiết kế của repo tham khảo S09/S17, chưa phải triển khai parser EARS hoặc classifier của S18. Các lượt thật còn lỗi và bộ ca OC đã được dùng trong phát triển; chưa có đánh giá ngữ nghĩa độc lập. [Policy, raw-run evidence và giới hạn](STUDIO_CLAUSE_REVIEW.md).

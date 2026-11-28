@@ -2,6 +2,8 @@
 
 ## Thay đổi và phạm vi
 
+Mã thực thi của mốc này đã được commit thành **`9ad6f30fdbca9c109c9027b5370dcb5a21122b79`**, push feature và [CI 46166111497](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46166111497) thành công. Các hash file extraction/guard trong cả ba manifest live đã đối chiếu khớp working tree của commit này; không retune mã sau khi đọc ba output. [Nhật ký publish](../development/GITHUB_PUBLISH_LOG.md).
+
 `SENTENCE` dùng prompt `STUDIO-EXTRACT@3` để giảm số trường model phải sinh cùng lúc. UI chọn cách này mặc định; `DIRECT` giữ prompt @2 và vẫn là mặc định API để bảo toàn protocol G10 @1. Đây là biến thể do repo thiết kế, chưa chứng minh tối ưu hoặc tốt hơn trên dữ liệu độc lập.
 
 Luồng thực thi:

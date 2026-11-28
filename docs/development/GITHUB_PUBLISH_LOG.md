@@ -1,5 +1,14 @@
 # Nhật ký publish GitHub
 
+## SENTENCE @3 và báo cáo LLM — 2026-11-28
+
+- Commit implementation/báo cáo `9ad6f30fdbca9c109c9027b5370dcb5a21122b79` (`feat(studio): add sentence extraction with reviewable model lineage`) đã push `feat/quantum-tradeoff-workbench`; `git ls-remote` trả cùng SHA. [CI 46166111497](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46166111497) completed success.
+- Kiểm cục bộ: **307 tests** qua, compileall app/research_app/eqcr/scripts/tests, JavaScript syntax, staged diff và secret scan qua. 17 tests mới kiểm integrity/review/failure/UI bằng phản hồi chuẩn bị sẵn; không phải expert labels.
+- Ba run thật dùng cùng code hash sau đó commit: `studio-extraction-008e2453ea674025b4510c142194954c`, `studio-extraction-4f714e4baf9d4d708d8bfd99e5cbd524`, `studio-extraction-fdd00123a7a746d9b61c9ed5aba985b3`. 18 stage request/content hashes khớp; 15 draft chờ review, 9 có issue. Không retune sau ba output, không approve/correct và không semantic metric. Checkpoint `checkpoint-8662045b5ca04d82975a36cf284de535` chỉ nạp draft để review.
+- Remote main kiểm lại trước push là `3471eff9bbf33c407bd33ef451579499bc35be4b`; tag `p0-demo-2026-11-14` là `02531985dd915318fc7a30f800c6b17bf9e6f95f`. Không push main, không force hoặc sửa lịch sử. Runs/probes/checkpoint/môi trường không stage. Gói freeze G10 cũ giữ nguyên; chưa có inference trên hai source mới.
+- Báo cáo A4, inventory LLM hiện có, completion status và source ledger đã cập nhật trong mốc implementation. Commit tài liệu kế tiếp này ghi SHA/CI đã tồn tại và kết quả quan sát, không điền trước SHA của chính nó.
+
+
 ## Ghi nhận preflight và chạy development task @2 — 2026-11-28
 
 - Commit tài liệu `b52909f653aed7a2ffaab378e841c51007ccc6f6` đã push feature; [CI 46141482173](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141482173) thành công với cùng mã thực thi X1. Hai call development @2 tiếp theo dùng mã này; không sửa source/prompt hoặc raw output để thay kết quả.

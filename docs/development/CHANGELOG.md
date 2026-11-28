@@ -1,5 +1,13 @@
 # Changelog
 
+## Trích xuất theo câu và đánh giá LLM thực tế — 2026-11-28
+
+- Commit `9ad6f30fdbca9c109c9027b5370dcb5a21122b79` thêm SENTENCE @3: primary claim, frame riêng, quote/span tra nguồn, lineage và review/correction có provenance tách biệt. Giữ DIRECT @2; G10 @1 chưa hỗ trợ đánh giá @3 và freeze cũ giữ nguyên lịch sử khi code hash đổi.
+- 307 tests qua (17 mới), compileall, JavaScript syntax, staged diff và secret scan qua; [CI 46166111497](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46166111497) thành công. Tests dùng response/decision chuẩn bị sẵn, không thay kết quả inference hoặc nhãn chuyên gia.
+- Ba lượt qwen3:4b thật: QUALITY 8 draft/4 chưa có issue; INTERACTION 5/2; SEPARATION 2/0. Có thêm nghĩa vụ từng bị bỏ sót, vẫn còn false claims, frame dịch sai và condition sai ngay ở draft không issue. Cả 15 REVIEW_REQUIRED; optimizer giữ 37 nghiệm. Checkpoint chờ review không có APPROVE/CORRECT. [Báo cáo A4](../research/STUDIO_SENTENCE_EXTRACTION.md).
+- Giữ 37 thư mục probe phát triển cùng thử nghiệm thất bại; không gộp thành held-out/ablation. Bổ sung S22 (Ollama docs) và S23 (Geng và cộng sự, EMNLP 2023); chưa tái lập GCD hoặc chuyển metric bài báo sang Studio. Raw runs/checkpoints không stage.
+
+
 ## Kiểm thật hai tác vụ @2 còn thiếu — 2026-11-28
 
 - Trên code `b52909f653aed7a2ffaab378e841c51007ccc6f6`, đã gọi qwen3:4b thật cho INTERACTION/SEPARATION của OC-08/OC-10. Hai response giữ raw, có hash và development metadata; bảy proposal đều còn blocker, không đổi optimizer hoặc tạo nhãn chuyên gia.

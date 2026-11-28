@@ -4,7 +4,7 @@ Mục tiêu đang thực hiện là hoàn thiện dự án theo mười gap tron
 
 [Bảng nguồn nghiên cứu](STUDIO_SOURCE_LEDGER.md) đối chiếu metadata và tách đóng góp của bài báo khỏi thiết kế, test và giới hạn của Studio. Citation Curto theo năm tập báo 2027, với ngày xuất bản online 03/11/2026.
 
-Chốt báo cáo ngày **28/11/2026**: mã `6c7fabd121d272e56b9bf565cd8b146690242681` đã push trên `feat/quantum-tradeoff-workbench`, [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công với 290 tests. D2 hỗ trợ 9–50 component; X1 có gói source-only và gate đánh giá extraction. Remote main hiện `3471eff9bbf33c407bd33ef451579499bc35be4b` do PR #1 đã merge phần trước; mốc X1 chỉ push feature, tag P0 giữ nguyên. [Đánh giá bảy lượt Ollama thật](STUDIO_LLM_OUTPUT_EVALUATION.md) kiểm lại 12 proposal, giữ semantic metrics null và tách rõ correction kỹ thuật khỏi nhãn độc lập. Project chưa hoàn tất xác nhận ngữ nghĩa G2/G10 hoặc chất lượng nghiệp vụ/vận hành G5/G8.
+Chốt báo cáo ngày **28/11/2026**: mã `6c7fabd121d272e56b9bf565cd8b146690242681` đã push trên `feat/quantum-tradeoff-workbench`, [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công với 290 tests. D2 hỗ trợ 9–50 component; X1 có gói source-only và gate đánh giá extraction. Remote main hiện `3471eff9bbf33c407bd33ef451579499bc35be4b` do PR #1 đã merge phần trước; mốc X1 chỉ push feature, tag P0 giữ nguyên. [Đánh giá output Ollama](STUDIO_LLM_OUTPUT_EVALUATION.md) hiện có chín lượt/19 proposal qua hai mốc audit, giữ semantic metrics null và tách rõ correction kỹ thuật khỏi nhãn độc lập. Project chưa hoàn tất xác nhận ngữ nghĩa G2/G10 hoặc chất lượng nghiệp vụ/vận hành G5/G8.
 
 | Gap | Tiến độ triển khai | Điều kiện còn cần kiểm chứng |
 |---|---|---|
@@ -179,3 +179,7 @@ Scorer định nghĩa exact atomic link theo condition/source/task, tách raw pr
 Regression **290 tests** qua, gồm 26 tests mới về source-only/freeze/exposure, annotation/adjudication, tampering, model digest, UNKNOWN, null denominator, response reuse, provider failure và luồng đủ ba tác vụ bằng response/attestation mô phỏng. Compileall, JavaScript syntax và diff check qua. Số tests không thay semantic accuracy; các source/reference test chỉ ở thư mục tạm. [Protocol, lệnh chạy, matcher và giới hạn](STUDIO_EVALUATION_PROTOCOL.md).
 
 Gói thực đã freeze tại `runs/quantum-studio/studies/studio-source-only-v1-20261128/`, có 40 row trắng và sáu request đã chốt. Preflight không có reference ghi 0 provider contact, không tăng số bảy extraction request đang có và giữ metric null. Chưa có annotation hoặc adjudication hợp lệ; gate này chưa phải kết quả ngữ nghĩa mới.
+
+### Bổ sung kiểm thật G1/G2 sau X1
+
+Hai call @2 trên OC-08/OC-10 đã biết, không dùng source held-out mới, bổ sung năm proposal INTERACTION và hai SEPARATION. Cả bảy quote khớp nhưng đều có blocker: endpoint không khớp frame/source, modality chứa nhãn thay vì từ nguồn, disposition mâu thuẫn hoặc text field rỗng/sai. Giữ REVIEW_REQUIRED, không approve, đầu vào optimizer và 37 nghiệm giữ nguyên. Tổng inventory phát triển hiện chín run/19 proposal; chưa có semantic metrics. [Bằng chứng R8/R9 và checkpoint chờ review](STUDIO_LLM_OUTPUT_EVALUATION.md#cập-nhật-r8r9--interaction-và-separation-prompt-2).

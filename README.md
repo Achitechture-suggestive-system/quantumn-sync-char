@@ -19,7 +19,7 @@ Mở URL cục bộ mà Streamlit in ra. Màn đầu hiển thị mẫu Ticket S
 
 Tình trạng các gap và bằng chứng hiện tại nằm trong [theo dõi hoàn thiện](docs/research/STUDIO_COMPLETION_STATUS.md). [Bảng nguồn nghiên cứu](docs/research/STUDIO_SOURCE_LEDGER.md) ghi metadata, DOI, phần áp dụng và giới hạn của từng nguồn.
 
-[Đánh giá output Ollama ngày 28/11/2026](docs/research/STUDIO_LLM_OUTPUT_EVALUATION.md) ghi bảy lượt thật, 12 proposal, kiểm hash/citation, lỗi endpoint/phủ định/bỏ sót và hai correction được tái tính. Đây là phân tích phát triển, chưa có nhãn độc lập để tính semantic accuracy.
+[Đánh giá output Ollama ngày 28/11/2026](docs/research/STUDIO_LLM_OUTPUT_EVALUATION.md) gồm snapshot bảy lượt/12 proposal và hai lượt @2 bổ sung cho INTERACTION/SEPARATION: tổng chín lượt thật, 19 proposal. Báo cáo kiểm hash/citation, lỗi endpoint/phủ định/bỏ sót và hai correction được tái tính. Đây là phân tích phát triển, chưa có nhãn độc lập để tính semantic accuracy.
 
 [Protocol G10 cho lượt đánh giá mới](docs/research/STUDIO_EVALUATION_PROTOCOL.md) có khóa source/prompt/request/code, worksheet trắng, gate annotation/adjudication trước inference và scorer cho link fields. Hai document nguồn mới là fixture do agent chuẩn bị; chưa có nhãn độc lập hoặc output qwen cho chúng.
 

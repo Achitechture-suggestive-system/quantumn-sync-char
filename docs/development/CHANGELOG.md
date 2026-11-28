@@ -1,5 +1,10 @@
 # Changelog
 
+## Kiểm thật hai tác vụ @2 còn thiếu — 2026-11-28
+
+- Trên code `b52909f653aed7a2ffaab378e841c51007ccc6f6`, đã gọi qwen3:4b thật cho INTERACTION/SEPARATION của OC-08/OC-10. Hai response giữ raw, có hash và development metadata; bảy proposal đều còn blocker, không đổi optimizer hoặc tạo nhãn chuyên gia.
+- [Báo cáo R8/R9](../research/STUDIO_LLM_OUTPUT_EVALUATION.md#cập-nhật-r8r9--interaction-và-separation-prompt-2) ghi lỗi endpoint/frame/disposition dù quote đúng. Chín run/19 payload hiện có được kiểm lại nguyên vẹn; các counts chỉ là structural statistics. Gói G10 giữ nguyên hash và không có source mới trong hai requests.
+
 ## Freeze và gate đánh giá extraction Studio — 2026-11-28
 
 - Commit `6c7fabd121d272e56b9bf565cd8b146690242681` thêm protocol source-only, two-annotator lock/adjudication, shared request builder, code/model/source/exposure freeze, gated runner, exact-link scorer và baseline lexical. Hai document mới có 16 requirement/40 unit, không có reference labels hoặc output qwen.

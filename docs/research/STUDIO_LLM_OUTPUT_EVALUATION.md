@@ -4,9 +4,9 @@
 
 `qwen3:4b` đã trả proposal thật cho ISO/component, tương tác SYNC/ASYNC và yêu cầu tách. Tuy nhiên, các phản hồi đã lưu còn sai quote, sai endpoint, lẫn vai trò/nghĩa vụ và thiếu mệnh đề. Model hiện phù hợp làm nguồn đề xuất để reviewer kiểm; các lượt này chưa đủ căn cứ cho tự động xác nhận evidence hoặc chia Quantum trực tiếp từ output thô.
 
-Đánh giá này đọc **bảy thư mục extraction đang có**, không gọi model mới, không thay raw output và không dựng expert labels. Đây là phân tích lỗi phát triển do agent thực hiện, không phải đánh giá độc lập. Phạm vi không bao gồm mọi lần gọi LLM lịch sử của pipeline PetClinic/Tutor hoặc các bộ requirement sinh sẵn khác trong repo.
+Phần R1–R7 dưới đây đọc **bảy thư mục extraction tại mốc chốt đầu**, không gọi model mới trong bước audit đó, không thay raw output và không dựng expert labels. Lượt tiếp tục ngày 28/11 chạy thêm R8/R9 cho INTERACTION/SEPARATION, mô tả ở phần cập nhật cuối: tổng hiện có **9 run, 19 proposal**, trong đó 16 quote khớp và 15 hàng có issue lịch sử. Đây là phân tích lỗi phát triển do agent thực hiện, không phải đánh giá độc lập. Phạm vi không bao gồm mọi lần gọi LLM lịch sử của pipeline PetClinic/Tutor hoặc các bộ requirement sinh sẵn khác trong repo.
 
-Mã đối chiếu: `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3`. [CI 46041605823](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46041605823) thành công; suite có 264 tests. Test pass xác nhận hành vi phần mềm trong phạm vi test, không xác nhận độ đúng ngữ nghĩa của model.
+Mã đối chiếu snapshot R1–R7: `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3`. [CI 46041605823](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46041605823) thành công; suite tại mốc đó có 264 tests. Mốc X1/R8/R9 sau này có 290 tests. Test pass xác nhận hành vi phần mềm trong phạm vi test, không xác nhận độ đúng ngữ nghĩa của model.
 
 ## Mẫu dữ liệu và tính nguyên vẹn
 
@@ -23,7 +23,7 @@ Các lượt diễn ra 26–27/11/2026 UTC; báo cáo kiểm lại ngày 28/11 g
 | Proposal prompt @2 bị giữ lại khi kiểm hiện tại | 5/5 hàng | Có blocker cấu trúc/clause. Không được diễn giải là semantic error rate hay detection recall. |
 | Precision / recall / F1 / semantic accuracy | `null` · NOT_MEASURED | Chưa có independent adjudicated reference labels. |
 
-Mẫu số 12 là số **hàng model trả về**, gồm tám QUALITY, ba INTERACTION và một SEPARATION. Nó không bao gồm các nghĩa vụ bị model bỏ sót, không phải số case độc lập. Prompt @1/@2, tác vụ và batch context khác nhau; không gộp chúng thành benchmark so sánh chất lượng prompt. Không suy ra tỷ lệ áp dụng của người dùng từ `REVIEW_REQUIRED` trong manifest gốc: quyết định về sau nằm ở checkpoint riêng.
+Mẫu số 12 của snapshot R1–R7 là số **hàng model trả về**, gồm tám QUALITY, ba INTERACTION và một SEPARATION. Nó không bao gồm các nghĩa vụ bị model bỏ sót, không phải số case độc lập. Prompt @1/@2, tác vụ và batch context khác nhau; không gộp chúng thành benchmark so sánh chất lượng prompt. Không suy ra tỷ lệ áp dụng của người dùng từ `REVIEW_REQUIRED` trong manifest gốc: quyết định về sau nằm ở checkpoint riêng.
 
 | Đầu ra / căn cứ | Nguồn gốc cần giữ |
 |---|---|
@@ -99,10 +99,36 @@ Kiểm lại proposal @2 trên hai `architecture.json` lưu sẵn còn cho cùng
 ## Đánh giá mức sẵn sàng và việc còn thiếu
 
 - **Đã có bằng chứng:** inference cục bộ thật, raw response giữ nguyên, citation/role/disposition guard có hiệu lực trong các đường đã kiểm, review tạo revision và ảnh hưởng scoring/downstream. Các mô hình cỡ lớn cũng giữ objective/hard constraints, theo [báo cáo D2](STUDIO_LARGE_BACKEND.md).
-- **Chưa đủ để tự động tin output:** câu nhiều nghĩa vụ bị bỏ sót, span/frame và endpoint có thể sai; không issue không đồng nghĩa đúng; batch @2 bốn hàng đều mâu thuẫn disposition. Chưa có lượt INTERACTION/SEPARATION thật với prompt @2 trong bảy run này, nên không dùng tests thay evidence inference cho hai tác vụ đó.
+- **Chưa đủ để tự động tin output:** câu nhiều nghĩa vụ bị bỏ sót, span/frame và endpoint có thể sai; không issue không đồng nghĩa đúng; batch @2 bốn hàng đều mâu thuẫn disposition. Snapshot R1–R7 chưa có lượt INTERACTION/SEPARATION thật với prompt @2. R8/R9 bổ sung bằng chứng inference cho hai tác vụ này nhưng vẫn có lỗi, không thay bằng kết quả tests.
 - **Chưa có phép so sánh prompt đáng tin:** @1/@2 khác cấu trúc, batch và thời điểm validator; các ca đã được dùng để điều chỉnh guard. Một lần singleton không đủ kết luận batching là nguyên nhân hoặc @2 tốt/xấu hơn theo tỷ lệ.
 - **Bước nghiên cứu tiếp theo:** chốt prompt/schema/code, lấy dữ liệu từ document/case mới và nhãn source-only độc lập trước khi inference, định nghĩa đơn vị mệnh đề/matching và adjudication, rồi đo riêng raw model, sau structural gate và sau human review. Ghi omissions, false hard policies, corrections và thời gian review với mẫu số. Chưa chạy bước này trong báo cáo.
 
 Trade-off và vector trong Studio hiện được tính bởi hàm Python/CP-SAT theo policy, không phải con số model tự chấm. `explain_candidate` tạo giải thích xác định từ cost drivers; không gắn phần này là LLM-generated. Các fixture benchmark 9–50 component không đo năng lực đọc hiểu của qwen.
 
 Khung phân biệt link/citation và đánh giá độc lập liên hệ nguồn S10 (TraceLLM), S12 (oracle problem), S17 (EARS) và S18 (NFR classification) trong [source ledger](STUDIO_SOURCE_LEDGER.md). Đây là nguồn phương pháp; kết quả định lượng của các bài không được dùng làm kết quả Studio. Không cần gọi LLM khác để tự chấm model rồi xem đó là reference label độc lập.
+
+## Cập nhật R8/R9 — INTERACTION và SEPARATION prompt @2
+
+Hai lượt chạy thật ngày 28/11/2026 dùng code `b52909f653aed7a2ffaab378e841c51007ccc6f6`, prompt STUDIO-EXTRACT@2, cùng Ollama/model digest đã ghi ở trên. Input là OC-08/OC-10 đã biết, thêm vào mẫu Ticket dưới ID DEV-OC-08/DEV-OC-10, kind UNSPECIFIED. Đây là PREPARED_FIXTURE dùng phát triển, không phải held-out. Không điều chỉnh prompt/code sau khi thấy hai response và không sửa raw artifacts.
+
+| Run | Task / source | Đầu ra thực tế | Thời gian call |
+|---|---|---|---:|
+| R8 · `studio-extraction-9f887b70a4e94d999e161290aa18db11` | INTERACTION · DEV-OC-08, DEV-OC-10 | 5 proposal, 911 token; cả năm OUT_OF_SCOPE, mode UNKNOWN, vẫn có endpoint hoạt động. | 28,59 giây |
+| R9 · `studio-extraction-a186da6bc7e64cac9ff33173ce1c732d` | SEPARATION · DEV-OC-10 | 2 proposal, 369 token; một OUT_OF_SCOPE, một PROPOSED; cả hai chọn REPORT/CREATE. | 7,25 giây |
+
+Các thời gian là wall-clock của từng call trên máy hiện tại, gồm overhead; hai lượt không là benchmark latency hoặc phân bố hiệu năng. Request/response SHA-256 đầy đủ được kiểm lại:
+
+| Run | Request hash | Response content hash |
+|---|---|---|
+| R8 | `b6e38d5f56ca4e2469aca710041f30e7364b99f649abbed5d3f71de59a6797cd` | `2f3a378cb245c2187f5c893e5d72e4e714ee26abbf8de201fc20ad3c83860378` |
+| R9 | `4a7a64675a5eddd4b824a3cad5a139d14fe98c7e027223d187f9fbb1a821a0a3` | `3b949927848dac8d8b1577d2327716164c7b0cfb3a68915b0889f2228ae0871d` |
+
+**R8:** Một frame gọi đúng chủ thể ROUTE và object COMPLETE ở câu chờ xác nhận, nhưng claim lại là PROFILE→ROUTE. Các claim còn lại cũng dùng PROFILE dù source không nêu component này. `modality="SYNC"` không phải đoạn nguyên văn trong nguồn. Hai frame dùng chuỗi rỗng ở trường đòi null hoặc text có nội dung. Quote nguồn đều khớp nhưng disposition/role/frame mâu thuẫn; không proposal nào được áp dụng. Có tách thêm hàng theo mệnh đề chưa chứng minh phân loại hay mode đúng.
+
+**R9:** Proposal đầu trích câu cùng giao dịch cục bộ và thêm `giao: giao dịch` vào phần condition; modality lại là SYNC. Proposal sau trích đúng câu mandatory isolation, có effect REQUIRE_SEPARATION nhưng endpoint REPORT/CREATE lệch ROUTE/COMPLETE trong nguồn/frame; modality PROHIBITION không có nguyên văn và chính sách không được mô tả đúng vai trò. Các guard fragment/role/disposition/condition đều giữ lại. Chỉ đổi disposition sang PROPOSED vẫn không đủ để dùng làm hard constraint.
+
+Tất cả bảy quote mới đều là chuỗi con của đúng source. **7/7 proposal mới có issue**, cả bảy giữ REVIEW_REQUIRED. Đây là kết quả structural gate trên các output cụ thể, không phải semantic error rate, accuracy hoặc detection recall. Thêm cả R8/R9 thì chín request/response hashes và 19 raw payload đều khớp; tổng số quote exact là 16/19, có issue lịch sử là 15/19. Các mẫu số trộn task/prompt và có nhiều clause từ cùng source nên không dùng để so sánh prompt.
+
+Checkpoint `checkpoint-fe7722aaf0d147c5832dbba35cc668b8` chỉ nạp model input và bảy proposal để reviewer có thể mở lại; event LOAD_KNOWN_DEVELOPMENT_PROPOSALS, actor AGENT_TECHNICAL_SMOKE_TEST, provenance PREPARED_FIXTURE. Không có APPROVE/CORRECT hoặc expert label mới. Kiểm lại trước/sau: 37 nghiệm, P011 đứng đầu theo SYNC_FIRST, input optimizer không đổi. Kết quả này chứng minh gate bảo toàn mô hình trước review, chưa chứng minh model tự tạo được phân hoạch đáng tin.
+
+Gói source-only mới của G10 vẫn khớp hash. Đối chiếu text xác nhận hai request R8/R9 không chứa requirement từ Equipment Loan/Room Scheduling. Exposure ledger của study là snapshot bảy run trước freeze; hai run phát triển bổ sung không được gọi là inference trên study. Các file architecture/development-task-check và checkpoint giữ local, không stage vào Git.

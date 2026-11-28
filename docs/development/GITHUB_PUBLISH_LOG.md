@@ -1,5 +1,10 @@
 # Nhật ký publish GitHub
 
+## Ghi nhận preflight và chạy development task @2 — 2026-11-28
+
+- Commit tài liệu `b52909f653aed7a2ffaab378e841c51007ccc6f6` đã push feature; [CI 46141482173](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141482173) thành công với cùng mã thực thi X1. Hai call development @2 tiếp theo dùng mã này; không sửa source/prompt hoặc raw output để thay kết quả.
+- Báo cáo kế tiếp ghi hai run `studio-extraction-9f887b70a4e94d999e161290aa18db11` và `studio-extraction-a186da6bc7e64cac9ff33173ce1c732d`, checkpoint chờ review và trạng thái chặn. Artifact/run/checkpoint không được stage; không inference trên bộ source-only mới.
+
 ## Gate đánh giá extraction Studio — 2026-11-28
 
 - Commit `6c7fabd121d272e56b9bf565cd8b146690242681` đã push lên `feat/quantum-tradeoff-workbench`; remote khớp SHA. [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công, gồm 290 tests và compile. Diff/secret scan qua; không stage runs, source-only export, lock, raw output hoặc môi trường.

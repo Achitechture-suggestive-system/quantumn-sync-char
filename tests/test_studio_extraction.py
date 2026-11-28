@@ -74,6 +74,7 @@ def test_live_ui_review_then_restore_reproduces_diagram_inputs(tmp_path, monkeyp
         return next(item for item in getattr(view, kind) if item.label == label)
 
     view = AppTest.from_file(Path(__file__).parents[1] / "app.py", default_timeout=30).run()
+    widget(view, "selectbox", "Cách trích xuất").select("DIRECT").run()
     widget(view, "multiselect", "Nguồn gửi Ollama").set_value(["NFR-03"]).run()
     widget(view, "button", "Phân tích bằng Ollama").click().run()
     assert not view.exception

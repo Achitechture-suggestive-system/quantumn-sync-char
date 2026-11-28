@@ -50,10 +50,15 @@ def show_live_review(architecture: Architecture) -> None:
         available = [item.id for item in architecture.requirements if task != "QUALITY" or item.kind == "NFR"]
         selected = st.multiselect("Nguồn gửi Ollama", available, default=available[:4], max_selections=8)
         model = st.text_input("Model Ollama", value="qwen3:4b", max_chars=100)
+        method = st.selectbox("Cách trích xuất", ["SENTENCE", "DIRECT"],
+                              format_func=lambda value: "Theo câu: đề xuất rồi đọc frame (@3)" if value == "SENTENCE" else "Một lượt đầy đủ (@2)")
+        if method == "SENTENCE":
+            st.caption("Quote được tra từ span nguồn. Claim và frame vẫn do LLM đề xuất qua hai bước; không phải hai người xác nhận. "
+                       "Mâu thuẫn giữ lại để review. Mỗi lượt giới hạn 24 đoạn/24 claim; số call tăng theo claim.")
         if st.button("Phân tích bằng Ollama", disabled=not selected or not model.strip()):
             try:
                 with st.spinner("Ollama đang đọc yêu cầu…"):
-                    run = extract_proposals(architecture, selected, task, model.strip())
+                    run = extract_proposals(architecture, selected, task, model.strip(), method=method)
                 existing = st.session_state.get("studio_live_proposals", [])
                 if commit_revision(architecture, {"action": "LLM_PROPOSED", "run_id": run["id"],
                                                    "model": run["model"], "model_digest": run["model_digest"],
@@ -65,7 +70,9 @@ def show_live_review(architecture: Architecture) -> None:
         run = st.session_state.get("studio_last_inference")
         if run:
             st.caption(f"{run['model']} · {run['ollama_version']} · {len(run['proposals'])} đề xuất · "
-                       f"{run['tokens']} token · {run['recorded_at']}")
+                       f"{run['tokens']} token · {run.get('prompt_version', 'LEGACY')} · {run['recorded_at']}")
+            for issue in run.get("run_issues", []):
+                st.warning(issue)
         items = st.session_state.get("studio_live_proposals", [])
         with st.expander("Bổ sung mệnh đề reviewer thấy model bỏ sót"):
             st.caption("Mệnh đề bổ sung ghi HUMAN_DECISION, không được tính là model đã trích xuất. Bản nháp giữ nguyên optimizer.")
@@ -91,6 +98,13 @@ def show_live_review(architecture: Architecture) -> None:
                     st.write(source.text)
                 st.write("Đề xuất gốc từ model" if item.get("provenance", "LLM_PROPOSAL") == "LLM_PROPOSAL" else "Mệnh đề do reviewer bổ sung")
                 st.write(item["payload"].get("quote", ""))
+                if processing := item.get("processing"):
+                    unit = processing["unit"]
+                    st.caption(f"{unit['unit_id']} · source span [{unit['start']}:{unit['end']}] · quote tra từ nguồn; "
+                               "claim/frame là hai bản nháp LLM; role IDs và disposition là biến đổi xác định.")
+                    with st.expander("Claim LLM trước khi ghép frame"):
+                        st.dataframe([{"Trường": key, "LLM trả": ", ".join(map(str, value)) if isinstance(value, list) else str(value)}
+                                      for key, value in processing["raw_claim"].items()], hide_index=True, width="stretch")
                 if item.get("issues"):
                     st.warning(" ".join(item["issues"]))
                 if item.get("applied"):

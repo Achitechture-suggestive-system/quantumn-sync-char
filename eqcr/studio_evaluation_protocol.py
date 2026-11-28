@@ -21,7 +21,7 @@ PROTOCOL = "STUDIO-EVALUATION@1"
 MATCHING = "SOURCE-TASK-CONDITION-ATOMIC-LINK@1"
 ROOT = Path(__file__).resolve().parents[1]
 CODE_FILES = ("studio_extraction.py", "studio_semantics.py", "studio_quality.py", "quantum_tradeoff.py",
-              "studio_evidence.py", "studio_evaluation_protocol.py", "studio_evaluation.py")
+              "studio_evidence.py", "studio_evaluation_protocol.py", "studio_evaluation.py", "studio_sentence_extraction.py")
 PACKAGE_FILES = {"SOURCE.json", "ANNOTATION_TEMPLATE.json", "README.md", "MANIFEST.json"}
 
 
@@ -205,6 +205,8 @@ def prepare_study(raw: dict, folder: Path, *, model_digest: str, code_sha: str, 
         request = json.loads(path.read_text(encoding="utf-8"))
         try:
             entries = json.loads(request["messages"][-1]["content"])
+            if isinstance(entries, dict):
+                entries = entries["sources"]
             exposed.update(digest(" ".join(item["text"].split()).casefold()) for item in entries)
         except (KeyError, TypeError, ValueError, AttributeError) as exc:
             raise EvaluationBlocked("Không đọc được source ledger từ extraction request đã có; cần audit trước freeze.") from exc

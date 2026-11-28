@@ -102,7 +102,7 @@ class EvidenceBinding(InputModel):
     source_quote: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=600)]
     proposal_id: Annotated[str, StringConstraints(min_length=1, max_length=200)]
     run_id: Annotated[str, StringConstraints(min_length=1, max_length=100)]
-    citation_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION", "PREPARED_FIXTURE"]
+    citation_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION", "PREPARED_FIXTURE", "DETERMINISTIC_TRANSFORMATION"]
     review_provenance: Literal["HUMAN_DECISION", "PREPARED_FIXTURE"] = "HUMAN_DECISION"
     review_actor: Label
     review_rationale: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]

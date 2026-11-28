@@ -41,7 +41,7 @@ def author_clause(architecture: Architecture, source_id: str, task: str) -> dict
             "status": "REVIEW_REQUIRED", "payload": payload, "issues": [], "recorded_at": datetime.now(timezone.utc).isoformat()}
 
 
-def proposal_issues(architecture: Architecture, source_id: str, payload: dict, *, structured=False, allow_human=False) -> list[str]:
+def proposal_issues(architecture: Architecture, source_id: str, payload: dict, *, structured=False, allow_human=False, source_ref=None) -> list[str]:
     source = next((item for item in architecture.requirements if item.id == source_id), None)
     if source is None:
         return ["Requirement nguồn đã bị xóa."]
@@ -50,7 +50,7 @@ def proposal_issues(architecture: Architecture, source_id: str, payload: dict, *
     if not isinstance(quote, str) or not quote.strip() or quote not in source.text:
         issues.append("Đoạn trích phải là một chuỗi nguyên văn có nội dung trong requirement.")
     if structured or "frame" in payload:
-        issues.extend(clause_issues(architecture, source, payload, allow_human=allow_human))
+        issues.extend(clause_issues(architecture, source, payload, allow_human=allow_human, source_ref=source_ref))
         if payload.get("disposition") in {"OUT_OF_SCOPE", "AMBIGUOUS"}:
             return issues
     try:
@@ -148,7 +148,13 @@ def build_request(architecture: Architecture, source_ids: list[str], task: str, 
                                 for item in sources], ensure_ascii=False)}]}
 
 
-def extract_proposals(architecture: Architecture, source_ids: list[str], task: str, model: str = "qwen3:4b", *, on_run_allocated=None) -> dict:
+def extract_proposals(architecture: Architecture, source_ids: list[str], task: str, model: str = "qwen3:4b", *, on_run_allocated=None,
+                      method="DIRECT", progress=None) -> dict:
+    if method == "SENTENCE":
+        from .studio_sentence_extraction import extract
+        return extract(architecture, source_ids, task, model, on_run_allocated=on_run_allocated, progress=progress)
+    if method != "DIRECT":
+        raise ValueError("Chọn DIRECT hoặc SENTENCE.")
     request = build_request(architecture, source_ids, task, model)
     sources = [item for item in architecture.requirements if item.id in source_ids]
     details = next((item for item in ollama.list_model_details() if item["name"] == model), None)
@@ -232,20 +238,30 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
         raise ValueError("Cần dữ liệu chỉnh sửa có cấu trúc.")
     data = architecture.model_dump(mode="json")
     original_origin = proposal.get("provenance", "LLM_PROPOSAL")
+    processing = proposal.get("processing", {})
     binding = {"source_id": proposal["source_id"], "source_digest": proposal["source_digest"],
                "catalog_digest": proposal["catalog_digest"], "source_quote": payload.get("quote"),
                "proposal_id": proposal["id"], "run_id": proposal["run_id"],
-               "citation_provenance": ("PREPARED_FIXTURE" if provenance == "PREPARED_FIXTURE" else "HUMAN_DECISION") if action == "CORRECT" else original_origin,
+               "citation_provenance": ("PREPARED_FIXTURE" if provenance == "PREPARED_FIXTURE" else "HUMAN_DECISION") if action == "CORRECT" else "DETERMINISTIC_TRANSFORMATION" if processing else original_origin,
                "review_provenance": provenance,
                "review_actor": actor.strip(), "review_rationale": rationale.strip()}
     structured = proposal.get("semantic_schema") == SCHEMA or "frame" in proposal["payload"]
     inactive = structured and payload.get("disposition") == "OUT_OF_SCOPE"
     if action in {"APPROVE", "CORRECT"}:
+        source_ref = None
+        if processing:
+            from .studio_sentence_extraction import check_processing
+            original_payload = check_processing(architecture, processing, proposal["payload"])
+            if processing["unit"]["source_id"] != proposal["source_id"]:
+                raise ValueError("Unit của proposal không khớp source ID ban đầu.")
+            if payload.get("quote") == original_payload["quote"]:
+                unit = processing["unit"]
+                source_ref = SourceRef(source_id=unit["source_id"], quote=unit["text"], start=unit["start"], end=unit["end"])
         if structured and not semantic_confirmed:
             raise ValueError("Xác nhận đã review chủ thể, điều kiện, phủ định và tác động trước khi áp dụng mệnh đề.")
         if proposal.get("duplicate_of_proposal_id") and proposal_signature(proposal["source_id"], payload) == proposal.get("proposal_signature"):
             raise ValueError("Đề xuất trùng nguyên payload; chọn REJECT/DEFER hoặc chỉnh sửa thành mệnh đề khác có căn cứ.")
-        issues = proposal_issues(architecture, proposal["source_id"], payload, structured=structured, allow_human=action == "CORRECT")
+        issues = proposal_issues(architecture, proposal["source_id"], payload, structured=structured, allow_human=action == "CORRECT", source_ref=source_ref)
         if issues:
             raise ValueError(" ".join(issues))
         if structured and payload.get("disposition") == "AMBIGUOUS":
@@ -256,10 +272,11 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
             source = next(item for item in architecture.requirements if item.id == proposal["source_id"])
             start = source.text.find(payload["quote"])
             record = ClauseReview(frame=ClauseFrame.model_validate(payload["frame"]),
-                source_ref=SourceRef(source_id=source.id, quote=payload["quote"], start=start, end=start + len(payload["quote"])),
+                source_ref=source_ref or SourceRef(source_id=source.id, quote=payload["quote"], start=start, end=start + len(payload["quote"])),
                 source_digest=source.input_digest(), catalog_digest=catalog_digest(architecture), claim=claim_fields(payload),
                 proposal_id=proposal["id"], run_id=proposal["run_id"], actor=actor, rationale=rationale, provenance=provenance,
-                proposal_provenance=original_origin, claim_provenance=binding["citation_provenance"])
+                proposal_provenance=original_origin, claim_provenance=("PREPARED_FIXTURE" if provenance == "PREPARED_FIXTURE" else "HUMAN_DECISION") if action == "CORRECT" else original_origin,
+                processing=processing)
             binding["semantic_review"] = record.model_dump(mode="json")
         if inactive:
             pass  # Reviewed exclusion remains in checkpoint; no allocation/constraint is created.
@@ -306,4 +323,6 @@ def decide_proposal(architecture: Architecture, proposal: dict, *, action: str, 
                 "provenance": provenance, "semantic_schema": SCHEMA if structured else "LEGACY_UNSTRUCTURED",
                 "semantic_confirmed": semantic_confirmed if structured else False,
                 "effect_status": "NO_ACTIVE_EFFECT" if inactive else "APPLIED" if action in {"APPROVE", "CORRECT"} else "NOT_APPLIED"}
+    if processing:
+        decision["processing"] = processing
     return after, decision

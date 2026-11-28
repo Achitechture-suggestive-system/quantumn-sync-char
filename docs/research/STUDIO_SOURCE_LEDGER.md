@@ -48,7 +48,14 @@
 |---|---|---|
 | S21 | Sebastian Baltes và cộng sự. **Guidelines for Empirical Studies in Software Engineering involving Large Language Models**. arXiv `2508.15503v8`, 18/09/2026; trang tác giả ghi accepted in Empirical Software Engineering. [Bản v8](https://arxiv.org/abs/2508.15503v8) · [Toàn văn](https://arxiv.org/html/2508.15503v8) | Tham khảo reporting và human validation cho G10. Freeze/matcher/lock là thiết kế repo; không suy ra độ đúng của model hoặc reference từ tuân thủ checklist. |
 
-## Công thức và thuật toán của dự án
+## Nguồn cho trích xuất theo câu — kiểm tra 28/11/2026
+
+| ID | Nguồn gốc | Áp dụng và giới hạn |
+|---|---|---|
+| S22 | Ollama. **Structured Outputs**, tài liệu chính thức, truy cập 28/11/2026. [Docs](https://docs.ollama.com/capabilities/structured-outputs) | @3 đưa schema cả vào format và prompt theo khuyến nghị grounding. Đây là hướng dẫn API, không phải bài peer-reviewed hoặc bảo đảm entailment/accuracy. |
+| S23 | Saibo Geng, Martin Josifoski, Maxime Peyrard, Robert West. **Grammar-Constrained Decoding for Structured NLP Tasks without Finetuning**. EMNLP 2023, 10932–10952. DOI `10.18653/v1/2023.emnlp-main.674`. [ACL Anthology](https://aclanthology.org/2023.emnlp-main.674/) | Tham khảo cấu trúc đầu ra phụ thuộc input. Repo dùng schema Ollama, chưa triển khai hoặc tái lập GCD của bài. Claim→frame và sentence spans là thiết kế repo; kết quả NLP của bài không phải metric Studio. |
+
+## Công thức và thuật toán hiện có
 
 Mốc A3 đã thêm frame và review mệnh đề, tách role/modality/effect, giữ nhãn ngoài nguồn của reviewer và guard nguồn/catalog/claim. Đây là thiết kế của repo tham khảo S09/S17, chưa phải triển khai parser EARS hoặc classifier của S18. Các lượt thật còn lỗi và bộ ca OC đã được dùng trong phát triển; chưa có đánh giá ngữ nghĩa độc lập. [Policy, raw-run evidence và giới hạn](STUDIO_CLAUSE_REVIEW.md).
 

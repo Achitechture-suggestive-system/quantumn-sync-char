@@ -12,9 +12,11 @@ Rà soát hiện tại của Studio, các phép đối chứng và hướng nghi
 
 [Backend Studio 9–50 component](research/STUDIO_LARGE_BACKEND.md) ghi mã hóa bảo toàn năm trục, giới hạn thời gian, sửa xung đột có bảo vệ và benchmark tổng hợp. Các số lượng/Pareto cỡ lớn chỉ nói về tập đã tìm.
 
-[Báo cáo phản hồi LLM hiện có](research/STUDIO_LLM_OUTPUT_EVALUATION.md) đối chiếu chín run thật/19 proposal qua hai mốc audit, citation, lỗi nghĩa và tác động sau correction; không có semantic accuracy khi thiếu nhãn độc lập.
+[Báo cáo phản hồi LLM hiện có](research/STUDIO_LLM_OUTPUT_EVALUATION.md) đối chiếu snapshot @1/@2 gồm chín run thật/19 proposal, citation, lỗi nghĩa và tác động sau correction; @3 có báo cáo riêng bên dưới. Không có semantic accuracy khi thiếu nhãn độc lập.
 
 [Protocol đánh giá extraction Studio](research/STUDIO_EVALUATION_PROTOCOL.md) mô tả source-only package, hai annotation độc lập và adjudication trước inference, request/code freeze, repetition và matching theo atomic link. Bộ nguồn mới chưa có reference hoặc inference.
+
+[Trích xuất theo câu @3 và kết quả thật](research/STUDIO_SENTENCE_EXTRACTION.md) tách LLM claim/frame khỏi quote tra nguồn, ghi ba run/15 draft, lỗi còn lại và 37 probe thăm dò. 307 tests qua; chưa có semantic metrics hoặc G10 evaluation cho @3.
 
 ## Thứ tự đọc
 

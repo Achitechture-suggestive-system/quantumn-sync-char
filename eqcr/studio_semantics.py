@@ -54,6 +54,7 @@ class ClauseReview(BaseModel):
     provenance: Literal["HUMAN_DECISION", "PREPARED_FIXTURE"]
     proposal_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION", "PREPARED_FIXTURE"]
     claim_provenance: Literal["LLM_PROPOSAL", "HUMAN_DECISION", "PREPARED_FIXTURE"]
+    processing: dict = Field(default_factory=dict)
     recorded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @field_validator("recorded_at")
@@ -82,7 +83,7 @@ def proposal_signature(source_id, payload: dict) -> str:
     return sha256(json.dumps([source_id, payload], ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
-def clause_issues(architecture, source, payload, *, allow_human=False) -> list[str]:
+def clause_issues(architecture, source, payload, *, allow_human=False, source_ref=None) -> list[str]:
     try:
         frame = ClauseFrame.model_validate(payload.get("frame"))
     except ValidationError:
@@ -121,7 +122,11 @@ def clause_issues(architecture, source, payload, *, allow_human=False) -> list[s
             issues.append(f"ID của {part} không khớp component được gọi tên trong chính phần đó.")
         elif actual and not named and not actual <= set(source.component_ids) and key not in frame.human_fields:
             issues.append(f"Danh tính {part} chưa được nguồn hoặc scope khai báo xác định; cần làm rõ biệt danh.")
-    if isinstance(quote, str) and quote and source.text.count(quote) > 1:
+    explicit_span = (source_ref is not None and source_ref.source_id == source.id and source_ref.quote == quote
+                     and 0 <= source_ref.start < source_ref.end <= len(source.text) and source.text[source_ref.start:source_ref.end] == quote)
+    if source_ref is not None and not explicit_span:
+        issues.append("SourceRef của mệnh đề không khớp đúng nguồn/span hiện hành.")
+    if isinstance(quote, str) and quote and source.text.count(quote) > 1 and not explicit_span:
         issues.append("Đoạn trích xuất hiện nhiều lần; mở rộng ngữ cảnh để xác định đúng mệnh đề.")
     if disposition != "PROPOSED":
         if payload.get("kind") == "QUALITY":
@@ -191,7 +196,16 @@ def review_issues(architecture, record: ClauseReview) -> list[str]:
         issues.append("Span của mệnh đề không còn khớp nguồn.")
     if catalog_digest(architecture) != record.catalog_digest:
         issues.append("Danh mục component đã đổi sau review mệnh đề.")
-    issues += clause_issues(architecture, source, {**record.claim, "quote": ref.quote, "frame": record.frame.model_dump(), "disposition": "PROPOSED"}, allow_human=True)
+    if record.processing:
+        try:
+            from .studio_sentence_extraction import check_processing
+            original = check_processing(architecture, record.processing)
+            if record.claim_provenance == "LLM_PROPOSAL" and (claim_fields(original) != record.claim
+                    or ClauseFrame.model_validate(original["frame"]) != record.frame or original["quote"] != ref.quote):
+                issues.append("Claim/frame đã đổi khỏi proposal hai lượt; cần quyết định CORRECT riêng.")
+        except (ValueError, TypeError, KeyError) as exc:
+            issues.append(f"Lineage mệnh đề không còn hợp lệ: {exc}")
+    issues += clause_issues(architecture, source, {**record.claim, "quote": ref.quote, "frame": record.frame.model_dump(), "disposition": "PROPOSED"}, allow_human=True, source_ref=ref)
     return issues
 
 

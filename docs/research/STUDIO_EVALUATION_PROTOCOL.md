@@ -2,6 +2,8 @@
 
 ## Bài toán và trạng thái
 
+Phạm vi @1 là **DIRECT / STUDIO-EXTRACT@2**. SENTENCE @3 có nhiều call và quote tra nguồn, chưa được runner/scorer protocol này hỗ trợ hoặc đánh giá. [Báo cáo @3](STUDIO_SENTENCE_EXTRACTION.md) là development smoke, không phải kết quả G10. Gói `studio-source-only-v1-20261128` lưu freeze lịch sử của code cũ; code hash hiện tại khác nên gate sẽ chặn nếu dùng lại. Giữ gói cũ và tạo version freeze mới trên code đã commit trước study tương lai; không sửa manifest cũ để bỏ qua drift.
+
 Protocol `STUDIO-EVALUATION@1` khóa source, document split, prompt/schema/request, code, exact model digest, số lượt lặp và quy tắc matching trước khi gọi model. Đích là đánh giá các trường link mà Studio đang trích xuất: QUALITY (ISO/component), INTERACTION (hướng/mode/giao dịch) và SEPARATION (cặp tách). Đây không phải phép đo đầy đủ entailment, trách nhiệm nghiệp vụ, chất lượng kiến trúc hoặc phân loại FR/NFR. Kind FR/NFR đã khai báo là một phần input.
 
 Chưa có reference độc lập được nộp. Tất cả semantic metrics hiện vẫn `null`; chưa có inference trên bộ nguồn mới. Mã và tests chuẩn bị đường chạy; tests dùng response/attestation **mô phỏng** trong thư mục tạm, không tạo nhãn chuyên gia cho dữ liệu nghiên cứu.

@@ -35,6 +35,8 @@ Bộ giải Python liệt kê toàn bộ ở cỡ ≤8 component, lọc hard con
 
 ## Review và so sánh khi mode còn bất định
 
+Trong **Phân tích yêu cầu hiện tại bằng Ollama**, chọn **Theo câu (@3)** để model đề xuất claim rồi đọc frame từ từng câu. Quote được tra trực tiếp từ nguồn; claim/frame vẫn chờ Human Review. Có thể chọn lại **Một lượt đầy đủ (@2)**. Ba lượt @3 thật có 15 draft, 9 còn blocker; cả draft không blocker vẫn có lỗi nghĩa. [Pipeline, provenance, kết quả và lệnh tái chạy](docs/research/STUDIO_SENTENCE_EXTRACTION.md). Chưa có nhãn độc lập hoặc semantic accuracy.
+
 Sau khi sửa requirement đã dùng để review tương tác hoặc quy tắc tách, Studio yêu cầu **Căn cứ nguồn của tương tác và quy tắc** trước khi chạy lại bộ giải. Chọn nguồn/quote hiện hành, kiểm nghĩa và ghi lý do xác nhận. Các hard constraints vẫn giữ cho tới khi có quyết định đổi policy; nguồn cũ không tiếp tục được dùng âm thầm.
 
 Với cạnh `UNKNOWN`, thẻ phương án và bảng so sánh hiển thị khoảng chi phí theo hai giả thuyết SYNC/ASYNC. Mở **Review tương tác theo điều kiện** để khai báo mode cho từng điều kiện bằng quote nguồn, người review và rationale. Bật **Ưu tiên chi phí biên trên khi còn bất định**: bộ nhỏ chọn min biên trên trên toàn bộ tập khả thi; bộ lớn tối ưu cùng objective bằng CP-SAT và ghi rõ có chứng minh OPTIMAL hay chỉ có nghiệm FEASIBLE. Các ràng buộc cứng vẫn giữ nguyên. Khoảng này chưa có xác suất và giả định mode giữa các cạnh độc lập. [Công thức, nguồn nghiên cứu và giới hạn](docs/research/STUDIO_COMPLETION_STATUS.md#mốc-b2--bất-định-của-mode-tương-tác).

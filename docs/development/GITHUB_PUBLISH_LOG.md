@@ -1,5 +1,11 @@
 # Nhật ký publish GitHub
 
+## Gate đánh giá extraction Studio — 2026-11-28
+
+- Commit `6c7fabd121d272e56b9bf565cd8b146690242681` đã push lên `feat/quantum-tradeoff-workbench`; remote khớp SHA. [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công, gồm 290 tests và compile. Diff/secret scan qua; không stage runs, source-only export, lock, raw output hoặc môi trường.
+- [PR #1](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/pull/1) đã được merge trước mốc này: remote main hiện `3471eff9bbf33c407bd33ef451579499bc35be4b`, chứa feature đến `5aacc63`. [CI main 46042913314](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46042913314) thành công. Mốc X1 không push main hoặc sửa lịch sử merge; tag P0 `02531985dd915318fc7a30f800c6b17bf9e6f95f` không đổi.
+- Gói source-only đã tạo trên checkout sạch với source/request/code/model hashes; preflight thật giữ BLOCKED_INDEPENDENT_REFERENCE và null metrics. Chưa có reference/inference trên hai source mới. Chi tiết nằm trong [bằng chứng X1](../research/STUDIO_EVALUATION_PROTOCOL.md).
+
 ## Backend 9–50 component — 2026-11-28
 
 - Commit `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3` đã push lên `feat/quantum-tradeoff-workbench`; remote khớp SHA. Main `5ece0157bf2372fb879f694cee9f5f0846fcbe1a` và tag P0 `02531985dd915318fc7a30f800c6b17bf9e6f95f` giữ nguyên khi kiểm lại.

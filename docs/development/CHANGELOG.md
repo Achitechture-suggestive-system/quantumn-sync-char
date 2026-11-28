@@ -1,5 +1,12 @@
 # Changelog
 
+## Freeze và gate đánh giá extraction Studio — 2026-11-28
+
+- Commit `6c7fabd121d272e56b9bf565cd8b146690242681` thêm protocol source-only, two-annotator lock/adjudication, shared request builder, code/model/source/exposure freeze, gated runner, exact-link scorer và baseline lexical. Hai document mới có 16 requirement/40 unit, không có reference labels hoặc output qwen.
+- 290 tests, compileall, JavaScript syntax, diff check và CI qua. Test responses/attestations là mô phỏng, không phải independent human labels. Provider failure giữ extraction ID và manifest lỗi.
+- Gói local `studio-source-only-v1-20261128` đã freeze trên code đã commit. Preflight thiếu reference bị chặn trước provider, 0 contact, không tăng số request. Không chạy model trên nguồn mới. [Protocol, hash và giới hạn](../research/STUDIO_EVALUATION_PROTOCOL.md).
+- Bổ sung nguồn S21, Baltes và cộng sự, arXiv v8 về reporting thí nghiệm LLM; không coi tuân thủ checklist là chứng minh semantic accuracy.
+
 ## Backend 9–50 component và đánh giá phản hồi LLM — 2026-11-28
 
 - Commit `ed779df4f4c2b3d2fe4822c26a74f21cc01420a3` thêm CP-SAT bảo toàn năm trục Studio, mode bounds, bounded repair có protected rules, thời hạn và found-pool scope. ≤8 giữ enumerator cũ. 264 tests, compileall, JavaScript syntax và CI qua.

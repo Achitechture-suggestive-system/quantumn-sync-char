@@ -8,6 +8,19 @@ Chưa có reference độc lập được nộp. Tất cả semantic metrics hi�
 
 P2 Tutor có protocol responsibility/relation riêng và vẫn giữ source-only gate của nó. Không dùng lock Studio để mở inference Tutor hoặc đổi fixture P0. Đánh giá từ [bảy run phát triển đã có](STUDIO_LLM_OUTPUT_EVALUATION.md) vẫn là error analysis, không được đổi thành held-out.
 
+## Lượt chuẩn bị đã quan sát
+
+Sau khi commit/push mã `6c7fabd121d272e56b9bf565cd8b146690242681`, CLI prepare đã tạo `runs/quantum-studio/studies/studio-source-only-v1-20261128/` trên checkout sạch. [CI 46141243324](https://github.com/Achitechture-suggestive-system/quantumn-sync-char/actions/runs/46141243324) thành công trên mã này với 290 tests.
+
+- Study digest: `84e3c3ee4326f3a00168769f16f89f7c44b0dce6c50bbb2474e5ef5c092d77ee`.
+- Source digest: `c6d408eb0e8890ccfc2e4cf90c7a428821f3980e457b1695e529f400f6611a8c`.
+- Sáu query, 40 row NOT_ANNOTATED, ba repetition dự kiến; source-only package có đúng bốn file và không có claim tham chiếu.
+- Freeze ghi hash của bảy extraction request đã tồn tại. Đây là exposure ledger local, không phải sổ mọi lần model đã thấy dữ liệu trên mọi máy.
+- `status` và preflight runner thiếu reference cùng giữ `BLOCKED_INDEPENDENT_REFERENCE`, metric null. Check kỹ thuật cài spy trước provider ghi **0 contact**, số extraction request trước/sau vẫn bảy. Không tạo response mới hoặc lock giả để vượt gate. `preflight-check.json` giữ local ở thư mục study.
+- Metadata Ollama được đọc riêng: version 0.40.18, exact qwen3:4b digest khớp cấu hình. Đọc metadata không được tính là inference.
+
+Nguồn mới là tài liệu chuẩn bị theo các nhóm khó đã biết; chưa có external corpus hoặc curator độc lập xác nhận độ đại diện. Việc giữ document riêng chưa đủ để kết luận tổng quát hóa ngôn ngữ hoặc domain. Chỉ gửi thư mục `source_only/` của study này cho reviewer, không gửi báo cáo chứa model output trước đó.
+
 ## Đơn vị dữ liệu và nguồn mới
 
 `studies/studio_source_only_v1.json` chứa hai document nguyên bản do agent chuẩn bị: Equipment Loan và Room Scheduling. Mỗi document có năm component và tám requirement; tổng 16 requirement, sáu query theo ba tác vụ và **40 unit case/task/source**. Không có allocation, interaction, expected partition hoặc reference label đi kèm. Nguồn là PREPARED_FIXTURE, không phải yêu cầu stakeholder thật hoặc output của local qwen3:4b.
